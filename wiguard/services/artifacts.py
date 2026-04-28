@@ -23,6 +23,13 @@ CATEGORY_MAP = {
     "cdp_links.json": ("cdp_links", []),
     "raw_evidence.json": ("raw_evidence", []),
     "dhcp_gateway_matches.json": ("dhcp_gateway_matches", []),
+    "ip_inventory.json": ("ip_inventory", []),
+    "port_security.json": ("port_security", []),
+    "spanning_tree.json": ("spanning_tree", []),
+    "etherchannels.json": ("etherchannels", []),
+    "mac_table.json": ("mac_table", []),
+    "arp_table.json": ("arp_table", []),
+    "device_facts.json": ("device_facts", []),
 }
 
 
@@ -51,6 +58,7 @@ def generate_artifacts(state, artifact_dir):
     for filename, (key, default) in CATEGORY_MAP.items():
         files[filename] = write_json(artifact_dir / filename, objects.get(key, default))
 
+    files["packet_tracer_conversion_profile.json"] = write_json(artifact_dir / "packet_tracer_conversion_profile.json", state.get("active_extraction", {}).get("conversion_profile", objects.get("packet_tracer_profile", {})))
     files["routing.json"] = write_json(artifact_dir / "routing.json", objects.get("routing", {}))
     files["policy_diff.json"] = write_json(artifact_dir / "policy_diff.json", build_policy_diff(state))
     files["root_causes.json"] = write_json(artifact_dir / "root_causes.json", build_root_causes(state))
@@ -72,12 +80,18 @@ def generate_artifacts(state, artifact_dir):
             "devices": objects.get("devices", []),
             "interfaces": objects.get("interfaces", []),
             "links": objects.get("cdp_links", []),
+            "ip_inventory": objects.get("ip_inventory", []),
+            "spanning_tree": objects.get("spanning_tree", []),
+            "etherchannels": objects.get("etherchannels", []),
+            "mac_table": objects.get("mac_table", []),
+            "arp_table": objects.get("arp_table", []),
         },
         "segmentation": {
             "vlans": objects.get("vlans", []),
             "dhcp_scopes": objects.get("dhcp_scopes", []),
             "dhcp_gateway_matches": objects.get("dhcp_gateway_matches", []),
             "acl_rules": objects.get("acl_rules", []),
+            "port_security": objects.get("port_security", []),
         },
         "routing": objects.get("routing", {}),
         "nat": objects.get("nat_rules", []),

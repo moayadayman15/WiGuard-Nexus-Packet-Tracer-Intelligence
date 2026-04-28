@@ -7,14 +7,18 @@ def now_iso():
 
 def seed_state():
     return {
+        "version": "5.7.0-deep-packet-tracer-ui-policy",
+        "tenant_id": "tenant-main",
+        "tenants": [{"id": "tenant-main", "name": "Main Tenant", "status": "active"}],
         "meta": {
-            "product": "WiGuard Nexus v5.2",
-            "tagline": "Wireless Policy Manager with wired evidence intelligence",
-            "workflow": ["Project", "Wireless", "Import", "Extract", "Validate", "Analyze", "Report", "Verify"]
+            "product": "WiGuard Nexus v5.7",
+            "tagline": "Packet Tracer conversion intelligence, evidence-grade topology, live ingestion, tenants, jobs, and API tokens",
+            "workflow": ["Tenant", "Project", "Upload", "Convert", "Validate", "Map", "Analyze", "Report", "Verify"]
         },
         "projects": [
             {
                 "id": "main-campus",
+                "tenant_id": "tenant-main",
                 "name": "Main Campus Lab",
                 "environment": "Wireless Campus Policy Validation",
                 "owner": "Network Security Team",

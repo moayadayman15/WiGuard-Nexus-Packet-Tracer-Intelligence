@@ -1,6 +1,6 @@
 [project]
 name = "wiguard-nexus"
-version = "5.3.0"
+version = "5.7.0"
 description = "Wireless and wired policy evidence intelligence platform"
 requires-python = ">=3.10"
 dependencies = [

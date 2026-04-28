@@ -2,7 +2,10 @@ from datetime import datetime
 import hashlib
 import json
 import ipaddress
+import logging
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def now_iso():
@@ -27,19 +30,22 @@ def write_json(path, payload):
 def mask_to_prefix(mask):
     try:
         return str(ipaddress.IPv4Network(f"0.0.0.0/{mask}").prefixlen)
-    except Exception:
+    except (ValueError, ipaddress.AddressValueError, ipaddress.NetmaskValueError) as exc:
+        logger.debug("Could not convert mask to prefix: %s", exc)
         return None
 
 
 def network_cidr(ip, mask):
     try:
         return str(ipaddress.IPv4Network(f"{ip}/{mask}", strict=False))
-    except Exception:
+    except (ValueError, ipaddress.AddressValueError, ipaddress.NetmaskValueError) as exc:
+        logger.debug("Could not derive network CIDR: %s", exc)
         return None
 
 
 def safe_int(value, default=0):
     try:
         return int(value)
-    except Exception:
+    except (TypeError, ValueError) as exc:
+        logger.debug("Could not convert value to int: %s", exc)
         return default

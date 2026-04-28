@@ -1,1 +1,218 @@
-[]
+[
+  {
+    "finding_id": "SSID-VLAN-StaffWiFi",
+    "asset": "StaffWiFi",
+    "severity": "High",
+    "confidence": 0.72,
+    "evidence_line": null,
+    "evidence_reason": "No line-level VLAN evidence found.",
+    "hypotheses": [
+      "StaffWiFi expected VLAN is absent from extracted VLAN/interface evidence.",
+      "Uploaded data may not include show vlan brief or complete running-config.",
+      "Wireless policy may be mapped to a VLAN not deployed on the wired side."
+    ],
+    "verification_commands": [
+      "show vlan brief",
+      "show running-config | section vlan",
+      "show interfaces switchport"
+    ],
+    "owner": "Wireless / Switching Team",
+    "recommended_fix": "Create/restore the VLAN or upload complete VLAN evidence."
+  },
+  {
+    "finding_id": "DHCP-StaffWiFi",
+    "asset": "StaffWiFi",
+    "severity": "Medium",
+    "confidence": 0.48,
+    "evidence_line": null,
+    "evidence_reason": "Expected subnet was absent from DHCP pool evidence.",
+    "hypotheses": [
+      "Expected evidence was not found or is incomplete.",
+      "Upload a broader command bundle to raise confidence."
+    ],
+    "verification_commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Upload DHCP pool output or create the matching DHCP network statement."
+  },
+  {
+    "finding_id": "TRUNK-StaffWiFi",
+    "asset": "StaffWiFi",
+    "severity": "Medium",
+    "confidence": 0.42,
+    "evidence_line": null,
+    "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines.",
+    "hypotheses": [
+      "The WLAN VLAN may not be allowed on AP or uplink trunks.",
+      "show interfaces trunk evidence is missing or incomplete.",
+      "A trunk allowed-list may have drifted from the intended policy."
+    ],
+    "verification_commands": [
+      "show interfaces trunk",
+      "show running-config interface <uplink>",
+      "show cdp neighbors detail"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Upload show interfaces trunk / switchport running-config."
+  },
+  {
+    "finding_id": "SSID-VLAN-StudentsWiFi",
+    "asset": "StudentsWiFi",
+    "severity": "High",
+    "confidence": 0.72,
+    "evidence_line": null,
+    "evidence_reason": "No line-level VLAN evidence found.",
+    "hypotheses": [
+      "StudentsWiFi expected VLAN is absent from extracted VLAN/interface evidence.",
+      "Uploaded data may not include show vlan brief or complete running-config.",
+      "Wireless policy may be mapped to a VLAN not deployed on the wired side."
+    ],
+    "verification_commands": [
+      "show vlan brief",
+      "show running-config | section vlan",
+      "show interfaces switchport"
+    ],
+    "owner": "Wireless / Switching Team",
+    "recommended_fix": "Create/restore the VLAN or upload complete VLAN evidence."
+  },
+  {
+    "finding_id": "DHCP-StudentsWiFi",
+    "asset": "StudentsWiFi",
+    "severity": "Medium",
+    "confidence": 0.48,
+    "evidence_line": null,
+    "evidence_reason": "Expected subnet was absent from DHCP pool evidence.",
+    "hypotheses": [
+      "Expected evidence was not found or is incomplete.",
+      "Upload a broader command bundle to raise confidence."
+    ],
+    "verification_commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Upload DHCP pool output or create the matching DHCP network statement."
+  },
+  {
+    "finding_id": "TRUNK-StudentsWiFi",
+    "asset": "StudentsWiFi",
+    "severity": "Medium",
+    "confidence": 0.42,
+    "evidence_line": null,
+    "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines.",
+    "hypotheses": [
+      "The WLAN VLAN may not be allowed on AP or uplink trunks.",
+      "show interfaces trunk evidence is missing or incomplete.",
+      "A trunk allowed-list may have drifted from the intended policy."
+    ],
+    "verification_commands": [
+      "show interfaces trunk",
+      "show running-config interface <uplink>",
+      "show cdp neighbors detail"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Upload show interfaces trunk / switchport running-config."
+  },
+  {
+    "finding_id": "ACL-DIRECTION-StudentsWiFi",
+    "asset": "StudentsWiFi",
+    "severity": "High",
+    "confidence": 0.5,
+    "evidence_line": null,
+    "evidence_reason": "Limited access roles need interface-bound ACL evidence.",
+    "hypotheses": [
+      "Expected evidence was not found or is incomplete.",
+      "Upload a broader command bundle to raise confidence."
+    ],
+    "verification_commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Apply the student policy ACL to the VLAN gateway in the correct direction."
+  },
+  {
+    "finding_id": "SSID-VLAN-GuestWiFi",
+    "asset": "GuestWiFi",
+    "severity": "High",
+    "confidence": 0.72,
+    "evidence_line": null,
+    "evidence_reason": "No line-level VLAN evidence found.",
+    "hypotheses": [
+      "GuestWiFi expected VLAN is absent from extracted VLAN/interface evidence.",
+      "Uploaded data may not include show vlan brief or complete running-config.",
+      "Wireless policy may be mapped to a VLAN not deployed on the wired side."
+    ],
+    "verification_commands": [
+      "show vlan brief",
+      "show running-config | section vlan",
+      "show interfaces switchport"
+    ],
+    "owner": "Wireless / Switching Team",
+    "recommended_fix": "Create/restore the VLAN or upload complete VLAN evidence."
+  },
+  {
+    "finding_id": "DHCP-GuestWiFi",
+    "asset": "GuestWiFi",
+    "severity": "Medium",
+    "confidence": 0.48,
+    "evidence_line": null,
+    "evidence_reason": "Expected subnet was absent from DHCP pool evidence.",
+    "hypotheses": [
+      "Expected evidence was not found or is incomplete.",
+      "Upload a broader command bundle to raise confidence."
+    ],
+    "verification_commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Upload DHCP pool output or create the matching DHCP network statement."
+  },
+  {
+    "finding_id": "TRUNK-GuestWiFi",
+    "asset": "GuestWiFi",
+    "severity": "Medium",
+    "confidence": 0.42,
+    "evidence_line": null,
+    "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines.",
+    "hypotheses": [
+      "The WLAN VLAN may not be allowed on AP or uplink trunks.",
+      "show interfaces trunk evidence is missing or incomplete.",
+      "A trunk allowed-list may have drifted from the intended policy."
+    ],
+    "verification_commands": [
+      "show interfaces trunk",
+      "show running-config interface <uplink>",
+      "show cdp neighbors detail"
+    ],
+    "owner": "Network Operations",
+    "recommended_fix": "Upload show interfaces trunk / switchport running-config."
+  },
+  {
+    "finding_id": "GUEST-ISOLATION-GuestWiFi",
+    "asset": "GuestWiFi",
+    "severity": "Critical",
+    "confidence": 0.78,
+    "evidence_line": null,
+    "evidence_reason": "ACL deny must be both present and applied on the guest VLAN path.",
+    "hypotheses": [
+      "Guest deny ACL is missing, not applied, or applied in the wrong direction.",
+      "A permit-any rule may allow internal access before the deny is enforced.",
+      "Guest VLAN gateway evidence is incomplete."
+    ],
+    "verification_commands": [
+      "show access-lists",
+      "show running-config | include access-group",
+      "show running-config interface <guest-gateway>"
+    ],
+    "owner": "Network Security Team",
+    "recommended_fix": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule."
+  }
+]

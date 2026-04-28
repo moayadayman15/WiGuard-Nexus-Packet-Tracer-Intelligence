@@ -1,1 +1,189 @@
-[]
+[
+  {
+    "finding_id": "SSID-VLAN-StaffWiFi",
+    "owner": "Wireless / Switching Team",
+    "severity": "High",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Create/restore the VLAN or upload complete VLAN evidence.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show vlan brief",
+      "show running-config | section vlan",
+      "show interfaces switchport"
+    ]
+  },
+  {
+    "finding_id": "DHCP-StaffWiFi",
+    "owner": "Network Operations",
+    "severity": "Medium",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Upload DHCP pool output or create the matching DHCP network statement.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ]
+  },
+  {
+    "finding_id": "TRUNK-StaffWiFi",
+    "owner": "Network Operations",
+    "severity": "Medium",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Upload show interfaces trunk / switchport running-config.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show interfaces trunk",
+      "show running-config interface <uplink>",
+      "show cdp neighbors detail"
+    ]
+  },
+  {
+    "finding_id": "SSID-VLAN-StudentsWiFi",
+    "owner": "Wireless / Switching Team",
+    "severity": "High",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Create/restore the VLAN or upload complete VLAN evidence.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show vlan brief",
+      "show running-config | section vlan",
+      "show interfaces switchport"
+    ]
+  },
+  {
+    "finding_id": "DHCP-StudentsWiFi",
+    "owner": "Network Operations",
+    "severity": "Medium",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Upload DHCP pool output or create the matching DHCP network statement.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ]
+  },
+  {
+    "finding_id": "TRUNK-StudentsWiFi",
+    "owner": "Network Operations",
+    "severity": "Medium",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Upload show interfaces trunk / switchport running-config.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show interfaces trunk",
+      "show running-config interface <uplink>",
+      "show cdp neighbors detail"
+    ]
+  },
+  {
+    "finding_id": "ACL-DIRECTION-StudentsWiFi",
+    "owner": "Network Operations",
+    "severity": "High",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Apply the student policy ACL to the VLAN gateway in the correct direction.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ]
+  },
+  {
+    "finding_id": "SSID-VLAN-GuestWiFi",
+    "owner": "Wireless / Switching Team",
+    "severity": "High",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Create/restore the VLAN or upload complete VLAN evidence.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show vlan brief",
+      "show running-config | section vlan",
+      "show interfaces switchport"
+    ]
+  },
+  {
+    "finding_id": "DHCP-GuestWiFi",
+    "owner": "Network Operations",
+    "severity": "Medium",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Upload DHCP pool output or create the matching DHCP network statement.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show running-config",
+      "show access-lists",
+      "show ip route"
+    ]
+  },
+  {
+    "finding_id": "TRUNK-GuestWiFi",
+    "owner": "Network Operations",
+    "severity": "Medium",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Upload show interfaces trunk / switchport running-config.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show interfaces trunk",
+      "show running-config interface <uplink>",
+      "show cdp neighbors detail"
+    ]
+  },
+  {
+    "finding_id": "GUEST-ISOLATION-GuestWiFi",
+    "owner": "Network Security Team",
+    "severity": "Critical",
+    "steps": [
+      "Confirm the affected SSID/VLAN/service path in the evidence view.",
+      "Run the verification commands listed below.",
+      "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule.",
+      "Re-import fresh outputs into WiGuard.",
+      "Verify that the finding changes to Pass with line-level evidence."
+    ],
+    "commands": [
+      "show access-lists",
+      "show running-config | include access-group",
+      "show running-config interface <guest-gateway>"
+    ]
+  }
+]

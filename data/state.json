@@ -1,13 +1,14 @@
 {
   "meta": {
-    "product": "WiGuard Nexus v5.2",
-    "tagline": "Wireless Policy Manager with wired evidence intelligence",
+    "product": "WiGuard Nexus v5.5",
+    "tagline": "Packet Tracer conversion intelligence, evidence-grade topology, live ingestion, tenants, jobs, and API tokens",
     "workflow": [
+      "Tenant",
       "Project",
-      "Wireless",
-      "Import",
-      "Extract",
+      "Upload",
+      "Convert",
       "Validate",
+      "Map",
       "Analyze",
       "Report",
       "Verify"
@@ -20,7 +21,8 @@
       "environment": "Wireless Campus Policy Validation",
       "owner": "Network Security Team",
       "created_at": "2026-04-27 16:01:41",
-      "status": "active"
+      "status": "active",
+      "tenant_id": "tenant-main"
     }
   ],
   "current_project": "main-campus",
@@ -272,6 +274,15 @@
   ],
   "events": [
     {
+      "id": 4,
+      "tenant_id": "tenant-main",
+      "type": "import",
+      "client": "",
+      "severity": "Info",
+      "detail": "Imported Project.pkt and extracted 15 object/evidence entries.",
+      "created_at": "2026-04-28 09:57:50"
+    },
+    {
       "id": 1,
       "type": "association",
       "client": "m.salem",
@@ -280,7 +291,8 @@
       "ssid": "StaffWiFi",
       "ap": "AP-01",
       "vlan": "10",
-      "created_at": "2026-04-27 16:01:41"
+      "created_at": "2026-04-27 16:01:41",
+      "tenant_id": "tenant-main"
     },
     {
       "id": 2,
@@ -292,7 +304,8 @@
       "from_ap": "AP-01",
       "to_ap": "AP-02",
       "vlan": "20",
-      "created_at": "2026-04-27 16:01:41"
+      "created_at": "2026-04-27 16:01:41",
+      "tenant_id": "tenant-main"
     },
     {
       "id": 3,
@@ -303,14 +316,1537 @@
       "ssid": "GuestWiFi",
       "ap": "AP-03",
       "vlan": "30",
-      "created_at": "2026-04-27 16:01:41"
+      "created_at": "2026-04-27 16:01:41",
+      "tenant_id": "tenant-main"
     }
   ],
-  "imports": [],
-  "active_extraction": {},
+  "imports": [
+    {
+      "id": "import-1",
+      "tenant_id": "tenant-main",
+      "filename": "Project.pkt",
+      "stored_filename": "b6a95c7097f04b15b630c8da93716b5b.pkt",
+      "source_mode": "pkt_binary_recovery",
+      "source_note": "Imported",
+      "imported_at": "2026-04-28 09:57:50",
+      "object_count": 15,
+      "counts": {
+        "devices": 1,
+        "interfaces": 0,
+        "vlans": 0,
+        "dhcp_scopes": 0,
+        "acl_rules": 0,
+        "routing": 0,
+        "nat_rules": 0,
+        "cdp_links": 0,
+        "lldp_links": 0,
+        "ip_inventory": 0,
+        "interface_status": 0,
+        "trunk_operational": 0,
+        "route_table": 0,
+        "ospf_neighbors": 0,
+        "port_security": 0,
+        "spanning_tree": 0,
+        "etherchannels": 0,
+        "mac_table": 0,
+        "arp_table": 0,
+        "device_facts": 0,
+        "device_inventory": 0,
+        "security_hardening": 0,
+        "wireless_hints": 5,
+        "command_blocks": 1,
+        "subnet_inventory": 0,
+        "policy_controls": 8,
+        "deep_evidence_index": 0,
+        "raw_evidence": 0
+      },
+      "source_hash": "6cb3b3515aa6d81e7fbcdddd6715044b77db43111baf5296189c5d0c147beae1"
+    }
+  ],
+  "active_extraction": {
+    "tenant_id": "tenant-main",
+    "filename": "Project.pkt",
+    "stored_filename": "b6a95c7097f04b15b630c8da93716b5b.pkt",
+    "source_mode": "pkt_binary_recovery",
+    "source_hash": "6cb3b3515aa6d81e7fbcdddd6715044b77db43111baf5296189c5d0c147beae1",
+    "imported_at": "2026-04-28 09:57:50",
+    "objects": {
+      "devices": [
+        {
+          "id": "Extracted-Reality",
+          "hostname": "Extracted Wired Reality",
+          "type": "network",
+          "role": "synthetic_context",
+          "evidence": {
+            "source_line": null,
+            "source_text": "Synthetic context because no hostname was found.",
+            "confidence": 0.35
+          }
+        }
+      ],
+      "vlans": [],
+      "interfaces": [],
+      "dhcp_scopes": [],
+      "dhcp_excluded": [],
+      "acl_rules": [],
+      "routing": {
+        "static_routes": [],
+        "protocols": []
+      },
+      "nat_rules": [],
+      "cdp_links": [],
+      "lldp_links": [],
+      "services": [],
+      "ip_inventory": [],
+      "interface_status": [],
+      "trunk_operational": [],
+      "route_table": [],
+      "ospf_neighbors": [],
+      "port_security": [],
+      "spanning_tree": [],
+      "etherchannels": [],
+      "mac_table": [],
+      "arp_table": [],
+      "device_facts": [],
+      "device_inventory": [],
+      "security_hardening": [],
+      "wireless_hints": [
+        {
+          "type": "ap",
+          "value": "Ap26",
+          "evidence": {
+            "source_line": 5152,
+            "source_text": "\u0011Ap26��M���I�l",
+            "confidence": 0.64
+          }
+        },
+        {
+          "type": "ap",
+          "value": "aP7",
+          "evidence": {
+            "source_line": 5472,
+            "source_text": "N�`v\u0018��y�aP7� O�%",
+            "confidence": 0.64
+          }
+        },
+        {
+          "type": "ap",
+          "value": "Ap4",
+          "evidence": {
+            "source_line": 7508,
+            "source_text": "��Ap4",
+            "confidence": 0.64
+          }
+        },
+        {
+          "type": "ap",
+          "value": "Ap26",
+          "evidence": {
+            "source_line": 10196,
+            "source_text": "Ap26",
+            "confidence": 0.64
+          }
+        },
+        {
+          "type": "ap",
+          "value": "Ap4",
+          "evidence": {
+            "source_line": 11435,
+            "source_text": "Ap4",
+            "confidence": 0.64
+          }
+        }
+      ],
+      "vlan_brief": [],
+      "acl_hit_counts": [],
+      "interface_counters": [],
+      "stp_root": [],
+      "protocol_summary": [],
+      "command_blocks": [
+        {
+          "name": "single evidence stream",
+          "device": null,
+          "start_line": 1,
+          "end_line": 11457,
+          "line_count": 11457,
+          "evidence": {
+            "source_line": 1,
+            "source_text": "�m�L)�B8�SCNs\b��T^��Ǒ.�N���D\u0000�\u0011�\u000e���?<\u0003\u000e�\u0002yҾ*P��2&�Ɉz�<��\"O�A��r��o5��e|QPG{��\u0001X�\u0017���%�5��4ė�.\u0010��`�\u0012W(�m",
+            "confidence": 0.5
+          }
+        }
+      ],
+      "deep_evidence_index": [],
+      "raw_evidence": [],
+      "dhcp_gateway_matches": [],
+      "subnet_inventory": [],
+      "vlan_crosscheck": {
+        "configured_vlans": [],
+        "show_vlan_vlans": [],
+        "dhcp_gateway_vlans": [],
+        "access_or_svi_vlans": [],
+        "trunk_allowed_vlans": [],
+        "trunk_forwarding_vlans": [],
+        "missing_from_trunks": [],
+        "observed_total": 0
+      },
+      "policy_controls": [
+        {
+          "control": "SEG-ACL-APPLIED",
+          "status": "review",
+          "severity": "High",
+          "detail": "0 ACL rule(s) have confirmed interface bindings.",
+          "evidence": {},
+          "confidence": 0.45
+        },
+        {
+          "control": "L2-TRUNK-COVERAGE",
+          "status": "review",
+          "severity": "Medium",
+          "detail": "0 trunk evidence row(s) extracted.",
+          "evidence": {},
+          "confidence": 0.4
+        },
+        {
+          "control": "DEVICE-HARDENING",
+          "status": "pass",
+          "severity": "Info",
+          "detail": "0 weak hardening indicator(s) detected.",
+          "evidence": {},
+          "confidence": 0.7
+        },
+        {
+          "control": "ACCESS-PORT-SECURITY",
+          "status": "review",
+          "severity": "Medium",
+          "detail": "0 port-security evidence row(s) extracted.",
+          "evidence": {},
+          "confidence": 0.44
+        },
+        {
+          "control": "TOPOLOGY-ADJACENCY",
+          "status": "review",
+          "severity": "Medium",
+          "detail": "0 CDP/LLDP adjacency edge(s) extracted.",
+          "evidence": {},
+          "confidence": 0.42
+        },
+        {
+          "control": "INTERFACE-ERROR-HEALTH",
+          "status": "pass",
+          "severity": "Info",
+          "detail": "0 interface(s) have error/counter evidence.",
+          "evidence": {},
+          "confidence": 0.68
+        },
+        {
+          "control": "ACL-RUNTIME-HITS",
+          "status": "review",
+          "severity": "Medium",
+          "detail": "0 ACL line(s) include runtime match counters.",
+          "evidence": {},
+          "confidence": 0.42
+        },
+        {
+          "control": "VLAN-TRUNK-CROSSCHECK",
+          "status": "pass",
+          "severity": "Info",
+          "detail": "0 VLAN(s) appear configured but not present in trunk forwarding evidence.",
+          "evidence": {},
+          "confidence": 0.84
+        }
+      ],
+      "risk_atoms": [],
+      "coverage_domains": [
+        {
+          "domain": "Identity",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "devices",
+            "device_facts",
+            "device_inventory"
+          ],
+          "evidence": {}
+        },
+        {
+          "domain": "L2/VLAN",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "vlans",
+            "vlan_brief",
+            "interfaces",
+            "trunk_operational",
+            "spanning_tree",
+            "etherchannels"
+          ],
+          "evidence": {}
+        },
+        {
+          "domain": "L3/Routing",
+          "count": 2,
+          "status": "needs_more_evidence",
+          "keys": [
+            "ip_inventory",
+            "dhcp_scopes",
+            "route_table",
+            "routing",
+            "protocol_summary"
+          ],
+          "evidence": {}
+        },
+        {
+          "domain": "Security",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "acl_rules",
+            "acl_hit_counts",
+            "security_hardening",
+            "port_security"
+          ],
+          "evidence": {}
+        },
+        {
+          "domain": "Topology",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "cdp_links",
+            "lldp_links",
+            "mac_table",
+            "arp_table"
+          ],
+          "evidence": {}
+        },
+        {
+          "domain": "Wireless",
+          "count": 5,
+          "status": "good",
+          "keys": [
+            "wireless_hints"
+          ],
+          "evidence": {}
+        },
+        {
+          "domain": "Operations",
+          "count": 1,
+          "status": "needs_more_evidence",
+          "keys": [
+            "interface_status",
+            "interface_counters",
+            "command_blocks"
+          ],
+          "evidence": {}
+        }
+      ],
+      "evidence_profile": {
+        "raw_evidence_lines": 0,
+        "objects_with_line_evidence": 6,
+        "total_list_objects": 21,
+        "line_mapping_ratio": 0.286,
+        "deep_evidence_lines": 0,
+        "command_blocks": 1,
+        "confidence": 0.75
+      },
+      "packet_tracer_profile": {
+        "metadata": {
+          "filename": "Project.pkt",
+          "extension": ".pkt",
+          "bytes": 273411,
+          "source_mode": "pkt_binary_recovery",
+          "native_packet_tracer": true,
+          "converter_used": false,
+          "printable_lines": 11162,
+          "markers": [
+            "ios"
+          ],
+          "format_note": "Native Packet Tracer file. Accuracy is highest when PTEXPLORER_PATH is configured or when configs/show outputs are exported as TXT/ZIP."
+        },
+        "relationships": {
+          "interface_to_vlan": [],
+          "vlan_to_interfaces": {},
+          "acl_to_interfaces": {},
+          "dhcp_to_vlan": [],
+          "trunks": []
+        },
+        "command_checklist": [
+          {
+            "command": "Export Packet Tracer device configs as TXT or ZIP",
+            "status": "recommended",
+            "severity": "High",
+            "why": "Native .pkt/.pka binary recovery can miss structured fields; exported configs raise confidence dramatically."
+          },
+          {
+            "command": "show running-config",
+            "status": "missing",
+            "severity": "High",
+            "why": "Core configuration, interfaces, VLANs, ACLs, DHCP and routing."
+          },
+          {
+            "command": "show vlan brief",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms VLAN IDs, names, status, and switchport hints."
+          },
+          {
+            "command": "show interfaces trunk",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms real trunk membership and allowed VLAN list."
+          },
+          {
+            "command": "show ip interface brief",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms L3 interfaces, IP addresses, and up/down state."
+          },
+          {
+            "command": "show access-lists",
+            "status": "missing",
+            "severity": "High",
+            "why": "Confirms segmentation rules and deny/permit enforcement."
+          },
+          {
+            "command": "show cdp neighbors detail",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms physical adjacency and topology edges."
+          },
+          {
+            "command": "show spanning-tree",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms blocked/forwarding ports and L2 loop protection."
+          },
+          {
+            "command": "show port-security interface",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms secure MAC limits, violations, and sticky MAC behavior."
+          },
+          {
+            "command": "show etherchannel summary",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms bundle health for uplinks and redundant paths."
+          },
+          {
+            "command": "show lldp neighbors detail",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms non-CDP physical adjacency and multi-vendor topology edges."
+          },
+          {
+            "command": "show interfaces status",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms access/trunk port operational status, VLAN placement, duplex, and speed."
+          },
+          {
+            "command": "show ip route",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms L3 forwarding, default routes, and protocol-learned paths."
+          },
+          {
+            "command": "show inventory / show version",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms platform/model/IOS evidence for device identity."
+          },
+          {
+            "command": "show running-config | include aaa|username|snmp|transport|http",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms management-plane hardening and weak-service exposure."
+          },
+          {
+            "command": "show interfaces counters/errors",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms physical-layer stability, CRC/input/output errors, drops and link health."
+          },
+          {
+            "command": "show access-lists with counters",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms whether segmentation rules are receiving runtime traffic matches."
+          },
+          {
+            "command": "show spanning-tree root",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms root bridge, root ports, and L2 forwarding design."
+          },
+          {
+            "command": "show protocols / routing protocol summary",
+            "status": "missing",
+            "severity": "Medium",
+            "why": "Confirms active L3/NAT/DHCP/HSRP/routing protocol evidence."
+          }
+        ],
+        "quality_gates": [
+          {
+            "name": "Device identity",
+            "status": "pass",
+            "score": 1.0,
+            "detail": "1 device node(s) extracted."
+          },
+          {
+            "name": "Interface coverage",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 interface block(s)/hint(s) extracted."
+          },
+          {
+            "name": "VLAN coverage",
+            "status": "fail",
+            "score": 0.0,
+            "detail": "0 VLAN object(s) extracted."
+          },
+          {
+            "name": "Security policy coverage",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 ACL rule(s) extracted."
+          },
+          {
+            "name": "Topology evidence",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 CDP/LLDP edge(s) extracted."
+          },
+          {
+            "name": "Operational state coverage",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 interface status and 0 trunk operation row(s)."
+          },
+          {
+            "name": "Security hardening extraction",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 management-plane hardening indicator(s)."
+          },
+          {
+            "name": "Policy control mapping",
+            "status": "pass",
+            "score": 1.0,
+            "detail": "8 derived control assertion(s)."
+          },
+          {
+            "name": "Runtime validation evidence",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 ACL counter and 0 interface counter row(s)."
+          },
+          {
+            "name": "Cross-layer VLAN consistency",
+            "status": "review",
+            "score": 0.0,
+            "detail": "0 VLAN trunk mismatch candidate(s)."
+          },
+          {
+            "name": "Line-level traceability",
+            "status": "review",
+            "score": 0.286,
+            "detail": "29% of list objects have source-line evidence."
+          },
+          {
+            "name": "Native Packet Tracer confidence",
+            "status": "review",
+            "score": 0.45,
+            "detail": "Native binary recovery used."
+          }
+        ],
+        "readiness": "needs_more_evidence",
+        "readiness_score": 0.228,
+        "objects_total": 22,
+        "high_value_objects": {
+          "devices": 1,
+          "interfaces": 0,
+          "vlans": 0,
+          "dhcp_scopes": 0,
+          "acl_rules": 0,
+          "routing_entries": 0,
+          "cdp_links": 0,
+          "port_security": 0,
+          "spanning_tree": 0,
+          "etherchannels": 0,
+          "interface_status": 0,
+          "trunk_operational": 0,
+          "route_table": 0,
+          "lldp_links": 0,
+          "security_hardening": 0,
+          "policy_controls": 8,
+          "deep_evidence_index": 0,
+          "vlan_brief": 0,
+          "acl_hit_counts": 0,
+          "interface_counters": 0,
+          "stp_root": 0,
+          "protocol_summary": 0,
+          "risk_atoms": 0
+        },
+        "analyst_next_step": "Export configs/show outputs from Packet Tracer and upload them as TXT or ZIP to move from binary recovery to evidence-grade extraction.",
+        "coverage_domains": [
+          {
+            "domain": "Identity",
+            "count": 0,
+            "status": "missing",
+            "keys": [
+              "devices",
+              "device_facts",
+              "device_inventory"
+            ]
+          },
+          {
+            "domain": "L2/VLAN",
+            "count": 0,
+            "status": "missing",
+            "keys": [
+              "vlans",
+              "vlan_brief",
+              "interfaces",
+              "trunk_operational",
+              "spanning_tree",
+              "etherchannels"
+            ]
+          },
+          {
+            "domain": "L3/Routing",
+            "count": 2,
+            "status": "needs_more_evidence",
+            "keys": [
+              "ip_inventory",
+              "dhcp_scopes",
+              "route_table",
+              "routing",
+              "protocol_summary"
+            ]
+          },
+          {
+            "domain": "Security",
+            "count": 0,
+            "status": "missing",
+            "keys": [
+              "acl_rules",
+              "acl_hit_counts",
+              "security_hardening",
+              "port_security"
+            ]
+          },
+          {
+            "domain": "Topology",
+            "count": 0,
+            "status": "missing",
+            "keys": [
+              "cdp_links",
+              "lldp_links",
+              "mac_table",
+              "arp_table"
+            ]
+          },
+          {
+            "domain": "Wireless",
+            "count": 5,
+            "status": "good",
+            "keys": [
+              "wireless_hints"
+            ]
+          },
+          {
+            "domain": "Operations",
+            "count": 1,
+            "status": "needs_more_evidence",
+            "keys": [
+              "interface_status",
+              "interface_counters",
+              "command_blocks"
+            ]
+          }
+        ],
+        "vlan_crosscheck": {
+          "configured_vlans": [],
+          "show_vlan_vlans": [],
+          "dhcp_gateway_vlans": [],
+          "access_or_svi_vlans": [],
+          "trunk_allowed_vlans": [],
+          "trunk_forwarding_vlans": [],
+          "missing_from_trunks": [],
+          "observed_total": 0
+        },
+        "risk_atoms": [],
+        "evidence_profile": {
+          "raw_evidence_lines": 0,
+          "objects_with_line_evidence": 6,
+          "total_list_objects": 21,
+          "line_mapping_ratio": 0.286,
+          "deep_evidence_lines": 0,
+          "command_blocks": 1,
+          "confidence": 0.75
+        }
+      }
+    },
+    "pipeline": [
+      {
+        "stage": "File Intake",
+        "status": "success",
+        "confidence": 1.0,
+        "items": 1,
+        "detail": "Accepted Project.pkt and stored immutable source hash."
+      },
+      {
+        "stage": "Source Decoding",
+        "status": "partial",
+        "confidence": 0.62,
+        "items": 11457,
+        "detail": "Source mode: pkt_binary_recovery."
+      },
+      {
+        "stage": "Packet Tracer Intelligence",
+        "status": "needs_more_evidence",
+        "confidence": 0.228,
+        "items": 22,
+        "detail": "Export configs/show outputs from Packet Tracer and upload them as TXT or ZIP to move from binary recovery to evidence-grade extraction."
+      },
+      {
+        "stage": "Object Extraction",
+        "status": "success",
+        "confidence": 0.9,
+        "items": 22,
+        "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, L2 health, and link hints."
+      },
+      {
+        "stage": "Evidence Mapping",
+        "status": "success",
+        "confidence": 0.88,
+        "items": 0,
+        "detail": "Mapped extracted objects to line-level evidence where possible."
+      }
+    ],
+    "raw_text_preview": "�m�L)�B8�SCNs\b��T^��Ǒ.�N���D\u0000�\u0011�\u000e���?<\u0003\u000e�\u0002yҾ*P��2&�Ɉz�<��\"O�A��r��o5��e|QPG{��\u0001X�\u0017���%�5��4ė�.\u0010��`�\u0012W(�m\nsQ�!\u0006|��L���\u001e�[r.���\u0004�fT&lx�o��&��.Z�YsH9$��DA�$+��!�r�G�h��G:��\u0005�z�J�퐗V@�ǐ��6�b\u001d\u0002\u0014\u0019\u0014��$cʹ�##�!�b\u0002u��W�>���\u0003\u000e\u0016\u0002��N\\cO�j��������U9����K��)ZW\u00047���P\u0018Zć�t��\u0005\u0013����)��^�\f\u001f\u0011�$\u000b��:������8����\u000b��/-$\u0005�̙�d\bM�D_ė�!�q�;K\u0016\u0015�nA\u001f�3 4��6�\u0002\u0018���D���\u000fImi\f�X\u0005�*.gx��\u0015�}hɔ���\u0017BNd�g��\u0000z��\u001a���\u0012~\u0000\u001c\u0000\u0007wb\\\u0001�?\u0011�������\u0018j�\u0018�6������H�\u0014�P�B\"w�$�념�_d�WY�1��,S_�y�,\u0007\u001a�+c\u0006]��j\u001cp����K�s�\u0004l9'\u0002\u0012NxN��k؈Գ��\\�^-><�Sy�!0�\u001ae&Dsn��O�x�����Q;3��8\u000f��冧S�Ŋ�A\u0002m~?\u001a�$\u0010TW��ԏ��mFa:��\f��p\t�\bz\nSPOEq)��P�9��SZJ�&�y�e�|r�\u001f�\u001bQ�E>\u000bbk�\u001cM-��\u000f3{����fw��o|f\r\u0004���M\u001a�\u0006�Za=�C�K�/P\u0006\t�ǐ���M��2�\u0018���\u0015�\u0005r0\n��50\u0003�\t\u001d\u0018I��-�\b�\u00153���T4��5�\"�O�;��{�/=O�N�p�\u0018\u001e���L�7\u0016��mdĺ`�9;�1���\u001c��-r�ݒn'\u0014�B\u0012\u001d߯\u001b���/�)�\u0017��\u0001���BČE�s�ݗ\u0010SK5W���\f�R�~җ����\"=b�Fr�a���K#��)xw9:@\u0012���v�7b��4�ρ\u0007���U��Fqr�,}Yܔ�\\:{��Wp\u0011 �k�;����z�\u0018*��*7]���\n�KcP�\u0002�O��x�n�v\t�o���$���B�Nw��YFi,�kix\u0007\u0015D.�.�\u001c�El\u0004=(\"�g��F��� �\t\u0017�Ι)F\u0007ݷL~\u0004Mw�)\u0003�\b���\fAZ⹯�V�\u001a0U��ě�k�i(��U\fT��\b\u0014K5�_w��\u0013�3�\\�%�=>=�{~��Z݈u�\u001e:ȟ�`\u0017���O[�\f�a�}n?��m�~�\u0012z����rq���\u0014`������\u0007�o�D��R�c�F,)�V\u0011�i9\n~�\u0003�x�P\u001d�ܫ\u000b\u001f�+��F\u001c\u0003\u0006�,�\u0015j���\u001c3s\f\u001f�:`\u0003�W�x�П#����j����f�*N��)��=\u0005r�X-�9���x�?\u0002�s���+�7S��-\n\\?���\u0000���i����?�>ԉ����0H��\u0003�Xd��4�K+̔\u000e�&%�#�\u0016�]�v�p�\u0018�?\u0000\u0011胼p\u00183D�q��x\u000b���R1��S��r\u001f�׷��i��/��9\u000e� ~^e\r�H�\u001e`[+��ū+�H\u0018\u0005FZ��d�\u001f�W����ii���4�h�-\f��[l�n\u000b�\"E�_\u0016�t��~�͞۴�Hc�Z�~l��\u0007JC8_��տ��O�O�\u000f�\u0015pc�v\n\u0012,P�}���i�k�b�g_����Y\u0004�.\b\u0019O�`\u0018r\u001b�U;�\u0017�F��\u001c\\\u0000\u0019�V߽\"�뜞��A\u0002ְ*\u0014K����Z�in�M�h��(]v1qʈ\u000eI������N\u001aQYB]�\u0013��H\u0016=\u0014�\u0004�����m��n�zo����|n\u000b\t��D\n�\u001b\u0001�\u0006Z���:� \u000f�c�FY\u0007l�'���^潹\u0015��x\u001f���\u0017�������-��\u0001�@\u0018��k宍�X�t\u0010���B��-�f9%\u0003D�\u0010�ǧ�V�T\b�G?/�'ڠ>�P��.����\n�Y����\u0012�<dZ�\u001d\u0002����$�?\r�+C��K�y�\u001bf�ַu��zo�\u001b��'D\r�r�\u000e];t<4'0$\u001eK&\u0003B7/Aȃx����ل[�O\u000b��7\u001d�9Cq�\u001b\u0003R1����0��2f��X\n���6�q�c�ü�\n�؋�{O\u00003F=\u0010/�{٘���\u000eQJ��\u000b�1���[�$��r�6K4���ًX����d�\u00195�a�K���A�'�jv޶�U\u000e\u001d���\\�\u0004��Y�\u0014�����>ҷ��u٥\u0014ڈ�$D�kb#\u0018}�nV�}\u0004JT4@\u00190\u0010v뢓�+�g\u001f�9r�I]�Ή�\n��S�����\"Jre�߯\u0000�v��8\u0005IFW\u0012�A�F�D�p��zE\u0000�\f��|\u0007@��f�~.�\rd����}~��\u0012ǿfom2��?�I��}�0ц.�\u001a7\u0014��Jw�K�v��\n���|Ȓ���sB\u0018*_����|W\u0006�R�� X��\u0017J�{x\t�~>�'��fU\u001e�j�&p_�\u0014�'>2B�ͮR��\"�\u0006���$��4��b����Q��(E\"��u�!\u0017�\u0012\t�_�\u0012F�\u0014�\u0018�!R�p��gN]�\u001a�9�(\f���w'�\u001f%�eA�3�� �\u001dSk\bz!�Ǫ(�.n�\fC�\u0012����^di\b$<\u0019���$����䧽�M!�\u0010�g�\u0017{\t9��\n�v�L�\u0010\u0012����Zc�d{\u0003\u0014��\u001d�����L/�fȊ\u0019�A>s�wC\"T�K�>���^�%\u0010H��\u0006��\u001c![Vd��T+�w9V�\u0000w�\f��#�V�DX@�4�5��\u001d)�h�r���\nLs�s��^@/�٤Eyզ�=x\b#ioS |y�\u0014/Wk�3[E����z��\u0002���\u0003�:f\u0002Kت���C�i�IXk2\u0001�������uH�\u000eW7\u0010�=\f�$i2Pa�o\u0017\u0015�\u0007g�W��\u0015�\u0003���`����@�͍��=>o/�ی|\u0013��2��3cݱ�T@�\u0018�|\u000ei�_Z�\b`���Zm\u0000�\u0018���\u0006^��2�'�-\u000e�m(��\u0019�|\u0010�\u001e\u000b�\u001f\u0018�e��]�\u000bj�\u001a��亂P\u0014\u0013��돓\u0003ȣ�Tq\u0004A�h�N��8?\u0011�Iŉ^J; ��ڲ�+�I�0�������ԗ������j|u0�\u0004��-���H�S��\u0013��Ϭ�T�Tnޓl\r�Qr\u001f[&\u0014wu�;�t�D\u0006}���\\�*�k\u0005\u0019�j R\u000eARbz7�U\u0006�,\u00030lF@E��\u0015F\u0015����:،A\u0005�\u0013Pw�R߷\u0019I\u0011?��v\\�s�Cܫ��)­�@7z��\u0013V�y���\u000f�U�tٶ\u001e�\u0018���\u0019\t��nW�\u0010�$l��x\u0003A\u000b�\u0005Q1�\u0004獿���k�}�+�L\u0007\u0015�g^C\u0001����̫n6\u0003�o�\r��}�p���`A�\u0011\u0004\u000e�\"�̴\u001e���M�s��ܩ޻}��Y���遀�@g:\u0006�B�\u0003I�g������\u0018\u0004C��W�ξ(Su�\f��_zk+&) ߗ;��\u001d6���\u00177\u000e�\u0012R�iob�\u000e���p�G�y|dG}M`����~��J�\r�'\u001a:\\���&�\u0002#���W�\u001d�����5Om\nx::\u000f��\u0006�3}����9�Щ���94K�ƣ�\u000b�\u001a�L�,T~\u0018n�/h\r`?'���\u0007�ծ��U��\u0017pʫ�ޏ�B)�*�\u0014�BH���������m\u0013L�\u0017^E2���\u0006�K���V��I\u0000�,�-e�\b2��W�K\u0004aY�M�f����P���`\u0014�)�G2�p\t$f��\u001a�]��\u001bN�c\\��$�\"��Fy���?��04���JU,�N[��k�.*�[6��\u0017\u0018��H��7�\u0016��\u0012d�2\u0000���)p�r��\u000e��P�\u0006��E\u0004�'\u001aT\u001f��5�5�\u0006�p��T��巹�\u0012��\u0003\u0006ĵ\u0002�s+�U7��4\u0004���������U\u0000F�Vx_�̉\"��S&��\r9�xV\u0014�2���G�Ps�(h塣O�\u000e[c��=j������ظ�<W��ar���˄�E_����� ȗc\fiB�x�\u0006\u0019��ZL���̳\u0018@��$\u0013�\u001e\b�P��MXk�J��RwwG\u000f��N\u0019N�E;N��Ј�v\u001a\u001eN�Nl�h�\u0018�/�\u0005#MW\u0012U�#0�BK�cK\u0001@M�i{G\u0019/\u0018�0�e�9��3���Zg��\u0016�\u001dxxX�.�\u0012���t�\u0000�R�9(\u0013\r/X1\u0002�<�#�\u0007\u0014n�x\bF�\u0004�P��/Py���\n�c��\u00166N4CQ�:i��o�.,\u0014�\n��>�\f\u0017\u001am\"o\u00138�~\u000f���\u001d�\f�E�Êm]\u001c���3#w�j*o�M\u0012\u0001� ��JX��\to�\u001e��@U�\u0002���.hPL\u0004�{�*E\b�\u001c�Ӓ\t\u0013��̮�ms�h81ů\u001c�\u0000��J��A���F)�)��y�R���FD�?\u0002��\u0012�\u0012�Q����\u0001@�I�]R؎�'\u001f`j!��\u0014� s�ʙ�w��Y7�5�b��ɨt��\u0015��\u001a����gR�����@�����l�\u0010��?\"�mi��\u000f��Hط\u0007���;�TB���&^O}�z�낵\u001a�\\(�18�\u0011L3�N\t\u0010��/W�=��!\u0010i�s]�0fӺ�?������<��\u0001^�\n����\u0017@F=ܔ�p\u0002�\u0006�/6�\u0016Q�\\�y\u001eƵT\u001c�\u0001���Z���H���1'zQ=WB\u0017�=#r�\u000bd�6��\u0006\u0013�O��-\u001b(D�k�GoÚd;PN�\bA�\u001d���6}{g\u0018n�*1�\u0004*���\u000f�~��}����rDx�QT�.\r�����Ŧ��g��M��!���f���0�P'�\u0005,�r]tv���\foڽi��t�'�<�\u001d��!X�\u001e�kE\u000eᠳ�j�fI(~g����\u0017b�c�YYp`�\u0010;\\�\u0002�y�\u0018�N���ޙ�2�\u001b�����c�\u0006\b޽�{\u001b���y��g-�Y]{O\u0003\u0005��db3�\u0010��dw@��Q�\\��yl�J\"�iG�P{G|Y2�\u001c'\u0003D5V�����������ѝ�\u0007M�qa�\u0011�M\u0007Q�����2�5�� ���X\u0001$\f�٩�%/Y͡x�\r\r<�\u0012�\u0003v��R��\u0014�<X\u0012 �*�NS�����kn2����c<�ߙ,�f\u0003,�\u0002$�2�#+1��8��'��Cv�u��s��r�,�D\n��j[�e�z�gZ:6�\u0010�6��,�$\f鮮F\u0016�\u001d;���~�\u001aWq\tYf��\t{�@] ��\u0010���@tV^b�\fDP\u001a!D\u001cw��K:V���?re�谬�\u0005k�I3|ϙ�F\u000f0��\u000f�\u0003��\u0004�%�9�CD4��h@y��OX��Mӷ���r����×1�pO\u0017I\u001e�q�\\>zI��'�\r�{�]LN�l\u000b܍���m2z�އ�\u0012pm��}�\u001f���j�椨L-:�>�ep;�1\u0017��v�y�X��Dym�l�Ō\u001f�`=��T2ׅT*�em0%��R�o��\u0011A X��ry|\u001e\u0013)�\"�o��&?\u0002��I=y\u000e�N��\u0001���\u0011�\u0019,�'��kv��\u001a-��\u0016����ׁ��Un%�͇�\u001dg�2�f�\u0004�B��V�Yom��?�Y���\u001b��F��\u0003�O\u0000�\u000e�_t)�~�i\u000f>b�Oj\u001e������l���/��~��>c��WP<K�\u0017��o�H@*���c\b�%)$5s�y��Ś󸖍L7?���\u0004���6��|m��7�\u0016�c�c�0��,���U\u001a�4Z�\u0016�'ꥵ��\u0013���?���9@��-�Fwh\u0017���\u0004\u0007�,Ne�$sk�4�}.\u0016\u0014��l���H\u00195u/��e��L>�Y��oo�b�\u001c�OOΗ��[#\u0015u+X>\u0019��\f�ɫ�)�\fzd����]�4�W��\u0006&����\u001b!\u0006~\u00146\u0014֋���\u001f�����Yf��Ӫ� �fr�A&�\n���:��[\u001c�\u0010��D_y��]w:7�hh����\u0011�t��u8L�PG�eO.\u0014poG\u000b\u0004\u001a^���\u0004K19U�/�\u0002/�\t�\u000bQ!0�\u001c����>jӧ4W\u001f�\u000e\u0013(�u��\u000fm��\u000b'�A\u0012dD}�\f\u001a��W봀-^��v�Q4�b�\u0005��\u000b\u0017�9LSU7�A�'�}N�|3\u0019 \u000f�6IR�\u0001%�0�\u0010Q�R�����O�^K��3(�\u001d+,Q\u0010��\u0012\u0005E�]�*�U�y4\u000e�\u0018W\u0012��,(K��r�$�\u0000\f [U��pB]\u001b�\u0002\u0007qFw����!��d\u001a�2?\\\u001dx���\u001f���cȅF�7\\�8\u000fa\u0005�z�7Va�,\u0016����d��*��nGU�h��5���4]�L��*�8\u0011�o���o7Ȱ\u0019-�e�ԥ;υfrP��U�+R\\\b>�|)ijD��(���k�#�^��v�c\u001fI�$|���\u00105�K�ZV�?|P��\u000f�\u0011�\"7����*\u0000\u0015~�b�hm,�\u0012�O�\u0002�m���h�\u0004G��\u00009�+�E\\��p��JG�\u0019�\u001e�ĚA\n\u0018*��\u001a��\u001f�\u0005Ė��]�\u000e9\b��cZ�4*��\u0006�.��0�N�\u0014��<ؐ \u0019�\u00146������GR\"\u00104�J�Z0\t�\u0015�+\u001e�n0\u0006ч|\r]b��Z������;k�8[\n�\r\b���fF+��F�x�l�nM.�%;#�93qy�P�\u000f+4*�p��ܪ����6\u0000c)\u000fTv)l�3\n\u0010\b\u0011��$��A�`fİ_U��\u0003)\"�\b\u0005�vfڌ\u0015�s+�54_!�\"��B�\u000f�\u0015����w?Ą���Q)�\u00134�'��\u0013SŔB��\u0001eT�R�sV_}�<��V`��*q���� ,�I�^\u0018�[�P��&\u001c��(����\u0014\r�{\u0010Q\u001f�p\u0015�$\u0017'����]\u0012Ϸ޳[R$\u0012���g\u0013��%�V\u000e�O�?��\u0010��g\u0015^�s�\u001b\u0000�~�[���|�\u0000BJ)G'j�|\u0001�Z\u0006\"t���{( r'n3���ZG��\u0016��˄��ܟ� ��=�'�\u0015\r\u000fIYY��\u001b��\u0000.X��\u0011\u001c��\bg��\u0017Z,�\u001d\u0002q�1ʢw%q��\bn�\u0007J\u0006:\u0000�\u0015��tqE}�^U\u0016$�����\u001aY�Q���B2�v;�(�I1���t�U\u000f\u001ep�>\u001ah�n@t�*v0���ӥ�K��a��\u001e�\u0007E��H�>��9��:\u000e�\u0002Z�\u001c\u0018G�mw�k�Z�\u0000�\u001dzsry-���)�(\u0005\\�u:\u0004i�)���O\t{�\b�\u0018\u001cL�1��+\u000f:]��S-�b��$\u0007�ˢ��ڱnԬ�@59لFaۅ�/e\u000e8I�3�;��)H�\u0010�B��:3�­X��`D_J�Ɵ6\u0013��I�ǪG�q\u0006д��ُjP�Li�{�a���\u0012����\u0004��l���\u0019>��!Җ\u0012��}\u001f���`��C+���M�ֳ*��0�&��$\u0011�bQ\u000fVҙ��.\u001a�w!���(�\u0013�����`tN����0�d71��}���*V(J�G\nRS�����pH5B����_�V6щ�z�\u0011\nZ)W�䃨�c�\u000f�I�<�\u001c:\u0014Q��W\u0010e'�\u001f@���\u001c>��J\u0014.��CMd��aɒ6�ū�\u001b���\u0018S�\u0017�rы��>���\u0007�܊{�Ib2h|R�Ź;3y��G�oP3���G4�Һ;\u001e��\n���V���{f)��Z�_��ج.��8�_�s�!lܷ\u0003<�N�}�EjN>�\u000fǩ�%�c7\u001d\u000e]�vϲ�-�t�~��ؑ�|���\u0013f��Z�?\u000f�PJ>�O��7",
+    "missing_evidence": [
+      {
+        "source": "show running-config interfaces",
+        "why": "No interface blocks were extracted; topology and ACL binding may be incomplete.",
+        "severity": "High"
+      },
+      {
+        "source": "show interfaces trunk",
+        "why": "Trunk coverage cannot be validated without trunk evidence.",
+        "severity": "Medium"
+      },
+      {
+        "source": "show access-lists / running-config ACL sections",
+        "why": "Segmentation checks cannot confirm deny/permit enforcement without ACL evidence.",
+        "severity": "High"
+      },
+      {
+        "source": "show running-config | section ip dhcp",
+        "why": "DHCP/subnet matching will remain review-only without DHCP pool evidence.",
+        "severity": "Medium"
+      },
+      {
+        "source": "show cdp neighbors detail",
+        "why": "Physical adjacency/topology edges are inferred rather than confirmed.",
+        "severity": "Low"
+      },
+      {
+        "source": "show ip interface brief",
+        "why": "Interface operational status and L3 reachability cannot be fully verified.",
+        "severity": "Medium"
+      },
+      {
+        "source": "show spanning-tree",
+        "why": "Layer-2 loop/blocked-port behavior cannot be validated.",
+        "severity": "Low"
+      }
+    ],
+    "confidence_summary": {
+      "overall": 0.419,
+      "source_confidence": 0.58,
+      "line_mapping_ratio": 0.286,
+      "applied_acl_rules": 0,
+      "mode": "pkt_binary_recovery",
+      "readiness": "needs_more_evidence",
+      "readiness_score": 0.228
+    },
+    "conversion_profile": {
+      "metadata": {
+        "filename": "Project.pkt",
+        "extension": ".pkt",
+        "bytes": 273411,
+        "source_mode": "pkt_binary_recovery",
+        "native_packet_tracer": true,
+        "converter_used": false,
+        "printable_lines": 11162,
+        "markers": [
+          "ios"
+        ],
+        "format_note": "Native Packet Tracer file. Accuracy is highest when PTEXPLORER_PATH is configured or when configs/show outputs are exported as TXT/ZIP."
+      },
+      "relationships": {
+        "interface_to_vlan": [],
+        "vlan_to_interfaces": {},
+        "acl_to_interfaces": {},
+        "dhcp_to_vlan": [],
+        "trunks": []
+      },
+      "command_checklist": [
+        {
+          "command": "Export Packet Tracer device configs as TXT or ZIP",
+          "status": "recommended",
+          "severity": "High",
+          "why": "Native .pkt/.pka binary recovery can miss structured fields; exported configs raise confidence dramatically."
+        },
+        {
+          "command": "show running-config",
+          "status": "missing",
+          "severity": "High",
+          "why": "Core configuration, interfaces, VLANs, ACLs, DHCP and routing."
+        },
+        {
+          "command": "show vlan brief",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms VLAN IDs, names, status, and switchport hints."
+        },
+        {
+          "command": "show interfaces trunk",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms real trunk membership and allowed VLAN list."
+        },
+        {
+          "command": "show ip interface brief",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms L3 interfaces, IP addresses, and up/down state."
+        },
+        {
+          "command": "show access-lists",
+          "status": "missing",
+          "severity": "High",
+          "why": "Confirms segmentation rules and deny/permit enforcement."
+        },
+        {
+          "command": "show cdp neighbors detail",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms physical adjacency and topology edges."
+        },
+        {
+          "command": "show spanning-tree",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms blocked/forwarding ports and L2 loop protection."
+        },
+        {
+          "command": "show port-security interface",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms secure MAC limits, violations, and sticky MAC behavior."
+        },
+        {
+          "command": "show etherchannel summary",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms bundle health for uplinks and redundant paths."
+        },
+        {
+          "command": "show lldp neighbors detail",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms non-CDP physical adjacency and multi-vendor topology edges."
+        },
+        {
+          "command": "show interfaces status",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms access/trunk port operational status, VLAN placement, duplex, and speed."
+        },
+        {
+          "command": "show ip route",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms L3 forwarding, default routes, and protocol-learned paths."
+        },
+        {
+          "command": "show inventory / show version",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms platform/model/IOS evidence for device identity."
+        },
+        {
+          "command": "show running-config | include aaa|username|snmp|transport|http",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms management-plane hardening and weak-service exposure."
+        },
+        {
+          "command": "show interfaces counters/errors",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms physical-layer stability, CRC/input/output errors, drops and link health."
+        },
+        {
+          "command": "show access-lists with counters",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms whether segmentation rules are receiving runtime traffic matches."
+        },
+        {
+          "command": "show spanning-tree root",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms root bridge, root ports, and L2 forwarding design."
+        },
+        {
+          "command": "show protocols / routing protocol summary",
+          "status": "missing",
+          "severity": "Medium",
+          "why": "Confirms active L3/NAT/DHCP/HSRP/routing protocol evidence."
+        }
+      ],
+      "quality_gates": [
+        {
+          "name": "Device identity",
+          "status": "pass",
+          "score": 1.0,
+          "detail": "1 device node(s) extracted."
+        },
+        {
+          "name": "Interface coverage",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 interface block(s)/hint(s) extracted."
+        },
+        {
+          "name": "VLAN coverage",
+          "status": "fail",
+          "score": 0.0,
+          "detail": "0 VLAN object(s) extracted."
+        },
+        {
+          "name": "Security policy coverage",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 ACL rule(s) extracted."
+        },
+        {
+          "name": "Topology evidence",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 CDP/LLDP edge(s) extracted."
+        },
+        {
+          "name": "Operational state coverage",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 interface status and 0 trunk operation row(s)."
+        },
+        {
+          "name": "Security hardening extraction",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 management-plane hardening indicator(s)."
+        },
+        {
+          "name": "Policy control mapping",
+          "status": "pass",
+          "score": 1.0,
+          "detail": "8 derived control assertion(s)."
+        },
+        {
+          "name": "Runtime validation evidence",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 ACL counter and 0 interface counter row(s)."
+        },
+        {
+          "name": "Cross-layer VLAN consistency",
+          "status": "review",
+          "score": 0.0,
+          "detail": "0 VLAN trunk mismatch candidate(s)."
+        },
+        {
+          "name": "Line-level traceability",
+          "status": "review",
+          "score": 0.286,
+          "detail": "29% of list objects have source-line evidence."
+        },
+        {
+          "name": "Native Packet Tracer confidence",
+          "status": "review",
+          "score": 0.45,
+          "detail": "Native binary recovery used."
+        }
+      ],
+      "readiness": "needs_more_evidence",
+      "readiness_score": 0.228,
+      "objects_total": 22,
+      "high_value_objects": {
+        "devices": 1,
+        "interfaces": 0,
+        "vlans": 0,
+        "dhcp_scopes": 0,
+        "acl_rules": 0,
+        "routing_entries": 0,
+        "cdp_links": 0,
+        "port_security": 0,
+        "spanning_tree": 0,
+        "etherchannels": 0,
+        "interface_status": 0,
+        "trunk_operational": 0,
+        "route_table": 0,
+        "lldp_links": 0,
+        "security_hardening": 0,
+        "policy_controls": 8,
+        "deep_evidence_index": 0,
+        "vlan_brief": 0,
+        "acl_hit_counts": 0,
+        "interface_counters": 0,
+        "stp_root": 0,
+        "protocol_summary": 0,
+        "risk_atoms": 0
+      },
+      "analyst_next_step": "Export configs/show outputs from Packet Tracer and upload them as TXT or ZIP to move from binary recovery to evidence-grade extraction.",
+      "coverage_domains": [
+        {
+          "domain": "Identity",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "devices",
+            "device_facts",
+            "device_inventory"
+          ]
+        },
+        {
+          "domain": "L2/VLAN",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "vlans",
+            "vlan_brief",
+            "interfaces",
+            "trunk_operational",
+            "spanning_tree",
+            "etherchannels"
+          ]
+        },
+        {
+          "domain": "L3/Routing",
+          "count": 2,
+          "status": "needs_more_evidence",
+          "keys": [
+            "ip_inventory",
+            "dhcp_scopes",
+            "route_table",
+            "routing",
+            "protocol_summary"
+          ]
+        },
+        {
+          "domain": "Security",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "acl_rules",
+            "acl_hit_counts",
+            "security_hardening",
+            "port_security"
+          ]
+        },
+        {
+          "domain": "Topology",
+          "count": 0,
+          "status": "missing",
+          "keys": [
+            "cdp_links",
+            "lldp_links",
+            "mac_table",
+            "arp_table"
+          ]
+        },
+        {
+          "domain": "Wireless",
+          "count": 5,
+          "status": "good",
+          "keys": [
+            "wireless_hints"
+          ]
+        },
+        {
+          "domain": "Operations",
+          "count": 1,
+          "status": "needs_more_evidence",
+          "keys": [
+            "interface_status",
+            "interface_counters",
+            "command_blocks"
+          ]
+        }
+      ],
+      "vlan_crosscheck": {
+        "configured_vlans": [],
+        "show_vlan_vlans": [],
+        "dhcp_gateway_vlans": [],
+        "access_or_svi_vlans": [],
+        "trunk_allowed_vlans": [],
+        "trunk_forwarding_vlans": [],
+        "missing_from_trunks": [],
+        "observed_total": 0
+      },
+      "risk_atoms": [],
+      "evidence_profile": {
+        "raw_evidence_lines": 0,
+        "objects_with_line_evidence": 6,
+        "total_list_objects": 21,
+        "line_mapping_ratio": 0.286,
+        "deep_evidence_lines": 0,
+        "command_blocks": 1,
+        "confidence": 0.75
+      }
+    },
+    "artifacts": {
+      "object_inventory.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\object_inventory.json",
+      "devices.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\devices.json",
+      "interfaces.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\interfaces.json",
+      "vlans.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\vlans.json",
+      "dhcp_scopes.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\dhcp_scopes.json",
+      "dhcp_excluded.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\dhcp_excluded.json",
+      "acl_rules.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\acl_rules.json",
+      "nat_rules.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\nat_rules.json",
+      "cdp_links.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\cdp_links.json",
+      "raw_evidence.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\raw_evidence.json",
+      "dhcp_gateway_matches.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\dhcp_gateway_matches.json",
+      "ip_inventory.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\ip_inventory.json",
+      "port_security.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\port_security.json",
+      "spanning_tree.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\spanning_tree.json",
+      "etherchannels.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\etherchannels.json",
+      "mac_table.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\mac_table.json",
+      "arp_table.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\arp_table.json",
+      "device_facts.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\device_facts.json",
+      "packet_tracer_conversion_profile.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\packet_tracer_conversion_profile.json",
+      "routing.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\routing.json",
+      "policy_diff.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\policy_diff.json",
+      "root_causes.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\root_causes.json",
+      "topology_map.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\topology_map.json",
+      "risk_model.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\risk_model.json",
+      "risk_timeline.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\risk_timeline.json",
+      "playbooks.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\playbooks.json",
+      "snapshot_diff.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\snapshot_diff.json",
+      "validation_rules.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\validation_rules.json",
+      "wireless_policy_manager.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\wireless_policy_manager.json",
+      "wireless_event_report.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\wireless_event_report.json",
+      "wired_policy.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\wired_policy.json",
+      "full_report.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\full_report.json",
+      "full_report.html": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\full_report.html",
+      "wireless_event_report.html": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\wireless_event_report.html",
+      "evidence_manifest.json": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\evidence_manifest.json",
+      "evidence_manifest.sha256": "C:\\Users\\PC\\Downloads\\WiGuard_Nexus_v5_8_2_Page_Data_Hardening\\WiGuard_Nexus_v5_8_Deep_Cleanup_UI_Policy_Runtime\\data\\artifacts\\evidence_manifest.sha256"
+    },
+    "manifest": {
+      "generated_at": "2026-04-28 09:57:50",
+      "tool": "WiGuard Nexus v5.5",
+      "source_file": "Project.pkt",
+      "source_hash": "6cb3b3515aa6d81e7fbcdddd6715044b77db43111baf5296189c5d0c147beae1",
+      "artifact_count": 34,
+      "files": [
+        {
+          "name": "acl_rules.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Acl Rules"
+        },
+        {
+          "name": "arp_table.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Arp Table"
+        },
+        {
+          "name": "cdp_links.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Cdp Links"
+        },
+        {
+          "name": "device_facts.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Device Facts"
+        },
+        {
+          "name": "devices.json",
+          "sha256": "61774dbc057d9fd6ebabb9ede73a223660c40bda0afba14910d001926fcf1bb1",
+          "size_bytes": 302,
+          "purpose": "Devices"
+        },
+        {
+          "name": "dhcp_excluded.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Dhcp Excluded"
+        },
+        {
+          "name": "dhcp_gateway_matches.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Dhcp Gateway Matches"
+        },
+        {
+          "name": "dhcp_scopes.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Dhcp Scopes"
+        },
+        {
+          "name": "etherchannels.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Etherchannels"
+        },
+        {
+          "name": "full_report.html",
+          "sha256": "4358b4e1d52cc2423ce91ad0763f47f262420f58bd8b54b71efb57ffd81194b5",
+          "size_bytes": 12559,
+          "purpose": "Full Report"
+        },
+        {
+          "name": "full_report.json",
+          "sha256": "1ac29d20a62d5a7f06e92d1e26af3b6df75a0fb5c65dcd8ebbf57ee630593996",
+          "size_bytes": 101519,
+          "purpose": "Full Report"
+        },
+        {
+          "name": "interfaces.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Interfaces"
+        },
+        {
+          "name": "ip_inventory.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Ip Inventory"
+        },
+        {
+          "name": "mac_table.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Mac Table"
+        },
+        {
+          "name": "nat_rules.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Nat Rules"
+        },
+        {
+          "name": "object_inventory.json",
+          "sha256": "3f1606a5da50fa805aeb821c4031a0a8d48cce254bcc4e93387edf0af3bdd535",
+          "size_bytes": 20292,
+          "purpose": "Object Inventory"
+        },
+        {
+          "name": "packet_tracer_conversion_profile.json",
+          "sha256": "5124553d3f7e32d7efae7026981cbdf8de642443afc2c07566965a117960b73a",
+          "size_bytes": 9331,
+          "purpose": "Packet Tracer Conversion Profile"
+        },
+        {
+          "name": "playbooks.json",
+          "sha256": "d7aa513a5b7bd3f8db39faf9c4bd4e2bcb41853baefca0a60419f2cd3f931b5c",
+          "size_bytes": 6579,
+          "purpose": "Playbooks"
+        },
+        {
+          "name": "policy_diff.json",
+          "sha256": "1e9c2c1cfe21d09c8aa4d1ba92da5f434792dbf29246fbc900686bec145702bd",
+          "size_bytes": 5166,
+          "purpose": "Policy Diff"
+        },
+        {
+          "name": "port_security.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Port Security"
+        },
+        {
+          "name": "raw_evidence.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Raw Evidence"
+        },
+        {
+          "name": "risk_model.json",
+          "sha256": "3cf75dc0b4f8719061e255432dcf85b528ca65bb2568c8caf2b8b9f7a73b7e2c",
+          "size_bytes": 67,
+          "purpose": "Risk Model"
+        },
+        {
+          "name": "risk_timeline.json",
+          "sha256": "392700fc20480b3573a8fd1cd8c15b82bdc8f039645c1aa02535e8f2c95e7e91",
+          "size_bytes": 2669,
+          "purpose": "Risk Timeline"
+        },
+        {
+          "name": "root_causes.json",
+          "sha256": "0e00f57c88af4088b20fcb53c36e58624101566dc92d89daae4fff9e1d51c3ee",
+          "size_bytes": 8038,
+          "purpose": "Root Causes"
+        },
+        {
+          "name": "routing.json",
+          "sha256": "c30dfda850234fd1c928cbc6cd775349e9aed311e4d35c973e05fa20e74b3b65",
+          "size_bytes": 47,
+          "purpose": "Routing"
+        },
+        {
+          "name": "snapshot_diff.json",
+          "sha256": "b0326ea1557e792ca6428b877e1160fb56547d033c8e2fe26e356216b07b51d9",
+          "size_bytes": 3158,
+          "purpose": "Snapshot Diff"
+        },
+        {
+          "name": "spanning_tree.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Spanning Tree"
+        },
+        {
+          "name": "topology_map.json",
+          "sha256": "c5077ddc9576ac2c580aad5e3aceb6b27f49e36dba9474896e77dc3edcb620dd",
+          "size_bytes": 3515,
+          "purpose": "Topology Map"
+        },
+        {
+          "name": "validation_rules.json",
+          "sha256": "33f1d3b445adda9c2214f66c30a56ba4e3c33b5098d4aabec89009fc47f22de6",
+          "size_bytes": 1145,
+          "purpose": "Validation Rules"
+        },
+        {
+          "name": "vlans.json",
+          "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "size_bytes": 2,
+          "purpose": "Vlans"
+        },
+        {
+          "name": "wired_policy.json",
+          "sha256": "80e470d4f5f12490a6733ac671cdc9a6cbd9d335e686d4c60e815e11746663fa",
+          "size_bytes": 976,
+          "purpose": "Wired Policy"
+        },
+        {
+          "name": "wireless_event_report.html",
+          "sha256": "d089618c9cfdc0205d5e809f124247ccaca6a1ad870dcb3b3ce6a918b6027747",
+          "size_bytes": 12519,
+          "purpose": "Wireless Event Report"
+        },
+        {
+          "name": "wireless_event_report.json",
+          "sha256": "108dc81eb88c65cce2a30542e200ac4e9dafd9e856cfcc2679571fb676ffb326",
+          "size_bytes": 53024,
+          "purpose": "Wireless Event Report"
+        },
+        {
+          "name": "wireless_policy_manager.json",
+          "sha256": "ed1dbb74992990f3a5874c53c749be158b77cd671aad7c1598cf53742e46b892",
+          "size_bytes": 24159,
+          "purpose": "Wireless Policy Manager"
+        }
+      ]
+    }
+  },
   "reports": [],
   "simulations": [],
   "verifier": {
     "last_result": null
+  },
+  "version": "5.5.0-packet-tracer-intelligence",
+  "tenant_id": "tenant-main",
+  "tenants": [
+    {
+      "id": "tenant-main",
+      "name": "Main Tenant",
+      "status": "active"
+    }
+  ],
+  "policy_studio": {
+    "rules": [
+      {
+        "id": "PS-GUEST-DENY-INTERNAL",
+        "enabled": true,
+        "name": "Guest must be isolated from internal services",
+        "scope": "Guest",
+        "condition": "guest_internal_blocked",
+        "condition_left": "ssid.internal_access",
+        "operator": "equals",
+        "condition_value": "false",
+        "condition_expression": "ssid.internal_access equals false AND applied ACL deny exists",
+        "severity": "Critical",
+        "severity_score": 95,
+        "owner": "Security",
+        "control_mapping": "ISO27001-A.8.22 / NIST-AC-4",
+        "evidence_required": "VLAN gateway + applied ACL + show access-lists",
+        "false_positive_guard": "Do not pass on ACL text alone; require ip access-group binding on the guest gateway.",
+        "acceptance_criteria": "Guest VLAN has an inbound/outbound deny to internal subnets and Internet/DNS still allowed.",
+        "action_type": "block_report_pass",
+        "remediation": "Apply guest isolation ACL inbound on the guest VLAN gateway and verify with show access-lists + show running-config interface.",
+        "version": 1
+      },
+      {
+        "id": "PS-ROLE-SSID-MATCH",
+        "enabled": true,
+        "name": "Client role must match SSID role",
+        "scope": "All",
+        "condition": "role_ssid_match",
+        "condition_left": "client.role",
+        "operator": "equals",
+        "condition_value": "ssid.role",
+        "condition_expression": "client.role equals ssid.role",
+        "severity": "High",
+        "severity_score": 78,
+        "owner": "Wireless",
+        "control_mapping": "Identity-to-network authorization",
+        "evidence_required": "Client session + SSID policy matrix",
+        "false_positive_guard": "Ignore stale client rows older than the active import unless a live event confirms association.",
+        "acceptance_criteria": "Client role, SSID role, VLAN and DHCP subnet align.",
+        "action_type": "create_anomaly",
+        "remediation": "Fix identity group mapping or move the user to the correct SSID.",
+        "version": 1
+      },
+      {
+        "id": "PS-AP-VLAN-SUPPORT",
+        "enabled": true,
+        "name": "AP uplink must support expected VLAN",
+        "scope": "All APs",
+        "condition": "ap_vlan_support",
+        "condition_left": "ap.supported_vlans",
+        "operator": "contains",
+        "condition_value": "ssid.expected_vlan",
+        "condition_expression": "ap.supported_vlans contains ssid.expected_vlan",
+        "severity": "High",
+        "severity_score": 74,
+        "owner": "Network",
+        "control_mapping": "Wireless-to-wired trunk consistency",
+        "evidence_required": "AP inventory + show interfaces trunk",
+        "false_positive_guard": "Prefer operational trunk evidence over planned AP inventory only.",
+        "acceptance_criteria": "Every AP serving the SSID has the expected VLAN on its uplink trunk.",
+        "action_type": "raise_risk",
+        "remediation": "Add missing WLAN VLANs to AP uplink trunks and regenerate validation.",
+        "version": 1
+      },
+      {
+        "id": "PS-MGMT-PLANE-HARDENING",
+        "enabled": true,
+        "name": "Management plane must avoid weak services",
+        "scope": "Network devices",
+        "condition": "security_hardening",
+        "condition_left": "device.security_hardening",
+        "operator": "not_contains",
+        "condition_value": "weak",
+        "condition_expression": "no telnet, enable password, insecure HTTP, or exposed SNMP community indicators",
+        "severity": "High",
+        "severity_score": 81,
+        "owner": "Security",
+        "control_mapping": "CIS Cisco IOS / NIST-CM-7",
+        "evidence_required": "running-config hardening lines",
+        "false_positive_guard": "Flag only when direct config line evidence exists.",
+        "acceptance_criteria": "SSH-only VTY, enable secret, AAA/local auth, and no insecure HTTP/Telnet evidence.",
+        "action_type": "require_manual_review",
+        "remediation": "Disable Telnet/HTTP, replace enable password with enable secret, restrict SNMP and enforce SSH.",
+        "version": 1
+      },
+      {
+        "id": "PS-ACL-RUNTIME-HITS",
+        "enabled": true,
+        "name": "Segmentation ACLs should have runtime counters",
+        "scope": "Segmentation",
+        "condition": "acl_hit_counts",
+        "condition_left": "acl.matches",
+        "operator": "greater_than",
+        "condition_value": "0",
+        "condition_expression": "show access-lists counter evidence exists for enforced segmentation ACLs",
+        "severity": "Medium",
+        "severity_score": 58,
+        "owner": "Security",
+        "control_mapping": "Evidence-based enforcement validation",
+        "evidence_required": "show access-lists output with match counters",
+        "false_positive_guard": "Treat zero counters as Review unless traffic simulation was executed.",
+        "acceptance_criteria": "At least one active deny/permit ACL line has runtime counter evidence or a documented test result.",
+        "action_type": "raise_risk",
+        "remediation": "Run a controlled access test, capture show access-lists counters, and attach the evidence.",
+        "version": 1
+      },
+      {
+        "id": "PS-VLAN-TRUNK-CROSSCHECK",
+        "enabled": true,
+        "name": "Configured VLANs must be present on operational trunks",
+        "scope": "Switching",
+        "condition": "vlan_crosscheck",
+        "condition_left": "vlan.missing_from_trunks",
+        "operator": "equals",
+        "condition_value": "0",
+        "condition_expression": "configured/access/DHCP VLANs are included in trunk allowed or forwarding evidence",
+        "severity": "High",
+        "severity_score": 82,
+        "owner": "Network",
+        "control_mapping": "L2 path assurance",
+        "evidence_required": "show vlan brief + show interfaces trunk + running-config",
+        "false_positive_guard": "Do not fail if operational trunk output was not imported; mark Needs Evidence instead.",
+        "acceptance_criteria": "Every production policy VLAN appears in trunk allowed/forwarding evidence.",
+        "action_type": "block_report_pass",
+        "remediation": "Add missing VLANs to the trunk or update policy inventory, then re-import operational trunk output.",
+        "version": 1
+      },
+      {
+        "id": "PS-INTERFACE-ERROR-HEALTH",
+        "enabled": true,
+        "name": "Critical uplinks should not show physical error counters",
+        "scope": "Operations",
+        "condition": "interface_counters",
+        "condition_left": "interface.errors",
+        "operator": "equals",
+        "condition_value": "0",
+        "condition_expression": "input/output/CRC errors are zero on uplinks and AP trunks",
+        "severity": "Medium",
+        "severity_score": 54,
+        "owner": "Network Operations",
+        "control_mapping": "Availability / network health",
+        "evidence_required": "show interfaces counters or show interfaces detail",
+        "false_positive_guard": "Only escalate when direct counter evidence maps to an uplink/trunk or repeated live events corroborate it.",
+        "acceptance_criteria": "No CRC/input/output error evidence on critical wireless path interfaces.",
+        "action_type": "create_anomaly",
+        "remediation": "Inspect cable/SFP/duplex, clear counters, monitor again, and document the before/after state.",
+        "version": 1
+      },
+      {
+        "id": "PS-EVIDENCE-COMPLETENESS",
+        "enabled": true,
+        "name": "Reports must disclose missing evidence before claiming pass",
+        "scope": "Reporting",
+        "condition": "evidence_profile",
+        "condition_left": "evidence.confidence",
+        "operator": "greater_than",
+        "condition_value": "0.70",
+        "condition_expression": "line-level evidence confidence >= 70% OR missing commands are explicitly listed",
+        "severity": "Medium",
+        "severity_score": 62,
+        "owner": "Assurance",
+        "control_mapping": "Audit defensibility",
+        "evidence_required": "conversion readiness score + missing command checklist + evidence profile",
+        "false_positive_guard": "Do not punish native .pkt uploads; disclose reduced confidence and ask for exported show commands.",
+        "acceptance_criteria": "Technical report includes readiness score, missing commands, and traceability stats.",
+        "action_type": "require_manual_review",
+        "remediation": "Import the missing show-command bundle or keep the finding in Needs More Evidence.",
+        "version": 1
+      }
+    ]
   }
 }

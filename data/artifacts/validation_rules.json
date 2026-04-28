@@ -33,5 +33,12 @@
     "severity": "High",
     "owner": "Network Security",
     "sla": "24h"
+  },
+  {
+    "id": "WIRELESS-EVENT-001",
+    "title": "Client events must map to the expected SSID, VLAN, DHCP scope, and AP trunk",
+    "severity": "High",
+    "owner": "Wireless Operations",
+    "sla": "24h"
   }
 ]

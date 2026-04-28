@@ -14,8 +14,12 @@ from .util import now_iso
 REPORT_TYPES = {
     "executive": "Executive Report",
     "technical": "Technical Network Report",
+    "compliance": "Compliance Matrix Report",
+    "packet_tracer": "Packet Tracer Conversion Report",
+    "wireless_risk": "Wireless Risk Report",
     "security": "Security Escalation Report",
-    "audit": "Audit Evidence Report",
+    "audit": "Audit Evidence & Appendix Report",
+    "evidence_appendix": "Evidence Appendix",
     "wireless": "Wireless Event & Policy Report",
     "full": "Full Evidence Report"
 }
@@ -34,7 +38,15 @@ def _report_sections(report_type):
     if report_type == "security":
         return ["Critical Findings", "Root Cause", "Remediation Playbooks"]
     if report_type == "audit":
-        return ["Evidence Manifest", "Source Hash", "Line-Level Evidence", "Verifier Notes"]
+        return ["Evidence Manifest", "Source Hash", "Line-Level Evidence", "Verifier Notes", "Audit Hash Chain"]
+    if report_type == "compliance":
+        return ["Compliance Controls", "Control Status", "Evidence Mapping", "Risk Ownership"]
+    if report_type == "packet_tracer":
+        return ["Conversion Profile", "Command Checklist", "Extraction Confidence", "Missing Evidence"]
+    if report_type == "wireless_risk":
+        return ["Wireless Risk", "AP Load", "Anomaly Severity", "Remediation Priority"]
+    if report_type == "evidence_appendix":
+        return ["Artifact Manifest", "Line Evidence", "Source Hashes", "Integrity Notes"]
     if report_type == "wireless":
         return ["Wireless Risk", "SSID/AP Inventory", "Client Sessions", "Event Correlation", "Validation Matrix", "Anomalies"]
     return ["Executive Summary", "Policy Diff", "Root Cause", "Topology", "Timeline", "Playbooks", "Evidence Appendix"]
@@ -58,11 +70,13 @@ def report_pdf_bytes(state, report_type):
     risk = payload.get("risk", {})
     summary = payload.get("summary", {})
     confidence = summary.get("confidence", {}) or {}
+    conversion = payload.get("packet_tracer_conversion") or summary.get("conversion_profile") or {}
     summary_rows = [
         ["Risk Score", str(risk.get("score", "N/A")), "Grade", risk.get("grade", "N/A")],
         ["Risk Level", risk.get("risk_level", "N/A"), "Failed Checks", str(summary.get("failed", 0))],
         ["Review Checks", str(summary.get("review", 0)), "Passed Checks", str(summary.get("passed", 0))],
         ["Extraction Confidence", str(confidence.get("overall", "N/A")), "Mode", confidence.get("mode", "N/A")],
+        ["PT Readiness", str(conversion.get("readiness_score", "N/A")), "Readiness", conversion.get("readiness", "N/A")],
     ]
     t = Table(summary_rows, colWidths=[95, 95, 95, 95])
     t.setStyle(TableStyle([
@@ -137,7 +151,43 @@ def report_pdf_bytes(state, report_type):
             ]))
             story.append(table)
 
-    if report_type == "audit":
+    if report_type in {"packet_tracer", "technical", "full"}:
+        checklist = conversion.get("command_checklist", [])
+        if checklist:
+            story.append(Paragraph("Packet Tracer Conversion Command Checklist", styles["Heading2"]))
+            rows = [["Command", "Status", "Severity", "Why"]]
+            for item in checklist[:20]:
+                rows.append([item.get("command", ""), item.get("status", ""), item.get("severity", ""), item.get("why", "")])
+            table = Table(rows, repeatRows=1, colWidths=[120, 55, 55, 220])
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            story.append(table)
+            story.append(Spacer(1, 12))
+
+    if report_type in {"compliance", "full"}:
+        controls = payload.get("compliance", [])
+        if controls:
+            story.append(Paragraph("Compliance Matrix", styles["Heading2"]))
+            rows = [["Control", "Status", "Risk", "Evidence"]]
+            for c in controls[:30]:
+                rows.append([c.get("control", ""), c.get("status", ""), c.get("risk", ""), c.get("evidence", "")])
+            table = Table(rows, repeatRows=1, colWidths=[100, 55, 55, 240])
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            story.append(table)
+            story.append(Spacer(1, 12))
+
+    if report_type in {"audit", "evidence_appendix"}:
         story.append(Paragraph("Audit Evidence", styles["Heading2"]))
         story.append(Paragraph(f"Source hash: {payload.get('source_hash', 'N/A')}", styles["Tiny"]))
         manifest = payload.get("evidence_manifest", {})
@@ -158,6 +208,8 @@ def report_html_bytes(state, report_type):
     wireless = payload.get('wireless', {})
     wireless_matrix = wireless.get('matrix', [])
     wireless_anomalies = wireless.get('anomalies', [])
+    conversion = payload.get("packet_tracer_conversion") or summary.get("conversion_profile") or {}
+    command_rows = "".join(f"<tr><td>{html.escape(str(c.get('command','')))}</td><td>{html.escape(str(c.get('status','')))}</td><td>{html.escape(str(c.get('severity','')))}</td><td>{html.escape(str(c.get('why','')))}</td></tr>" for c in conversion.get("command_checklist", []))
     rows = "".join(
         f"<tr><td>{html.escape(str(d.get('id','')))}</td><td>{html.escape(str(d.get('category','')))}</td><td>{html.escape(str(d.get('status','')))}</td><td>{html.escape(str(d.get('severity','')))}</td><td>{html.escape(str(d.get('actual','')))}</td><td>{html.escape(str(d.get('evidence_line','')))}</td></tr>"
         for d in diffs
@@ -181,6 +233,7 @@ table{{width:100%;border-collapse:collapse;font-size:13px}}th,td{{border-bottom:
 <section class='header'><h1>{html.escape(title)}</h1><p>Generated: {html.escape(payload.get('generated_at',''))} · Project: {html.escape(payload.get('project',{}).get('name','N/A'))}</p></section>
 <section class='panel kpis'><div class='kpi'><span>Risk Score</span><b>{risk.get('score','N/A')}</b></div><div class='kpi'><span>Grade</span><b>{html.escape(str(risk.get('grade','N/A')))}</b></div><div class='kpi'><span>Failed</span><b>{summary.get('failed',0)}</b></div><div class='kpi'><span>Review</span><b>{summary.get('review',0)}</b></div></section>
 <section class='panel'><h2>Executive Summary</h2><p>{html.escape(payload.get('executive_summary',{}).get('headline',''))}</p><p><b>Primary concern:</b> {html.escape(payload.get('executive_summary',{}).get('primary_concern',''))}</p></section>
+<section class='panel'><h2>Packet Tracer Conversion</h2><p><b>Readiness:</b> {html.escape(str(conversion.get('readiness','N/A')))} · <b>Score:</b> {html.escape(str(conversion.get('readiness_score','N/A')))}</p><p>{html.escape(str(conversion.get('analyst_next_step','')))}</p><table><thead><tr><th>Command</th><th>Status</th><th>Severity</th><th>Why</th></tr></thead><tbody>{command_rows or '<tr><td colspan=4>No conversion profile.</td></tr>'}</tbody></table></section>
 <section class='panel'><h2>Missing Evidence</h2><ul>{missing or '<li>No missing evidence warnings.</li>'}</ul></section>
 <section class='panel'><h2>Wireless Validation Matrix</h2><table><thead><tr><th>Client</th><th>Role</th><th>SSID</th><th>AP</th><th>VLAN Expected/Actual</th><th>Result</th></tr></thead><tbody>{wireless_rows or '<tr><td colspan=6>No wireless rows.</td></tr>'}</tbody></table></section>
 <section class='panel'><h2>Wireless Anomalies</h2>{anomaly_cards or '<p>No wireless anomalies.</p>'}</section>

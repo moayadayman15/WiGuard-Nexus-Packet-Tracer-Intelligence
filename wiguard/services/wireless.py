@@ -452,6 +452,9 @@ def add_or_update_ap(state: Dict[str, Any], form: Dict[str, Any]) -> str:
         "supported_vlans": supported or ap.get("supported_vlans", []),
         "max_clients": int(form.get("max_clients") or ap.get("max_clients") or 25),
         "status": form.get("status", ap.get("status", "online")),
+        "vendor": form.get("vendor", ap.get("vendor", "manual")),
+        "serial": form.get("serial", ap.get("serial", "")),
+        "model": form.get("model", ap.get("model", "")),
     })
     add_event(state, "ap_inventory", name, "Info", f"AP inventory updated for {name}.", ap=name)
     return name
@@ -487,15 +490,64 @@ def add_or_update_ssid(state: Dict[str, Any], form: Dict[str, Any]) -> str:
     return name
 
 DEFAULT_POLICY_STUDIO_RULES = [
-    {"id": "PS-GUEST-DENY-INTERNAL", "enabled": True, "name": "Guest must be isolated from internal services", "scope": "Guest", "condition": "internal_access_denied", "severity": "Critical", "owner": "Security", "remediation": "Apply guest isolation ACL inbound on the guest VLAN gateway and verify with show access-lists."},
-    {"id": "PS-ROLE-SSID-MATCH", "enabled": True, "name": "Client role must match SSID role", "scope": "All", "condition": "role_ssid_match", "severity": "High", "owner": "Wireless", "remediation": "Fix identity group mapping or move the user to the correct SSID."},
-    {"id": "PS-AP-VLAN-SUPPORT", "enabled": True, "name": "AP uplink must support expected VLAN", "scope": "All", "condition": "ap_vlan_support", "severity": "High", "owner": "Network", "remediation": "Add missing WLAN VLANs to AP uplink trunks and regenerate validation."},
+    {
+        "id": "PS-GUEST-DENY-INTERNAL", "enabled": True, "name": "Guest must be isolated from internal services", "scope": "Guest", "condition": "guest_internal_blocked", "condition_left": "ssid.internal_access", "operator": "equals", "condition_value": "false", "condition_expression": "ssid.internal_access equals false AND applied ACL deny exists",
+        "severity": "Critical", "severity_score": 95, "owner": "Security", "control_mapping": "ISO27001-A.8.22 / NIST-AC-4", "evidence_required": "VLAN gateway + applied ACL + show access-lists", "false_positive_guard": "Do not pass on ACL text alone; require ip access-group binding on the guest gateway.", "acceptance_criteria": "Guest VLAN has an inbound/outbound deny to internal subnets and Internet/DNS still allowed.", "action_type": "block_report_pass", "remediation": "Apply guest isolation ACL inbound on the guest VLAN gateway and verify with show access-lists + show running-config interface.", "version": 1,
+    },
+    {
+        "id": "PS-ROLE-SSID-MATCH", "enabled": True, "name": "Client role must match SSID role", "scope": "All", "condition": "role_ssid_match", "condition_left": "client.role", "operator": "equals", "condition_value": "ssid.role", "condition_expression": "client.role equals ssid.role",
+        "severity": "High", "severity_score": 78, "owner": "Wireless", "control_mapping": "Identity-to-network authorization", "evidence_required": "Client session + SSID policy matrix", "false_positive_guard": "Ignore stale client rows older than the active import unless a live event confirms association.", "acceptance_criteria": "Client role, SSID role, VLAN and DHCP subnet align.", "action_type": "create_anomaly", "remediation": "Fix identity group mapping or move the user to the correct SSID.", "version": 1,
+    },
+    {
+        "id": "PS-AP-VLAN-SUPPORT", "enabled": True, "name": "AP uplink must support expected VLAN", "scope": "All APs", "condition": "ap_vlan_support", "condition_left": "ap.supported_vlans", "operator": "contains", "condition_value": "ssid.expected_vlan", "condition_expression": "ap.supported_vlans contains ssid.expected_vlan",
+        "severity": "High", "severity_score": 74, "owner": "Network", "control_mapping": "Wireless-to-wired trunk consistency", "evidence_required": "AP inventory + show interfaces trunk", "false_positive_guard": "Prefer operational trunk evidence over planned AP inventory only.", "acceptance_criteria": "Every AP serving the SSID has the expected VLAN on its uplink trunk.", "action_type": "raise_risk", "remediation": "Add missing WLAN VLANs to AP uplink trunks and regenerate validation.", "version": 1,
+    },
+    {
+        "id": "PS-MGMT-PLANE-HARDENING", "enabled": True, "name": "Management plane must avoid weak services", "scope": "Network devices", "condition": "security_hardening", "condition_left": "device.security_hardening", "operator": "not_contains", "condition_value": "weak", "condition_expression": "no telnet, enable password, insecure HTTP, or exposed SNMP community indicators",
+        "severity": "High", "severity_score": 81, "owner": "Security", "control_mapping": "CIS Cisco IOS / NIST-CM-7", "evidence_required": "running-config hardening lines", "false_positive_guard": "Flag only when direct config line evidence exists.", "acceptance_criteria": "SSH-only VTY, enable secret, AAA/local auth, and no insecure HTTP/Telnet evidence.", "action_type": "require_manual_review", "remediation": "Disable Telnet/HTTP, replace enable password with enable secret, restrict SNMP and enforce SSH.", "version": 1,
+    },
+
+    {
+        "id": "PS-ACL-RUNTIME-HITS", "enabled": True, "name": "Segmentation ACLs should have runtime counters", "scope": "Segmentation", "condition": "acl_hit_counts", "condition_left": "acl.matches", "operator": "greater_than", "condition_value": "0", "condition_expression": "show access-lists counter evidence exists for enforced segmentation ACLs",
+        "severity": "Medium", "severity_score": 58, "owner": "Security", "control_mapping": "Evidence-based enforcement validation", "evidence_required": "show access-lists output with match counters", "false_positive_guard": "Treat zero counters as Review unless traffic simulation was executed.", "acceptance_criteria": "At least one active deny/permit ACL line has runtime counter evidence or a documented test result.", "action_type": "raise_risk", "remediation": "Run a controlled access test, capture show access-lists counters, and attach the evidence.", "version": 1,
+    },
+    {
+        "id": "PS-VLAN-TRUNK-CROSSCHECK", "enabled": True, "name": "Configured VLANs must be present on operational trunks", "scope": "Switching", "condition": "vlan_crosscheck", "condition_left": "vlan.missing_from_trunks", "operator": "equals", "condition_value": "0", "condition_expression": "configured/access/DHCP VLANs are included in trunk allowed or forwarding evidence",
+        "severity": "High", "severity_score": 82, "owner": "Network", "control_mapping": "L2 path assurance", "evidence_required": "show vlan brief + show interfaces trunk + running-config", "false_positive_guard": "Do not fail if operational trunk output was not imported; mark Needs Evidence instead.", "acceptance_criteria": "Every production policy VLAN appears in trunk allowed/forwarding evidence.", "action_type": "block_report_pass", "remediation": "Add missing VLANs to the trunk or update policy inventory, then re-import operational trunk output.", "version": 1,
+    },
+    {
+        "id": "PS-INTERFACE-ERROR-HEALTH", "enabled": True, "name": "Critical uplinks should not show physical error counters", "scope": "Operations", "condition": "interface_counters", "condition_left": "interface.errors", "operator": "equals", "condition_value": "0", "condition_expression": "input/output/CRC errors are zero on uplinks and AP trunks",
+        "severity": "Medium", "severity_score": 54, "owner": "Network Operations", "control_mapping": "Availability / network health", "evidence_required": "show interfaces counters or show interfaces detail", "false_positive_guard": "Only escalate when direct counter evidence maps to an uplink/trunk or repeated live events corroborate it.", "acceptance_criteria": "No CRC/input/output error evidence on critical wireless path interfaces.", "action_type": "create_anomaly", "remediation": "Inspect cable/SFP/duplex, clear counters, monitor again, and document the before/after state.", "version": 1,
+    },
+    {
+        "id": "PS-EVIDENCE-COMPLETENESS", "enabled": True, "name": "Reports must disclose missing evidence before claiming pass", "scope": "Reporting", "condition": "evidence_profile", "condition_left": "evidence.confidence", "operator": "greater_than", "condition_value": "0.70", "condition_expression": "line-level evidence confidence >= 70% OR missing commands are explicitly listed",
+        "severity": "Medium", "severity_score": 62, "owner": "Assurance", "control_mapping": "Audit defensibility", "evidence_required": "conversion readiness score + missing command checklist + evidence profile", "false_positive_guard": "Do not punish native .pkt uploads; disclose reduced confidence and ask for exported show commands.", "acceptance_criteria": "Technical report includes readiness score, missing commands, and traceability stats.", "action_type": "require_manual_review", "remediation": "Import the missing show-command bundle or keep the finding in Needs More Evidence.", "version": 1,
+    },
 ]
 
 
 def ensure_policy_studio(state: Dict[str, Any]):
-    state.setdefault("policy_studio", {}).setdefault("rules", [dict(r) for r in DEFAULT_POLICY_STUDIO_RULES])
-    return state["policy_studio"]["rules"]
+    studio = state.setdefault("policy_studio", {})
+    rules = studio.setdefault("rules", [dict(r) for r in DEFAULT_POLICY_STUDIO_RULES])
+    existing = {r.get("id") for r in rules}
+    for default in DEFAULT_POLICY_STUDIO_RULES:
+        if default.get("id") not in existing:
+            rules.append(dict(default))
+    severity_map = {"Critical": 95, "High": 75, "Medium": 50, "Low": 25, "Info": 10}
+    for rule in rules:
+        sev = rule.get("severity", "Medium")
+        rule.setdefault("severity_score", severity_map.get(sev, 50))
+        rule.setdefault("condition_left", "client.role")
+        rule.setdefault("operator", "equals")
+        rule.setdefault("condition_value", "")
+        rule.setdefault("condition_expression", f"{rule.get('condition_left')} {rule.get('operator')} {rule.get('condition_value')}")
+        rule.setdefault("control_mapping", "Wireless Segmentation")
+        rule.setdefault("evidence_required", "current imported evidence")
+        rule.setdefault("false_positive_guard", "Require line-level evidence or a correlated live event before marking a finding as confirmed.")
+        rule.setdefault("acceptance_criteria", "Finding is considered fixed only after re-imported evidence changes the check to Pass.")
+        rule.setdefault("action_type", "create_anomaly")
+        rule.setdefault("version", 1)
+    return rules
 
 
 def add_or_update_policy_rule(state: Dict[str, Any], form: Dict[str, Any]) -> str:
@@ -508,14 +560,31 @@ def add_or_update_policy_rule(state: Dict[str, Any], form: Dict[str, Any]) -> st
     if not rule:
         rule = {"id": rid}
         rules.append(rule)
+    current_version = int(rule.get("version", 0) or 0)
+    condition = form.get("condition", rule.get("condition", "role_ssid_match"))
+    left = form.get("condition_left", rule.get("condition_left", "client.role"))
+    operator = form.get("operator", rule.get("operator", "equals"))
+    value = form.get("condition_value", rule.get("condition_value", ""))
     rule.update({
         "enabled": form.get("enabled", "on") in {"on", "true", "1", True},
         "name": form.get("name", rule.get("name", "Custom wireless policy rule")),
         "scope": form.get("scope", rule.get("scope", "All")),
-        "condition": form.get("condition", rule.get("condition", "role_ssid_match")),
+        "condition": condition,
+        "condition_left": left,
+        "operator": operator,
+        "condition_value": value,
+        "condition_expression": f"{left} {operator} {value}".strip(),
         "severity": form.get("severity", rule.get("severity", "Medium")),
+        "severity_score": {"Critical": 95, "High": 75, "Medium": 50, "Low": 25, "Info": 10}.get(form.get("severity", rule.get("severity", "Medium")), 50),
         "owner": form.get("owner", rule.get("owner", "Wireless Team")),
+        "control_mapping": form.get("control_mapping", rule.get("control_mapping", "Wireless Segmentation")),
+        "action_type": form.get("action_type", rule.get("action_type", "create_anomaly")),
+        "evidence_required": form.get("evidence_required", rule.get("evidence_required", "current imported evidence")),
+        "false_positive_guard": form.get("false_positive_guard", rule.get("false_positive_guard", "Require corroborated evidence before confirming.")),
+        "acceptance_criteria": form.get("acceptance_criteria", rule.get("acceptance_criteria", "Re-import evidence and confirm Pass state.")),
         "remediation": form.get("remediation", rule.get("remediation", "Review the affected SSID/VLAN/client mapping and revalidate.")),
+        "version": current_version + 1,
+        "updated_at": now_iso(),
     })
     add_event(state, "policy_rule", rid, "Info", f"Policy Studio rule saved: {rule['name']}.")
     return rid

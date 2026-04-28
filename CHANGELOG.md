@@ -1,76 +1,84 @@
-## v5.2.1 - Login/Register UX Hardening
-
-- Added first-run setup panel on the login page.
-- Made the register flow clearly create the first SQLite admin account.
-- Added visible local-demo fallback guidance only outside production.
-- Added WIGUARD_DISABLE_DEMO_FALLBACK to disable emergency/demo fallback after setup.
-- Improved login/register links to preserve next redirects.
-
 # Changelog
 
-## 5.1.0-security-foundation
+## v5.8.3 — Packet Tracer JSON/XML Intelligence
 
-### Security & Foundation
-- Fixed upload path traversal by sanitizing original names and storing files as UUID names.
-- Disabled Flask debug by default; now controlled by `FLASK_DEBUG`.
-- Moved secret/admin/runtime settings to environment variables.
-- Added `MAX_CONTENT_LENGTH` via `WIGUARD_MAX_UPLOAD_BYTES`.
-- Added login/logout with environment-configured admin credentials.
-- Added CSRF validation to all mutating POST forms.
-- Replaced direct JSON writes with atomic writes and backup recovery.
-- Added core security/extraction/storage tests.
+- Rebuilt JSON/XML import handling so exported Packet Tracer evidence is normalized as structured data, not treated as unreadable raw text.
+- Added schema-tolerant extraction for devices, interfaces, VLANs, trunk settings, DHCP pools, topology links, routes, ACL-like rules, inventory facts, and wireless/SSID hints.
+- Added embedded config/show-output recovery from JSON/XML fields such as `config`, `runningConfig`, `cli`, `output`, `show`, and `commandOutput`, then sends those chunks through the classic Cisco parser.
+- Added `json_structured` and `xml_structured` source modes with stronger confidence scoring and visible pipeline status.
+- Added a Structured JSON/XML Understanding panel on `/import` showing records walked, embedded config chunks, detected sections, schema hints, and normalizer status.
+- Added path-level evidence mapping using `source_path` for structured objects so reports can still prove where a fact came from even when there is no line number.
+- Kept native `.pkt/.pka` honest: originals are stored, printable text is recovered, and evidence-grade accuracy still comes from exported XML/JSON/config/show bundles.
 
-### Extraction Accuracy
-- Added ACL parsing normalization for standard/extended rules.
-- Added ACL-to-interface binding through `ip access-group` evidence.
-- Added DHCP gateway-to-interface/VLAN matching.
-- Added missing evidence detector.
-- Added extraction confidence summary.
+## v5.8.2 — Page/Data Hardening Hotfix
 
-### Intelligence
-- Upgraded Policy Diff to include trunk coverage, ACL direction, DHCP gateway matching, and applied guest isolation checks.
-- Upgraded Root Cause cards with evidence reason, owner, confidence, verification commands, and recommended fixes.
-- Added path-based simulation decisions.
-- Added richer topology nodes/edges for SSID, VLAN, interface, ACL, DHCP, and CDP.
-- Added snapshot object delta export.
+- Fixed `/import` 500 caused by Jinja resolving `d.keys` as the built-in dictionary method instead of the coverage-domain `keys` list.
+- Added extracted-object sanitization so partial parser output, `None` list rows, or `evidence: null` no longer crash topology/policy/report widgets.
+- Hardened `build_topology()` around malformed policy-control rows.
+- Import persistence now sanitizes objects before counting/saving and saves JSON state even if dashboard normalization logs an error.
 
-### Reports & Product Polish
-- Added HTML report export for every report type.
-- Added audience-specific PDF content sections.
-- Added evidence manifest detached checksum.
-- Added project create/switch/delete actions.
-- Added basic settings page for persisted report branding.
-- Added security/privacy/disclaimer/license/env docs.
+## 5.8.0-deep-cleanup-ui-policy-runtime — 2026-04-28
+- Added runtime evidence extraction: VLAN brief, ACL hit counters, interface counters, STP root and protocol summary.
+- Added VLAN cross-layer consistency analysis and risk atom generation.
+- Added coverage-domain scoring to the Packet Tracer conversion profile.
+- Expanded Report/Import UI with domain coverage, VLAN crosscheck, runtime risk atoms and counter evidence.
+- Expanded Policy Studio defaults with ACL runtime hits, VLAN trunk crosscheck, interface error health and evidence completeness.
+- Added table search, confirmation prompts and responsive UI refinements.
+- Renamed `test_connector_credentials` to `check_connector_credentials` while keeping a pytest-safe compatibility alias.
+- Added v5.8 regression tests.
+- Validation: compileall passed; pytest passed with 30 tests.
 
-## v5.2.0 — Wireless Policy Manager Upgrade
-- Added Wireless Manager page for SSID profiles, AP inventory, client sessions, event simulation, role-change demo, AP load analytics, validation matrix, scenario builder, and event-to-wired correlation.
-- Added local SQLite database for registered users, audit trail, and durable wireless snapshots.
-- Added Register page; first registered user becomes admin and later users become analysts.
-- Added CSV/JSON wireless event import with association, disassociation, authentication failure, roaming, DHCP assignment, and policy violation support.
-- Added advanced wireless anomaly engine and wireless risk scoring.
-- Added Wireless Event & Policy Report export in JSON, HTML, and PDF.
-- Improved UI styling, sticky wireless tabs, AP load cards, anomaly cards, and dashboard polish.
 
-## v5.2.2 Responsive Workspace Patch
-- Removed the fixed 1500px workspace cap so pages use available screen width.
-- Added adaptive desktop/tablet/mobile grids for KPIs, cards, AP analytics, scenarios, forms, and tables.
-- Improved sidebar behavior on tablet/mobile screens.
-- Added horizontal-safe handling for large tables and sticky wireless tabs.
+## v5.5.0 — Packet Tracer Intelligence
 
-## v5.3 Global Product Layer
+- Rebuilt Import Center into Packet Tracer Conversion Lab.
+- Added conversion readiness score and quality gates.
+- Added missing command checklist for evidence-grade imports.
+- Added relationship mapping for Interface/VLAN/DHCP/ACL/trunks.
+- Added extraction categories: IP inventory, port security, spanning tree, EtherChannel, MAC table, ARP table, device facts.
+- Added `packet_tracer_conversion_profile.json` artifact.
+- Improved Object Explorer and Topology UI.
+- Preserved v5.4 enterprise core: connectors, tenants, jobs, API tokens, live ingestion, reports, audit, and RBAC.
 
-- Added rate-limited login/register security controls.
-- Added strong password policy for SQLite users.
-- Added role-aware action protection for admin/engineer/analyst/auditor workflows.
-- Added SQLite schema migrations and migration visibility in Settings.
-- Added 403/404/500 error pages and `/healthz` endpoint.
-- Added database backup/restore workflow with safety backup.
-- Added Policy Studio with configurable wireless policy rules.
-- Added AP/SSID/client CRUD actions, including delete flows.
-- Added client session lifecycle management.
-- Added event timeline filters.
-- Added evidence confidence scoring.
-- Added generated remediation playbooks from wireless anomalies.
-- Added connector import scaffold for WLC/AP inventory/RADIUS/DHCP/syslog CSV/JSON.
-- Added compliance matrix and custom report builder.
-- Added Docker Compose, deployment guide, admin guide, and user guide.
+## v5.4.0 — P1 Enterprise Core
+
+- Added vendor connector scaffolding, live ingestion APIs, tenant-aware state, job tracking, API tokens, and PostgreSQL-ready configuration.
+
+## v5.3.0 — Global Product Layer
+
+- Added product docs, report builder basics, evidence package verification, RBAC hardening, and release cleanup.
+
+## v5.6 Enterprise Expansion
+
+- Added stdlib background job runner with start/stop controls, run-next action, retry queue, attempts, status polling, and admin dashboard actions.
+- Added live UDP syslog ingestion controller with start/stop settings, normalized event schema v2, severity score mapping, persistent raw live logs, and deduplication fingerprints.
+- Added tamper-evident audit chain fields with CSV export and Admin Center filters for actor/action/severity/query.
+- Added production auth controls: invite tokens, reset tokens, admin password change, user disable/enable, API token revocation, session registry, and forced logout.
+- Expanded Report Builder with Executive, Technical, Compliance, Packet Tracer Conversion, Wireless Risk, Audit, Evidence Appendix, Wireless, and Full report templates plus preview routes.
+- Expanded Policy Studio rule model with condition builder fields, severity scores, control mapping, action type, versioning, and current-evidence testing table.
+- Added OpenAPI 3.0 specification for tenant-scoped state, live event ingestion, events polling, and jobs API.
+- Added Packet Tracer validation dataset fixtures and tests for VLANs, router-on-a-stick, OSPF, NAT, trunk failure, port security, and EtherChannel evidence.
+
+## v5.7.0 — Deep Packet Tracer UI + Policy Intelligence
+
+- Added deep Packet Tracer extraction layers beyond basic config parsing:
+  - LLDP adjacency extraction.
+  - operational interface status extraction.
+  - operational trunk state extraction: allowed, active, forwarding VLANs.
+  - route table row extraction.
+  - OSPF neighbor extraction.
+  - show inventory / show version device inventory extraction.
+  - management-plane security hardening signals: AAA, SSH, Telnet, SNMP, HTTP, enable secret/password, logging, NTP.
+  - wireless hints: SSID/WLAN/RADIUS/AP clues.
+  - command block detection for ZIP members and CLI command streams.
+  - deep evidence atom index with tagged line-level facts.
+  - derived subnet inventory.
+  - derived policy control assertions.
+- Expanded Packet Tracer conversion profile:
+  - more command coverage checks.
+  - stronger quality gates for operational state, hardening, policy controls, and CDP/LLDP topology.
+  - more high-value object counters.
+- Rebuilt topology page around a dynamic SVG evidence graph with node grouping, curved edges, confidence, status, and selectable nodes.
+- Upgraded Import Center with a Deep Packet Tracer Intelligence Matrix, policy control assertions, hardening extractor, operational trunk table, and evidence atom preview.
+- Strengthened Policy Studio with evidence-required fields, false-positive guards, acceptance criteria, richer default rules, and detailed rule cards.
+- Added regression coverage for the deep Packet Tracer parser.

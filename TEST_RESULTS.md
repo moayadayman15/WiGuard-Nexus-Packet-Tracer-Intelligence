@@ -1,46 +1,25 @@
-# Test Results — v5.1.0-security-foundation
+# Test Results — v5.8.3 Packet Tracer JSON/XML Intelligence
 
-Date: 2026-04-27
-
-## Executed in this environment
+Validated in the patch package:
 
 ```bash
-python3 -m compileall -q app.py wiguard tests
+python -m py_compile wiguard/services/structured_import.py \
+  wiguard/services/extractor.py \
+  wiguard/services/packet_tracer.py \
+  wiguard/routes/pages.py \
+  wiguard/routes/actions.py \
+  app.py
 ```
 
-Result: PASS
+Smoke-tested structured import logic with:
 
-Manual service-level validation executed with Python stdlib environment:
+- JSON topology containing devices, interfaces, VLANs, trunk settings, DHCP pool, links, and embedded running-config text.
+- XML topology containing Device/Interface/Port/Vlan/Link nodes and embedded config text.
 
-- ConfigExtractor parses interface, DHCP, trunk, and ACL evidence.
-- ACL rules bind to interfaces through `ip access-group`.
-- Policy Diff includes trunk coverage and gateway/DHCP matching.
-- Guest internal simulation uses applied ACL path and returns expected pass.
-- Upload path traversal attempt `../evil.cfg` is stored safely under UUID filename.
-- Atomic Storage saves, reloads, and creates backup.
+Expected behavior:
 
-Result: PASS
-
-## Added automated tests
-
-```text
-tests/test_security_upload.py
-tests/test_extraction_accuracy.py
-tests/test_storage_atomic.py
-tests/test_app_security.py
-```
-
-## Full runtime test command
-
-After installing dependencies from `requirements.txt`:
-
-```bash
-python -m pytest -q
-```
-
-The Flask route/CSRF test requires Flask/Werkzeug installed from the project requirements.
-
-## v5.2.2 Responsive UI Check
-- CSS compile/static packaging verified.
-- Workspace max-width cap removed.
-- Desktop/tablet/mobile responsive breakpoints added.
+- JSON source mode becomes `json_structured` when network objects are understood.
+- XML source mode becomes `xml_structured` when network objects are understood.
+- `/import` pipeline includes `Structured Schema Normalization`.
+- `conversion_profile.structured_summary` includes detected sections and schema hints.
+- Structured objects receive `evidence.source_path` so reports can trace facts back to their JSON/XML location.

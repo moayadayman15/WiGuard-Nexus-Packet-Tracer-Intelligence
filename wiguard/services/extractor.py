@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover - fallback for minimal test environments
         value = str(value or "uploaded").replace('\\', '/').split('/')[-1]
         return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._") or "uploaded"
 from .util import now_iso, network_cidr, safe_int
+from .packet_tracer import build_conversion_profile, normalize_interface_name
 
 
 ALLOWED_UPLOAD_EXTENSIONS = {".pkt", ".pka", ".xml", ".json", ".txt", ".cfg", ".conf", ".log", ".zip"}
@@ -74,11 +75,38 @@ class ConfigExtractor:
             "routing": self.parse_routing(),
             "nat_rules": self.parse_nat(),
             "cdp_links": self.parse_cdp(),
+            "lldp_links": self.parse_lldp(),
             "services": self.parse_service_hints(),
+            "ip_inventory": self.parse_ip_inventory(),
+            "interface_status": self.parse_interface_status(),
+            "trunk_operational": self.parse_trunk_operational(),
+            "route_table": self.parse_route_table(),
+            "ospf_neighbors": self.parse_ospf_neighbors(),
+            "port_security": self.parse_port_security(),
+            "spanning_tree": self.parse_spanning_tree(),
+            "etherchannels": self.parse_etherchannels(),
+            "mac_table": self.parse_mac_table(),
+            "arp_table": self.parse_arp_table(),
+            "device_facts": self.parse_device_facts(),
+            "device_inventory": self.parse_device_inventory(),
+            "security_hardening": self.parse_security_hardening(),
+            "wireless_hints": self.parse_wireless_hints(),
+            "vlan_brief": self.parse_vlan_brief(),
+            "acl_hit_counts": self.parse_acl_hit_counts(),
+            "interface_counters": self.parse_interface_counters(),
+            "stp_root": self.parse_stp_root(),
+            "protocol_summary": self.parse_protocol_summary(),
+            "command_blocks": self.parse_command_blocks(),
+            "deep_evidence_index": self.deep_evidence_index(),
             "raw_evidence": self.raw_evidence()
         }
         self.bind_acls_to_interfaces(objects)
         objects["dhcp_gateway_matches"] = self.match_dhcp_gateways(objects)
+        objects["subnet_inventory"] = self.derive_subnet_inventory(objects)
+        objects["vlan_crosscheck"] = self.derive_vlan_crosscheck(objects)
+        objects["policy_controls"] = self.derive_policy_controls(objects)
+        objects["risk_atoms"] = self.derive_risk_atoms(objects)
+        objects["coverage_domains"] = self.coverage_domains(objects)
         objects["evidence_profile"] = self.evidence_profile(objects)
         return objects
 
@@ -87,7 +115,10 @@ class ConfigExtractor:
         patterns = [
             "hostname", "interface", "vlan", "switchport", "ip dhcp", "access-list",
             "ip access-group", "ip route", "router ospf", "router eigrp", "router rip",
-            "router bgp", "ip nat", "Device ID", "Port ID", "Platform"
+            "router bgp", "ip nat", "Device ID", "Port ID", "Platform", "Local Intf",
+            "Port Security", "spanning-tree", "etherchannel", "mac address-table", "Internet",
+            "service password-encryption", "aaa new-model", "username", "enable secret", "snmp-server",
+            "transport input", "radius-server", "ssid", "wlan", "show interfaces status"
         ]
         for no, line in self.lines:
             if any(p.lower() in line.lower() for p in patterns):
@@ -194,6 +225,7 @@ class ConfigExtractor:
             name = m.group(1)
             item = {
                 "name": name,
+                "normalized_name": normalize_interface_name(name),
                 "description": "",
                 "ip_address": None,
                 "subnet_mask": None,
@@ -206,6 +238,10 @@ class ConfigExtractor:
                 "acl_in": None,
                 "acl_out": None,
                 "nat_role": None,
+                "port_security_enabled": False,
+                "port_security_max": None,
+                "port_security_violation": None,
+                "port_security_sticky": False,
                 "shutdown": False,
                 "evidence": evidence_obj(block["header_line"], block["header"], 0.95),
                 "line_map": []
@@ -222,6 +258,10 @@ class ConfigExtractor:
                     "dot1q": re.match(r"^\s*encapsulation\s+dot1q\s+(\d+)", line, flags=re.I),
                     "acl": re.match(r"^\s*ip access-group\s+(\S+)\s+(in|out)", line, flags=re.I),
                     "nat": re.match(r"^\s*ip nat\s+(inside|outside)", line, flags=re.I),
+                    "port_security": re.match(r"^\s*switchport\s+port-security\s*$", line, flags=re.I),
+                    "port_security_max": re.match(r"^\s*switchport\s+port-security\s+maximum\s+(\d+)", line, flags=re.I),
+                    "port_security_violation": re.match(r"^\s*switchport\s+port-security\s+violation\s+(\S+)", line, flags=re.I),
+                    "port_security_sticky": re.match(r"^\s*switchport\s+port-security\s+mac-address\s+sticky", line, flags=re.I),
                     "shutdown": re.match(r"^\s*shutdown\s*$", line, flags=re.I),
                 }
                 if patterns["description"]:
@@ -248,6 +288,15 @@ class ConfigExtractor:
                         item["acl_out"] = acl_name
                 if patterns["nat"]:
                     item["nat_role"] = patterns["nat"].group(1).lower()
+                if patterns["port_security"]:
+                    item["port_security_enabled"] = True
+                if patterns["port_security_max"]:
+                    item["port_security_max"] = patterns["port_security_max"].group(1)
+                if patterns["port_security_violation"]:
+                    item["port_security_violation"] = patterns["port_security_violation"].group(1).lower()
+                if patterns["port_security_sticky"]:
+                    item["port_security_enabled"] = True
+                    item["port_security_sticky"] = True
                 if patterns["shutdown"]:
                     item["shutdown"] = True
             if item["mode"] is None:
@@ -272,7 +321,7 @@ class ConfigExtractor:
                 if re.match(r"^(Fa|Gi|Te|Eth|Po)", port, flags=re.I):
                     if not any(x["name"] == port for x in interfaces):
                         interfaces.append({
-                            "name": port, "description": "show interfaces trunk hint",
+                            "name": port, "normalized_name": normalize_interface_name(port), "description": "show interfaces trunk hint",
                             "ip_address": None, "subnet_mask": None, "cidr": None, "mode": "trunk",
                             "access_vlan": None, "trunk_allowed_vlans": [], "native_vlan": None,
                             "dot1q_vlan": None, "acl_in": None, "acl_out": None, "nat_role": None,
@@ -454,13 +503,25 @@ class ConfigExtractor:
                 for item in value:
                     if isinstance(item, dict):
                         total += 1
-                        if item.get("evidence", {}).get("source_line") is not None:
+                        if (item.get("evidence") or {}).get("source_line") is not None:
                             line_mapped += 1
+        ratio = round(line_mapped / total, 3) if total else 0
+        deep_count = len(objects.get("deep_evidence_index", []))
+        command_count = len(objects.get("command_blocks", []))
+        # Derived objects such as policy controls and evidence-index entries can inflate
+        # total_list_objects, so confidence also rewards the absolute number of native
+        # line-mapped facts. This keeps small but clean Packet Tracer exports from being
+        # unfairly scored as low-confidence.
+        native_line_confidence = line_mapped / (line_mapped + 2) if line_mapped else 0
+        confidence = min(0.99, round(max(native_line_confidence, (ratio * 0.62) + (min(raw_count, 80) / 80 * 0.18) + (min(deep_count, 120) / 120 * 0.12) + (min(command_count, 8) / 8 * 0.08)), 3))
         return {
             "raw_evidence_lines": raw_count,
             "objects_with_line_evidence": line_mapped,
             "total_list_objects": total,
-            "line_mapping_ratio": round(line_mapped / total, 3) if total else 0,
+            "line_mapping_ratio": ratio,
+            "deep_evidence_lines": deep_count,
+            "command_blocks": command_count,
+            "confidence": confidence,
         }
 
     def parse_routing(self):
@@ -508,6 +569,682 @@ class ConfigExtractor:
         if current:
             links.append(current)
         return links
+
+
+    def parse_lldp(self):
+        """Parse common LLDP neighbor detail/table output.
+
+        Packet Tracer labs often include either CDP or LLDP depending on device
+        type. Keeping LLDP separate prevents false CDP confidence while still
+        adding topology edges when the evidence is present.
+        """
+        links = []
+        current = {}
+        for no, line in self.lines:
+            dm = re.search(r"(?:System Name|Chassis id|Device ID)\s*:\s*(.+)", line, flags=re.I)
+            if dm and "Device ID:" not in line:
+                if current:
+                    links.append(current)
+                current = {"neighbor": dm.group(1).strip(), "local_interface": None, "remote_interface": None, "platform": None, "evidence": evidence_obj(no, line, 0.78)}
+            lm = re.search(r"(?:Local Intf|Local Interface)\s*:\s*(\S+)", line, flags=re.I)
+            if lm and current:
+                current["local_interface"] = lm.group(1).strip()
+            rm = re.search(r"(?:Port id|Port ID|Remote Port)\s*:\s*(\S+)", line, flags=re.I)
+            if rm and current:
+                current["remote_interface"] = rm.group(1).strip()
+            pm = re.search(r"(?:System Description|Port Description)\s*:\s*(.+)", line, flags=re.I)
+            if pm and current:
+                current["platform"] = pm.group(1).strip()[:120]
+            tm = re.match(r"^\s*(\S+)\s+(\S+)\s+\d+\s+[A-Z,]+\s+(\S+)\s*$", line, flags=re.I)
+            if tm and re.match(r"^(Fa|Gi|Te|Eth|Po|Se)", tm.group(2), flags=re.I):
+                neighbor, local, remote = tm.groups()
+                links.append({"neighbor": neighbor, "local_interface": local, "remote_interface": remote, "platform": "lldp table", "evidence": evidence_obj(no, line, 0.70)})
+        if current:
+            links.append(current)
+        # Deduplicate by neighbor/local/remote.
+        dedup = {}
+        for link in links:
+            key = (link.get("neighbor"), normalize_interface_name(link.get("local_interface")), normalize_interface_name(link.get("remote_interface")))
+            dedup[key] = link
+        return list(dedup.values())
+
+    def parse_interface_status(self):
+        """Parse show interfaces status and up/down hints from interface summaries."""
+        rows = []
+        for no, line in self.lines:
+            if re.search(r"Port\s+Name\s+Status\s+Vlan\s+Duplex\s+Speed\s+Type", line, flags=re.I):
+                continue
+            m = re.match(r"^\s*(\S+)\s+(.{0,20}?)\s+(connected|notconnect|disabled|err-disabled|inactive)\s+(\S+)\s+(a-full|full|half|auto)\s+(a-\S+|\S+)\s*(.*)$", line, flags=re.I)
+            if m and re.match(r"^(Fa|Gi|Te|Eth|Po)", m.group(1), flags=re.I):
+                port, name, status, vlan, duplex, speed, typ = m.groups()
+                rows.append({
+                    "interface": port,
+                    "normalized_interface": normalize_interface_name(port),
+                    "name": name.strip(),
+                    "status": status.lower(),
+                    "vlan": vlan,
+                    "duplex": duplex,
+                    "speed": speed,
+                    "type": typ.strip(),
+                    "evidence": evidence_obj(no, line, 0.82),
+                })
+                continue
+            # show ip interface brief compatible operational row.
+            ib = re.match(r"^\s*(\S+)\s+(unassigned|\d+\.\d+\.\d+\.\d+)\s+\S+\s+\S+\s+(.+?)\s+(up|down|administratively down)\s*$", line, flags=re.I)
+            if ib and re.match(r"^(Fa|FastEthernet|Gi|GigabitEthernet|Te|TenGigabitEthernet|Eth|Ethernet|Se|Serial|Lo|Loopback|Vl|Vlan)", ib.group(1), flags=re.I):
+                iface, ip, status, protocol = ib.groups()
+                rows.append({
+                    "interface": iface,
+                    "normalized_interface": normalize_interface_name(iface),
+                    "name": "ip interface brief",
+                    "status": status.strip().lower(),
+                    "protocol": protocol.lower(),
+                    "ip_address": None if ip.lower() == "unassigned" else ip,
+                    "evidence": evidence_obj(no, line, 0.76),
+                })
+        dedup = {}
+        for row in rows:
+            key = (row.get("normalized_interface"), row.get("status"), row.get("vlan") or row.get("ip_address"))
+            dedup[key] = {**dedup.get(key, {}), **row}
+        return list(dedup.values())
+
+    def parse_trunk_operational(self):
+        """Parse the operational sections of show interfaces trunk."""
+        rows = []
+        section = "summary"
+        for no, line in self.lines:
+            low = line.lower()
+            if "vlans allowed on trunk" in low:
+                section = "allowed"
+                continue
+            if "vlans allowed and active" in low:
+                section = "active"
+                continue
+            if "vlans in spanning tree forwarding" in low:
+                section = "forwarding"
+                continue
+            m = re.match(r"^\s*(\S+)\s+(on|desirable|auto|trunking)\s+(\S+)\s+(\S+)\s+(.+)$", line, flags=re.I)
+            if m and re.match(r"^(Fa|Gi|Te|Eth|Po)", m.group(1), flags=re.I):
+                port, mode, encapsulation, status, native_vlan = m.groups()
+                rows.append({
+                    "interface": port,
+                    "normalized_interface": normalize_interface_name(port),
+                    "mode": mode.lower(),
+                    "encapsulation": encapsulation,
+                    "status": status.lower(),
+                    "native_vlan": native_vlan.strip(),
+                    "allowed_vlans": [],
+                    "active_vlans": [],
+                    "forwarding_vlans": [],
+                    "evidence": evidence_obj(no, line, 0.86),
+                })
+                continue
+            vm = re.match(r"^\s*(\S+)\s+([0-9,\-]+|all|none)\s*$", line, flags=re.I)
+            if vm and rows and re.match(r"^(Fa|Gi|Te|Eth|Po)", vm.group(1), flags=re.I):
+                port, vlan_text = vm.groups()
+                row = next((r for r in rows if r.get("interface") == port), None)
+                if not row:
+                    row = {"interface": port, "normalized_interface": normalize_interface_name(port), "allowed_vlans": [], "active_vlans": [], "forwarding_vlans": [], "evidence": evidence_obj(no, line, 0.72)}
+                    rows.append(row)
+                parsed = self.expand_vlan_list(vlan_text)
+                key = "allowed_vlans" if section == "allowed" else "active_vlans" if section == "active" else "forwarding_vlans"
+                row[key] = parsed
+        return rows
+
+    def parse_route_table(self):
+        routes = []
+        for no, line in self.lines:
+            m = re.match(r"^\s*([A-Z*]{1,3})\s+(\d+\.\d+\.\d+\.\d+)(?:/(\d+)|\s+(\d+\.\d+\.\d+\.\d+))\s*(?:\[(\d+)/(\d+)\])?\s*(?:via\s+(\d+\.\d+\.\d+\.\d+))?,?\s*(?:\S+\s*)?(?:,\s*(\S+))?", line, flags=re.I)
+            if m:
+                code, network, prefix, mask, ad, metric, next_hop, out_iface = m.groups()
+                routes.append({
+                    "code": code,
+                    "network": network,
+                    "prefix": prefix,
+                    "mask": mask,
+                    "next_hop": next_hop,
+                    "out_interface": out_iface,
+                    "administrative_distance": safe_int(ad) if ad else None,
+                    "metric": safe_int(metric) if metric else None,
+                    "evidence": evidence_obj(no, line, 0.75),
+                })
+        return routes[:1000]
+
+    def parse_ospf_neighbors(self):
+        rows = []
+        for no, line in self.lines:
+            m = re.match(r"^\s*(\d+\.\d+\.\d+\.\d+)\s+(\d+)\s+(FULL|2WAY|EXSTART|EXCHANGE|LOADING|DOWN)/\S+\s+\S+\s+(\d+\.\d+\.\d+\.\d+)\s+(\S+)", line, flags=re.I)
+            if m:
+                neighbor_id, priority, state, address, iface = m.groups()
+                rows.append({
+                    "neighbor_id": neighbor_id,
+                    "priority": safe_int(priority),
+                    "state": state.upper(),
+                    "address": address,
+                    "interface": iface,
+                    "normalized_interface": normalize_interface_name(iface),
+                    "evidence": evidence_obj(no, line, 0.80),
+                })
+        return rows
+
+    def parse_device_inventory(self):
+        inventory = []
+        current = None
+        for no, line in self.lines:
+            nm = re.match(r"^\s*NAME:\s*\"([^\"]+)\"\s*,\s*DESCR:\s*\"([^\"]*)\"", line, flags=re.I)
+            if nm:
+                current = {"name": nm.group(1), "description": nm.group(2), "pid": None, "vid": None, "serial": None, "evidence": evidence_obj(no, line, 0.76)}
+                inventory.append(current)
+                continue
+            pm = re.match(r"^\s*PID:\s*([^,]+),\s*VID:\s*([^,]*),\s*SN:\s*(\S+)", line, flags=re.I)
+            if pm and current:
+                current["pid"], current["vid"], current["serial"] = [x.strip() for x in pm.groups()]
+            mm = re.search(r"^\s*cisco\s+(\S+)\s+.*processor", line, flags=re.I)
+            if mm:
+                inventory.append({"name": "chassis", "description": "show version model", "pid": mm.group(1), "vid": None, "serial": None, "evidence": evidence_obj(no, line, 0.70)})
+        return inventory
+
+
+    def parse_vlan_brief(self):
+        """Parse `show vlan brief` rows and map VLANs to visible access ports."""
+        rows = []
+        header_seen = False
+        for no, line in self.lines:
+            if re.search(r"\bVLAN\s+Name\s+Status\s+Ports\b", line, flags=re.I):
+                header_seen = True
+                continue
+            m = re.match(r"^\s*(\d{1,4})\s+(.+?)\s+(active|act/unsup|suspended|shutdown)\s*(.*)$", line, flags=re.I)
+            if not m:
+                continue
+            vlan, name, status, ports = m.groups()
+            if vlan in {"1002", "1003", "1004", "1005"}:
+                confidence = 0.55
+            else:
+                confidence = 0.84 if header_seen else 0.66
+            parsed_ports = [p.strip().rstrip(",") for p in re.split(r"\s*,\s*|\s{2,}", ports.strip()) if p.strip()]
+            # Some Cisco outputs separate comma lists with single spaces after wrapping.
+            expanded_ports = []
+            for item in parsed_ports:
+                expanded_ports.extend([x for x in item.split(",") if x])
+            rows.append({
+                "vlan": vlan,
+                "name": name.strip(),
+                "status": status.lower(),
+                "ports": [normalize_interface_name(p.strip()) or p.strip() for p in expanded_ports],
+                "raw_ports": ports.strip(),
+                "evidence": evidence_obj(no, line, confidence),
+            })
+        return rows[:1000]
+
+    def parse_acl_hit_counts(self):
+        """Parse `show access-lists` match counters to prove live traffic paths."""
+        hits = []
+        active_acl = None
+        for no, line in self.lines:
+            header = re.match(r"^\s*(Standard|Extended)?\s*IP\s+access\s+list\s+(\S+)", line, flags=re.I)
+            if header:
+                active_acl = header.group(2)
+                continue
+            named = re.match(r"^\s*ip\s+access-list\s+(standard|extended)\s+(\S+)", line, flags=re.I)
+            if named:
+                active_acl = named.group(2)
+                continue
+            m = re.search(r"\((\d+)\s+matches?\)", line, flags=re.I)
+            if m:
+                seq = None
+                seqm = re.match(r"^\s*(\d+)\s+", line)
+                if seqm:
+                    seq = seqm.group(1)
+                hits.append({
+                    "acl_name": active_acl,
+                    "sequence": seq,
+                    "matches": safe_int(m.group(1)),
+                    "line_text": line.strip(),
+                    "evidence": evidence_obj(no, line, 0.82),
+                })
+        return hits[:1000]
+
+    def parse_interface_counters(self):
+        """Parse compact interface error/counter evidence from show interfaces outputs."""
+        counters = []
+        current = None
+        for no, line in self.lines:
+            im = re.match(r"^\s*(\S+)\s+is\s+(up|down|administratively down),\s+line protocol is\s+(up|down)", line, flags=re.I)
+            if im and re.match(r"^(Fa|FastEthernet|Gi|GigabitEthernet|Te|TenGigabitEthernet|Eth|Ethernet|Se|Serial|Vl|Vlan|Po|Port-channel)", im.group(1), flags=re.I):
+                current = {
+                    "interface": im.group(1),
+                    "normalized_interface": normalize_interface_name(im.group(1)),
+                    "status": im.group(2).lower(),
+                    "protocol": im.group(3).lower(),
+                    "input_errors": 0,
+                    "output_errors": 0,
+                    "crc": 0,
+                    "drops": 0,
+                    "evidence": evidence_obj(no, line, 0.78),
+                }
+                counters.append(current)
+                continue
+            if not current:
+                continue
+            em = re.search(r"(\d+)\s+input errors,\s*(\d+)\s+CRC", line, flags=re.I)
+            if em:
+                current["input_errors"] = safe_int(em.group(1))
+                current["crc"] = safe_int(em.group(2))
+                current["error_evidence"] = evidence_obj(no, line, 0.80)
+            om = re.search(r"(\d+)\s+output errors", line, flags=re.I)
+            if om:
+                current["output_errors"] = safe_int(om.group(1))
+                current["error_evidence"] = evidence_obj(no, line, 0.80)
+            dm = re.search(r"(\d+)\s+(?:input queue drops|total output drops)", line, flags=re.I)
+            if dm:
+                current["drops"] = current.get("drops", 0) + safe_int(dm.group(1))
+                current["drop_evidence"] = evidence_obj(no, line, 0.75)
+        return counters[:1000]
+
+    def parse_stp_root(self):
+        roots = []
+        current_vlan = None
+        for no, line in self.lines:
+            vm = re.match(r"^\s*VLAN(\d+)\b", line, flags=re.I)
+            if vm:
+                current_vlan = vm.group(1)
+                roots.append({"vlan": current_vlan, "root_bridge": None, "root_port": None, "cost": None, "evidence": evidence_obj(no, line, 0.72)})
+                continue
+            if not current_vlan or not roots:
+                continue
+            rm = re.search(r"Root ID\s+Priority\s+(\d+)", line, flags=re.I)
+            if rm:
+                roots[-1]["root_priority"] = safe_int(rm.group(1))
+            am = re.search(r"Address\s+([0-9a-f.:-]+)", line, flags=re.I)
+            if am and not roots[-1].get("root_bridge"):
+                roots[-1]["root_bridge"] = am.group(1).lower()
+            pm = re.search(r"Cost\s+(\d+).*Port\s+(\S+)", line, flags=re.I)
+            if pm:
+                roots[-1]["cost"] = safe_int(pm.group(1))
+                roots[-1]["root_port"] = pm.group(2)
+        return roots[:500]
+
+    def parse_protocol_summary(self):
+        protocols = []
+        patterns = [
+            ("ospf", r"^\s*router\s+ospf\s+(\d+)"),
+            ("eigrp", r"^\s*router\s+eigrp\s+(\S+)"),
+            ("rip", r"^\s*router\s+rip\b"),
+            ("bgp", r"^\s*router\s+bgp\s+(\d+)"),
+            ("static_route", r"^\s*ip\s+route\s+"),
+            ("nat", r"^\s*ip\s+nat\s+"),
+            ("dhcp", r"^\s*ip\s+dhcp\s+pool\s+"),
+            ("hsrp", r"^\s*standby\s+\d+\s+ip\s+"),
+        ]
+        for no, line in self.lines:
+            for proto, pattern in patterns:
+                m = re.match(pattern, line, flags=re.I)
+                if m:
+                    protocols.append({
+                        "protocol": proto,
+                        "value": " ".join(m.groups()).strip() if m.groups() else line.strip(),
+                        "evidence": evidence_obj(no, line, 0.76),
+                    })
+        return protocols[:1000]
+
+    def parse_security_hardening(self):
+        features = []
+        blocks = self.get_blocks(r"^\s*line\s+(vty|console|aux)\b")
+        for no, line in self.lines:
+            checks = [
+                ("service_password_encryption", r"^\s*service\s+password-encryption\b", "positive", 0.86),
+                ("aaa_new_model", r"^\s*aaa\s+new-model\b", "positive", 0.86),
+                ("local_user", r"^\s*username\s+(\S+)\s+(?:privilege\s+\d+\s+)?(secret|password)\b", "sensitive", 0.82),
+                ("enable_secret", r"^\s*enable\s+secret\b", "positive", 0.86),
+                ("enable_password", r"^\s*enable\s+password\b", "weak", 0.86),
+                ("ssh_domain", r"^\s*ip\s+domain-name\s+(.+)", "positive", 0.78),
+                ("ssh_key", r"^\s*crypto\s+key\s+generate\s+rsa\b", "positive", 0.78),
+                ("logging_host", r"^\s*logging\s+host\s+(\S+)", "positive", 0.76),
+                ("ntp_server", r"^\s*ntp\s+server\s+(\S+)", "positive", 0.76),
+                ("snmp_community", r"^\s*snmp-server\s+community\s+(\S+)(.*)", "sensitive", 0.80),
+                ("http_server", r"^\s*ip\s+http\s+server\b", "weak", 0.78),
+                ("secure_http_server", r"^\s*ip\s+http\s+secure-server\b", "positive", 0.78),
+                ("cdp_enabled", r"^\s*cdp\s+run\b", "informational", 0.62),
+            ]
+            for name, pattern, posture, conf in checks:
+                m = re.match(pattern, line, flags=re.I)
+                if m:
+                    features.append({"name": name, "posture": posture, "value": " ".join(m.groups()).strip() if m.groups() else line.strip(), "evidence": evidence_obj(no, line, conf)})
+        for block in blocks:
+            header = block["header"].strip()
+            text = "\n".join(line for _, line in block["body"]).lower()
+            if "transport input telnet" in text or re.search(r"transport\s+input\s+all", text):
+                features.append({"name": "vty_telnet_allowed", "posture": "weak", "value": header, "evidence": evidence_obj(block["header_line"], block["header"], 0.88)})
+            if "transport input ssh" in text and "telnet" not in text:
+                features.append({"name": "vty_ssh_only", "posture": "positive", "value": header, "evidence": evidence_obj(block["header_line"], block["header"], 0.84)})
+            if "login local" in text:
+                features.append({"name": "vty_login_local", "posture": "positive", "value": header, "evidence": evidence_obj(block["header_line"], block["header"], 0.78)})
+        return features
+
+    def parse_wireless_hints(self):
+        hints = []
+        patterns = [
+            ("ssid", r"\bssid\s+([A-Za-z0-9_.:-]+)"),
+            ("wlan", r"\bwlan\s+([A-Za-z0-9_.:-]+)"),
+            ("ap", r"\b(AP[-_ ]?\d+|Access Point|AIR-[A-Za-z0-9-]+)\b"),
+            ("radius", r"\bradius-server\s+host\s+(\S+)"),
+            ("wpa", r"\bwpa\b|\bwpa2\b|\bwpa3\b"),
+        ]
+        for no, line in self.lines:
+            for typ, pattern in patterns:
+                m = re.search(pattern, line, flags=re.I)
+                if m:
+                    hints.append({"type": typ, "value": (m.group(1) if m.groups() else line.strip()), "evidence": evidence_obj(no, line, 0.64)})
+        return hints[:500]
+
+    def parse_command_blocks(self):
+        blocks = []
+        active = None
+        for no, line in self.lines:
+            zipm = re.match(r"^---\s+ZIP MEMBER:\s+(.+?)\s+---$", line.strip(), flags=re.I)
+            promptm = re.match(r"^\s*([A-Za-z0-9_.-]+)[>#]\s*(show\s+.+|write\s+term|terminal\s+length\s+\d+)", line, flags=re.I)
+            if zipm or promptm:
+                if active:
+                    active["end_line"] = no - 1
+                    active["line_count"] = max(0, active["end_line"] - active["start_line"])
+                    blocks.append(active)
+                active = {
+                    "name": zipm.group(1).strip() if zipm else promptm.group(2).strip(),
+                    "device": None if zipm else promptm.group(1),
+                    "start_line": no,
+                    "evidence": evidence_obj(no, line, 0.70),
+                }
+        if active:
+            active["end_line"] = self.lines[-1][0] if self.lines else active["start_line"]
+            active["line_count"] = max(0, active["end_line"] - active["start_line"])
+            blocks.append(active)
+        if not blocks and self.lines:
+            blocks.append({"name": "single evidence stream", "device": None, "start_line": 1, "end_line": self.lines[-1][0], "line_count": len(self.lines), "evidence": evidence_obj(1, self.lines[0][1], 0.50)})
+        return blocks[:250]
+
+    def deep_evidence_index(self):
+        index = []
+        taxonomy = [
+            ("identity", ["hostname", "uptime is", "cisco ios", "system image", "configuration register", "processor", "serial"]),
+            ("interface", ["interface ", "ip address", "switchport", "duplex", "speed", "line protocol", "input errors", "output errors", "crc"]),
+            ("vlan", ["vlan", "encapsulation dot1q", "trunk", "native vlan", "vlans allowed", "show vlan"]),
+            ("security", ["access-list", "ip access-list", "ip access-group", "enable secret", "enable password", "username", "aaa", "snmp-server", "transport input", "http server", "matches)"]),
+            ("routing", ["ip route", "router ospf", "router eigrp", "router rip", "router bgp", " ospf ", " via ", "gateway of last resort"]),
+            ("l2-health", ["spanning-tree", "root", "altn", "etherchannel", "port-channel", "port-security", "mac address-table", "err-disabled"]),
+            ("wireless", ["ssid", "wlan", "radius", "access point", "ap-", "wpa", "authentication"]),
+            ("operations", ["show interfaces status", "connected", "notconnect", "administratively down", "logging host", "ntp server"]),
+        ]
+        for no, line in self.lines:
+            low = line.lower()
+            tags = [name for name, words in taxonomy if any(w in low for w in words)]
+            if tags:
+                index.append({"line": no, "tags": tags, "text": line[:240], "weight": min(1.0, 0.35 + 0.12 * len(tags))})
+        return index[:2500]
+
+    def derive_subnet_inventory(self, objects):
+        subnets = {}
+        for iface in objects.get("interfaces", []):
+            if iface.get("cidr"):
+                subnets.setdefault(iface["cidr"], {"cidr": iface["cidr"], "interfaces": [], "dhcp_pools": [], "routes": [], "evidence": iface.get("evidence")})
+                subnets[iface["cidr"]]["interfaces"].append(iface.get("name"))
+        for pool in objects.get("dhcp_scopes", []):
+            if pool.get("cidr"):
+                subnets.setdefault(pool["cidr"], {"cidr": pool["cidr"], "interfaces": [], "dhcp_pools": [], "routes": [], "evidence": pool.get("evidence")})
+                subnets[pool["cidr"]]["dhcp_pools"].append(pool.get("name"))
+        for route in objects.get("routing", {}).get("static_routes", []):
+            if route.get("cidr"):
+                subnets.setdefault(route["cidr"], {"cidr": route["cidr"], "interfaces": [], "dhcp_pools": [], "routes": [], "evidence": route.get("evidence")})
+                subnets[route["cidr"]]["routes"].append(route.get("next_hop"))
+        return list(subnets.values())
+
+    def derive_policy_controls(self, objects):
+        controls = []
+        def add(control, status, severity, evidence, detail, confidence=0.75):
+            controls.append({"control": control, "status": status, "severity": severity, "detail": detail, "evidence": evidence, "confidence": confidence})
+        applied_acl_count = sum(1 for r in objects.get("acl_rules", []) if r.get("is_applied"))
+        add("SEG-ACL-APPLIED", "pass" if applied_acl_count else "review", "High" if not applied_acl_count else "Info", (objects.get("acl_rules") or [{}])[0].get("evidence") if objects.get("acl_rules") else None, f"{applied_acl_count} ACL rule(s) have confirmed interface bindings.", 0.90 if applied_acl_count else 0.45)
+        trunks = objects.get("trunk_operational") or [i for i in objects.get("interfaces", []) if i.get("mode") == "trunk" or i.get("trunk_allowed_vlans")]
+        add("L2-TRUNK-COVERAGE", "pass" if trunks else "review", "Medium", (trunks[0].get("evidence") if trunks else None), f"{len(trunks)} trunk evidence row(s) extracted.", 0.86 if trunks else 0.40)
+        weak = [x for x in objects.get("security_hardening", []) if x.get("posture") == "weak"]
+        add("DEVICE-HARDENING", "fail" if weak else "pass", "High" if weak else "Info", (weak[0].get("evidence") if weak else None), f"{len(weak)} weak hardening indicator(s) detected.", 0.88 if weak else 0.70)
+        ps = objects.get("port_security")
+        add("ACCESS-PORT-SECURITY", "pass" if ps else "review", "Medium", (ps[0].get("evidence") if ps else None), f"{len(ps)} port-security evidence row(s) extracted.", 0.82 if ps else 0.44)
+        cdp_lldp = len(objects.get("cdp_links", [])) + len(objects.get("lldp_links", []))
+        add("TOPOLOGY-ADJACENCY", "pass" if cdp_lldp else "review", "Medium", None, f"{cdp_lldp} CDP/LLDP adjacency edge(s) extracted.", 0.84 if cdp_lldp else 0.42)
+        counters = [c for c in objects.get("interface_counters", []) if int(c.get("input_errors") or 0) or int(c.get("output_errors") or 0) or int(c.get("crc") or 0)]
+        add("INTERFACE-ERROR-HEALTH", "fail" if counters else "pass", "Medium" if counters else "Info", (counters[0].get("error_evidence") or counters[0].get("evidence") if counters else None), f"{len(counters)} interface(s) have error/counter evidence.", 0.82 if counters else 0.68)
+        acl_hits = [h for h in objects.get("acl_hit_counts", []) if int(h.get("matches") or 0) > 0]
+        add("ACL-RUNTIME-HITS", "pass" if acl_hits else "review", "Medium", (acl_hits[0].get("evidence") if acl_hits else None), f"{len(acl_hits)} ACL line(s) include runtime match counters.", 0.83 if acl_hits else 0.42)
+        vlan_cross = objects.get("vlan_crosscheck", {}) or {}
+        missing = vlan_cross.get("missing_from_trunks") or []
+        add("VLAN-TRUNK-CROSSCHECK", "fail" if missing else "pass" if vlan_cross else "review", "High" if missing else "Info", None, f"{len(missing)} VLAN(s) appear configured but not present in trunk forwarding evidence.", 0.84 if vlan_cross else 0.40)
+        return controls
+
+    def derive_vlan_crosscheck(self, objects):
+        configured = {str(v.get("id") or v.get("vlan")) for v in objects.get("vlans", []) if isinstance(v, dict) and (v.get("id") or v.get("vlan"))}
+        brief = {str(v.get("vlan")) for v in objects.get("vlan_brief", []) if isinstance(v, dict) and v.get("vlan")}
+        dhcp = set()
+        for pool in objects.get("dhcp_gateway_matches", []) or []:
+            if isinstance(pool, dict) and pool.get("matched_vlan"):
+                dhcp.add(str(pool.get("matched_vlan")))
+        trunks = set()
+        forwarding = set()
+        for t in objects.get("trunk_operational", []) or []:
+            for v in t.get("allowed_vlans") or []:
+                trunks.add(str(v))
+            for v in t.get("forwarding_vlans") or []:
+                forwarding.add(str(v))
+        access = set()
+        for i in objects.get("interfaces", []) or []:
+            if isinstance(i, dict):
+                for key in ("access_vlan", "dot1q_vlan", "native_vlan"):
+                    if i.get(key):
+                        access.add(str(i.get(key)))
+        observed = configured | brief | dhcp | access
+        return {
+            "configured_vlans": sorted(configured),
+            "show_vlan_vlans": sorted(brief),
+            "dhcp_gateway_vlans": sorted(dhcp),
+            "access_or_svi_vlans": sorted(access),
+            "trunk_allowed_vlans": sorted(trunks),
+            "trunk_forwarding_vlans": sorted(forwarding),
+            "missing_from_trunks": sorted(v for v in observed if trunks and v not in trunks and v not in {"1", "1002", "1003", "1004", "1005"}),
+            "observed_total": len(observed),
+        }
+
+    def derive_risk_atoms(self, objects):
+        atoms = []
+        def atom(key, title, severity, evidence, why, confidence=0.72):
+            atoms.append({"key": key, "title": title, "severity": severity, "why": why, "evidence": evidence, "confidence": confidence})
+        for item in objects.get("security_hardening", []) or []:
+            if item.get("posture") == "weak":
+                atom("weak-management-plane", f"Weak management-plane signal: {item.get('name')}", "High", item.get("evidence"), "Weak services or password constructs increase administrative attack surface.", 0.86)
+        for row in objects.get("interface_counters", []) or []:
+            errors = int(row.get("input_errors") or 0) + int(row.get("output_errors") or 0) + int(row.get("crc") or 0)
+            if errors:
+                atom("interface-errors", f"Interface errors on {row.get('interface')}", "Medium", row.get("error_evidence") or row.get("evidence"), f"{errors} combined error/CRC counters detected.", 0.78)
+        for vlan in (objects.get("vlan_crosscheck", {}) or {}).get("missing_from_trunks", []) or []:
+            atom("vlan-not-on-trunk", f"VLAN {vlan} missing from trunk evidence", "High", None, "Policy VLAN is present in configuration/evidence but not confirmed on operational trunks.", 0.76)
+        for hit in objects.get("acl_hit_counts", []) or []:
+            if int(hit.get("matches") or 0) == 0 and hit.get("acl_name"):
+                atom("acl-zero-hit", f"ACL line has zero runtime hits in {hit.get('acl_name')}", "Low", hit.get("evidence"), "Zero-hit rules may be dead policy or need traffic validation.", 0.60)
+        return atoms[:1000]
+
+    def coverage_domains(self, objects):
+        domains = [
+            ("Identity", ["devices", "device_facts", "device_inventory"]),
+            ("L2/VLAN", ["vlans", "vlan_brief", "interfaces", "trunk_operational", "spanning_tree", "etherchannels"]),
+            ("L3/Routing", ["ip_inventory", "dhcp_scopes", "route_table", "routing", "protocol_summary"]),
+            ("Security", ["acl_rules", "acl_hit_counts", "security_hardening", "port_security"]),
+            ("Topology", ["cdp_links", "lldp_links", "mac_table", "arp_table"]),
+            ("Wireless", ["wireless_hints"]),
+            ("Operations", ["interface_status", "interface_counters", "command_blocks"]),
+        ]
+        result = []
+        for name, keys in domains:
+            count = sum(len(objects.get(k) or []) for k in keys)
+            result.append({
+                "domain": name,
+                "count": count,
+                "status": "excellent" if count >= 8 else "good" if count >= 3 else "needs_more_evidence" if count else "missing",
+                "keys": keys,
+            })
+        return result
+
+
+    def parse_ip_inventory(self):
+        entries = []
+        for no, line in self.lines:
+            if re.search(r"Interface\s+IP-Address\s+OK\?\s+Method\s+Status\s+Protocol", line, flags=re.I):
+                continue
+            m = re.match(r"^\s*(\S+)\s+(unassigned|\d+\.\d+\.\d+\.\d+)\s+\S+\s+\S+\s+(.+?)\s+(up|down|administratively down)\s*$", line, flags=re.I)
+            if m and re.match(r"^(Fa|FastEthernet|Gi|GigabitEthernet|Te|TenGigabitEthernet|Eth|Ethernet|Se|Serial|Lo|Loopback|Vl|Vlan)", m.group(1), flags=re.I):
+                iface, ip, status, protocol = m.groups()
+                entries.append({
+                    "interface": iface,
+                    "normalized_interface": normalize_interface_name(iface),
+                    "ip_address": None if ip.lower() == "unassigned" else ip,
+                    "status": status.strip().lower(),
+                    "protocol": protocol.lower(),
+                    "evidence": evidence_obj(no, line, 0.86),
+                })
+        return entries
+
+    def parse_port_security(self):
+        entries = []
+        # Running-config interface hints are taken from the already parsed interface model.
+        for iface in self.parse_interfaces():
+            if iface.get("port_security_enabled") or iface.get("port_security_max") or iface.get("port_security_violation"):
+                entries.append({
+                    "interface": iface.get("name"),
+                    "normalized_interface": iface.get("normalized_name"),
+                    "enabled": bool(iface.get("port_security_enabled")),
+                    "maximum": iface.get("port_security_max"),
+                    "violation_mode": iface.get("port_security_violation"),
+                    "sticky": bool(iface.get("port_security_sticky")),
+                    "source": "running-config interface",
+                    "evidence": iface.get("evidence", evidence_obj(None, "derived", 0.70)),
+                })
+        current = None
+        item = None
+        for no, line in self.lines:
+            im = re.match(r"^\s*(?:Secure)?Port\s*:\s*(\S+)", line, flags=re.I)
+            if im:
+                current = im.group(1)
+                item = {"interface": current, "normalized_interface": normalize_interface_name(current), "source": "show port-security", "evidence": evidence_obj(no, line, 0.82)}
+                entries.append(item)
+                continue
+            m = re.match(r"^\s*Port Security\s*:\s*(Enabled|Disabled)", line, flags=re.I)
+            if m:
+                if not item:
+                    item = {"interface": current or "unknown", "normalized_interface": normalize_interface_name(current), "source": "show port-security", "evidence": evidence_obj(no, line, 0.78)}
+                    entries.append(item)
+                item["enabled"] = m.group(1).lower() == "enabled"
+            if item:
+                mm = re.match(r"^\s*Maximum MAC Addresses\s*:\s*(\d+)", line, flags=re.I)
+                vm = re.match(r"^\s*Violation Mode\s*:\s*(\S+)", line, flags=re.I)
+                vc = re.match(r"^\s*Security Violation Count\s*:\s*(\d+)", line, flags=re.I)
+                la = re.match(r"^\s*Last Source Address\S*\s*:\s*(\S+)", line, flags=re.I)
+                if mm:
+                    item["maximum"] = mm.group(1)
+                if vm:
+                    item["violation_mode"] = vm.group(1).lower()
+                if vc:
+                    item["violation_count"] = safe_int(vc.group(1))
+                if la:
+                    item["last_source"] = la.group(1)
+        dedup = {}
+        for e in entries:
+            key = (e.get("normalized_interface"), e.get("source"))
+            dedup[key] = {**dedup.get(key, {}), **e}
+        return list(dedup.values())
+
+    def parse_spanning_tree(self):
+        rows = []
+        current_vlan = None
+        for no, line in self.lines:
+            vm = re.match(r"^\s*(VLAN\d+|vlan\s+\d+)\b", line, flags=re.I)
+            if vm:
+                digits = re.findall(r"\d+", vm.group(1))
+                current_vlan = digits[0] if digits else vm.group(1)
+            rm = re.match(r"^\s*(\S+)\s+(Root|Altn|Desg|Back|Mstr|Disabled)\s+(FWD|BLK|LRN|LIS|DIS)\s+\d+\s+\S+\s+(.+)$", line, flags=re.I)
+            if rm and re.match(r"^(Fa|Gi|Te|Eth|Po)", rm.group(1), flags=re.I):
+                iface, role, state, link_type = rm.groups()
+                rows.append({
+                    "vlan": current_vlan,
+                    "interface": iface,
+                    "normalized_interface": normalize_interface_name(iface),
+                    "role": role,
+                    "state": state,
+                    "type": link_type.strip(),
+                    "evidence": evidence_obj(no, line, 0.80),
+                })
+        return rows
+
+    def parse_etherchannels(self):
+        rows = []
+        for no, line in self.lines:
+            m = re.match(r"^\s*(\d+)\s+(Po\d+)\(([^)]+)\)\s+(\S+)\s+(.+)$", line, flags=re.I)
+            if m:
+                group, port_channel, flags, protocol, ports = m.groups()
+                rows.append({
+                    "group": group,
+                    "port_channel": port_channel,
+                    "normalized_port_channel": normalize_interface_name(port_channel),
+                    "flags": flags,
+                    "protocol": protocol,
+                    "member_ports": re.findall(r"(?:Fa|Gi|Te|Eth)\S+\([A-Za-z]+\)", ports),
+                    "raw_members": ports.strip(),
+                    "evidence": evidence_obj(no, line, 0.80),
+                })
+        return rows
+
+    def parse_mac_table(self):
+        rows = []
+        for no, line in self.lines:
+            m = re.match(r"^\s*(\d{1,4})\s+([0-9a-f.:-]{8,})\s+(DYNAMIC|STATIC|dynamic|static)\s+(\S+)", line, flags=re.I)
+            if m:
+                vlan, mac, typ, port = m.groups()
+                rows.append({
+                    "vlan": vlan,
+                    "mac": mac.lower(),
+                    "type": typ.lower(),
+                    "interface": port,
+                    "normalized_interface": normalize_interface_name(port),
+                    "evidence": evidence_obj(no, line, 0.75),
+                })
+        return rows[:1000]
+
+    def parse_arp_table(self):
+        rows = []
+        for no, line in self.lines:
+            m = re.match(r"^\s*Internet\s+(\d+\.\d+\.\d+\.\d+)\s+\S+\s+([0-9a-f.:-]+)\s+\S+\s+(\S+)", line, flags=re.I)
+            if m:
+                ip, mac, iface = m.groups()
+                rows.append({
+                    "ip_address": ip,
+                    "mac": mac.lower(),
+                    "interface": iface,
+                    "normalized_interface": normalize_interface_name(iface),
+                    "evidence": evidence_obj(no, line, 0.74),
+                })
+        return rows[:1000]
+
+    def parse_device_facts(self):
+        facts = []
+        patterns = [
+            ("ios_version", r"Cisco IOS Software,\s*(.+)"),
+            ("uptime", r"^\s*(\S+)\s+uptime is\s+(.+)"),
+            ("image", r"System image file is\s+\"?([^\"]+)\"?"),
+            ("config_register", r"Configuration register is\s+(\S+)"),
+            ("model", r"^\s*cisco\s+(\S+)\s+\(.+\)\s+processor"),
+        ]
+        for no, line in self.lines:
+            for name, pattern in patterns:
+                m = re.search(pattern, line, flags=re.I)
+                if m:
+                    facts.append({"name": name, "value": " | ".join(g for g in m.groups() if g), "evidence": evidence_obj(no, line, 0.70)})
+        return facts
 
     def parse_service_hints(self):
         services = []
@@ -613,6 +1350,10 @@ class PacketTracerImportService:
             missing.append({"source": "show running-config | section ip dhcp", "why": "DHCP/subnet matching will remain review-only without DHCP pool evidence.", "severity": "Medium"})
         if not objects.get("cdp_links"):
             missing.append({"source": "show cdp neighbors detail", "why": "Physical adjacency/topology edges are inferred rather than confirmed.", "severity": "Low"})
+        if not objects.get("ip_inventory"):
+            missing.append({"source": "show ip interface brief", "why": "Interface operational status and L3 reachability cannot be fully verified.", "severity": "Medium"})
+        if not objects.get("spanning_tree"):
+            missing.append({"source": "show spanning-tree", "why": "Layer-2 loop/blocked-port behavior cannot be validated.", "severity": "Low"})
         return missing
 
     def _confidence_summary(self, objects, source_mode):
@@ -661,11 +1402,18 @@ class PacketTracerImportService:
         if not parsed.get("devices"):
             parsed["devices"] = [{"id": "Extracted-Reality", "hostname": "Extracted Wired Reality", "type": "network", "role": "synthetic_context", "evidence": {"source_line": None, "source_text": "Synthetic context because no hostname was found.", "confidence": 0.35}}]
 
+        conversion_profile = build_conversion_profile(filename, raw, text, source_mode, parsed)
+        parsed["packet_tracer_profile"] = conversion_profile
+
         pipeline = [
-            {"stage": "File Intake", "status": "success", "confidence": 1.0, "items": 1, "detail": f"Accepted {filename}."},
+            {"stage": "File Intake", "status": "success", "confidence": 1.0, "items": 1, "detail": f"Accepted {filename} and stored immutable source hash."},
             {"stage": "Source Decoding", "status": "success" if source_mode != "pkt_binary_recovery" else "partial", "confidence": 0.95 if source_mode not in {"pkt_binary_recovery"} else 0.62, "items": len(text.splitlines()), "detail": f"Source mode: {source_mode}."},
-            {"stage": "Object Extraction", "status": "success", "confidence": 0.90, "items": sum(len(v) for k, v in parsed.items() if isinstance(v, list)), "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, and link hints."},
+            {"stage": "Packet Tracer Intelligence", "status": conversion_profile.get("readiness", "review"), "confidence": conversion_profile.get("readiness_score", 0.5), "items": conversion_profile.get("objects_total", 0), "detail": conversion_profile.get("analyst_next_step", "Conversion profile built.")},
+            {"stage": "Object Extraction", "status": "success", "confidence": 0.90, "items": sum(len(v) for k, v in parsed.items() if isinstance(v, list)), "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, L2 health, and link hints."},
             {"stage": "Evidence Mapping", "status": "success", "confidence": 0.88, "items": len(parsed.get("raw_evidence", [])), "detail": "Mapped extracted objects to line-level evidence where possible."}
         ]
 
-        return {"filename": filename, "stored_filename": stored_filename, "source_hash": source_hash, "source_mode": source_mode, "text": text, "objects": parsed, "pipeline": pipeline, "imported_at": now_iso(), "missing_evidence": self._missing_evidence(parsed), "confidence_summary": self._confidence_summary(parsed, source_mode)}
+        confidence = self._confidence_summary(parsed, source_mode)
+        confidence["readiness"] = conversion_profile.get("readiness")
+        confidence["readiness_score"] = conversion_profile.get("readiness_score")
+        return {"filename": filename, "stored_filename": stored_filename, "source_hash": source_hash, "source_mode": source_mode, "text": text, "objects": parsed, "pipeline": pipeline, "imported_at": now_iso(), "missing_evidence": self._missing_evidence(parsed), "confidence_summary": confidence, "conversion_profile": conversion_profile}

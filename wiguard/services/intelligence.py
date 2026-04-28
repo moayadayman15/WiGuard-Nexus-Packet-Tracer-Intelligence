@@ -3,34 +3,123 @@ from .wireless import wireless_dashboard, wireless_risk_score
 from .compliance import build_compliance_matrix
 
 
+
+
+EXTRACTED_LIST_KEYS = {
+    "devices", "vlans", "interfaces", "dhcp_scopes", "dhcp_excluded",
+    "acl_rules", "nat_rules", "cdp_links", "lldp_links", "services",
+    "ip_inventory", "interface_status", "trunk_operational", "route_table",
+    "ospf_neighbors", "port_security", "spanning_tree", "etherchannels",
+    "mac_table", "arp_table", "device_facts", "device_inventory",
+    "security_hardening", "wireless_hints", "vlan_brief", "acl_hit_counts",
+    "interface_counters", "stp_root", "protocol_summary", "command_blocks",
+    "deep_evidence_index", "raw_evidence", "dhcp_gateway_matches",
+    "subnet_inventory", "policy_controls", "risk_atoms", "coverage_domains",
+}
+
+def _safe_list(value):
+    """Return a list only when the stored value is actually a list.
+
+    Imported workspaces can contain partial/corrupted parser output while a user is
+    iterating on Packet Tracer evidence. Intelligence builders should degrade
+    gracefully instead of taking the whole Flask page down.
+    """
+    return value if isinstance(value, list) else []
+
+
+def _safe_dict(value):
+    return value if isinstance(value, dict) else {}
+
+
+def _evidence(item):
+    if not isinstance(item, dict):
+        return {}
+    value = item.get("evidence")
+    return value if isinstance(value, dict) else {}
+
+
+def sanitize_objects(objects):
+    """Normalize extracted objects for UI/report builders.
+
+    This removes None rows produced by failed/partial imports and replaces
+    `evidence: null` with an empty evidence object. It intentionally preserves
+    non-list dictionaries like routing/vlan_crosscheck/evidence_profile.
+    """
+    objects = _safe_dict(objects)
+    clean = {}
+    for key, value in objects.items():
+        if key in EXTRACTED_LIST_KEYS and not isinstance(value, list):
+            clean[key] = []
+            continue
+        if isinstance(value, list):
+            rows = []
+            for item in value:
+                if isinstance(item, dict):
+                    item = dict(item)
+                    if not isinstance(item.get("evidence"), dict):
+                        item["evidence"] = {}
+                    rows.append(item)
+                elif item is not None and key not in EXTRACTED_LIST_KEYS:
+                    rows.append(item)
+            clean[key] = rows
+        elif value is None:
+            clean[key] = {}
+        else:
+            clean[key] = value
+    return clean
+
+
 def wireless_ssids(state):
-    return state.get("wireless_policy", {}).get("ssids", [])
+    wireless_policy = _safe_dict(state.get("wireless_policy"))
+    return [ssid for ssid in _safe_list(wireless_policy.get("ssids")) if isinstance(ssid, dict)]
 
 
 def get_objects(state):
-    return state.get("active_extraction", {}).get("objects", {}) or {}
+    active = _safe_dict(state.get("active_extraction"))
+    return sanitize_objects(active.get("objects"))
 
 
 def object_counts(objects):
+    objects = sanitize_objects(objects)
+    routing = _safe_dict(objects.get("routing"))
     return {
-        "devices": len(objects.get("devices", [])),
-        "interfaces": len(objects.get("interfaces", [])),
-        "vlans": len(objects.get("vlans", [])),
-        "dhcp_scopes": len(objects.get("dhcp_scopes", [])),
-        "acl_rules": len(objects.get("acl_rules", [])),
-        "routing": len(objects.get("routing", {}).get("static_routes", [])) + len(objects.get("routing", {}).get("protocols", [])),
-        "nat_rules": len(objects.get("nat_rules", [])),
-        "cdp_links": len(objects.get("cdp_links", [])),
-        "raw_evidence": len(objects.get("raw_evidence", [])),
+        "devices": len(_safe_list(objects.get("devices"))),
+        "interfaces": len(_safe_list(objects.get("interfaces"))),
+        "vlans": len(_safe_list(objects.get("vlans"))),
+        "dhcp_scopes": len(_safe_list(objects.get("dhcp_scopes"))),
+        "acl_rules": len(_safe_list(objects.get("acl_rules"))),
+        "routing": len(_safe_list(routing.get("static_routes"))) + len(_safe_list(routing.get("protocols"))),
+        "nat_rules": len(_safe_list(objects.get("nat_rules"))),
+        "cdp_links": len(_safe_list(objects.get("cdp_links"))),
+        "lldp_links": len(_safe_list(objects.get("lldp_links"))),
+        "ip_inventory": len(_safe_list(objects.get("ip_inventory"))),
+        "interface_status": len(_safe_list(objects.get("interface_status"))),
+        "trunk_operational": len(_safe_list(objects.get("trunk_operational"))),
+        "route_table": len(_safe_list(objects.get("route_table"))),
+        "ospf_neighbors": len(_safe_list(objects.get("ospf_neighbors"))),
+        "port_security": len(_safe_list(objects.get("port_security"))),
+        "spanning_tree": len(_safe_list(objects.get("spanning_tree"))),
+        "etherchannels": len(_safe_list(objects.get("etherchannels"))),
+        "mac_table": len(_safe_list(objects.get("mac_table"))),
+        "arp_table": len(_safe_list(objects.get("arp_table"))),
+        "device_facts": len(_safe_list(objects.get("device_facts"))),
+        "device_inventory": len(_safe_list(objects.get("device_inventory"))),
+        "security_hardening": len(_safe_list(objects.get("security_hardening"))),
+        "wireless_hints": len(_safe_list(objects.get("wireless_hints"))),
+        "command_blocks": len(_safe_list(objects.get("command_blocks"))),
+        "subnet_inventory": len(_safe_list(objects.get("subnet_inventory"))),
+        "policy_controls": len(_safe_list(objects.get("policy_controls"))),
+        "deep_evidence_index": len(_safe_list(objects.get("deep_evidence_index"))),
+        "raw_evidence": len(_safe_list(objects.get("raw_evidence"))),
     }
 
 
 def vlan_ids(objects):
     ids = set()
-    for v in objects.get("vlans", []):
+    for v in _safe_list(objects.get("vlans")):
         if v.get("id"):
             ids.add(str(v.get("id")))
-    for i in objects.get("interfaces", []):
+    for i in _safe_list(objects.get("interfaces")):
         for key in ["access_vlan", "dot1q_vlan", "native_vlan"]:
             if i.get(key):
                 ids.add(str(i[key]))
@@ -41,20 +130,20 @@ def vlan_ids(objects):
 
 
 def dhcp_cidrs(objects):
-    return {p["cidr"] for p in objects.get("dhcp_scopes", []) if p.get("cidr")}
+    return {p["cidr"] for p in _safe_list(objects.get("dhcp_scopes")) if isinstance(p, dict) and p.get("cidr")}
 
 
 def interfaces_for_vlan(objects, vlan_id):
     vlan_id = str(vlan_id)
     result = []
-    for i in objects.get("interfaces", []):
+    for i in _safe_list(objects.get("interfaces")):
         if str(i.get("access_vlan")) == vlan_id or str(i.get("dot1q_vlan")) == vlan_id or str(i.get("native_vlan")) == vlan_id:
             result.append(i)
     return result
 
 
 def trunk_interfaces(objects):
-    return [i for i in objects.get("interfaces", []) if i.get("mode") == "trunk" or i.get("trunk_allowed_vlans")]
+    return [i for i in _safe_list(objects.get("interfaces")) if isinstance(i, dict) and (i.get("mode") == "trunk" or i.get("trunk_allowed_vlans"))]
 
 
 def trunk_carries_vlan(interface, vlan_id):
@@ -63,26 +152,26 @@ def trunk_carries_vlan(interface, vlan_id):
 
 
 def find_vlan_line(objects, vlan_id):
-    for v in objects.get("vlans", []):
+    for v in _safe_list(objects.get("vlans")):
         if str(v.get("id")) == str(vlan_id):
-            return v.get("evidence", {}).get("source_line")
-    for i in objects.get("interfaces", []):
+            return _evidence(v).get("source_line")
+    for i in _safe_list(objects.get("interfaces")):
         if str(i.get("access_vlan")) == str(vlan_id) or str(i.get("dot1q_vlan")) == str(vlan_id) or str(i.get("native_vlan")) == str(vlan_id):
-            return i.get("evidence", {}).get("source_line")
+            return _evidence(i).get("source_line")
         if str(vlan_id) in [str(x) for x in i.get("trunk_allowed_vlans", [])]:
-            return i.get("evidence", {}).get("source_line")
+            return _evidence(i).get("source_line")
     return None
 
 
 def find_dhcp_line(objects, cidr):
-    for p in objects.get("dhcp_scopes", []):
+    for p in _safe_list(objects.get("dhcp_scopes")):
         if p.get("cidr") == cidr:
-            return p.get("evidence", {}).get("source_line")
+            return _evidence(p).get("source_line")
     return None
 
 
 def find_dhcp_pool(objects, cidr):
-    for p in objects.get("dhcp_scopes", []):
+    for p in _safe_list(objects.get("dhcp_scopes")):
         if p.get("cidr") == cidr:
             return p
     return None
@@ -99,7 +188,7 @@ def acl_names_applied_to_vlan(objects, vlan_id):
 
 
 def rules_by_acl(objects, acl_name):
-    return [r for r in objects.get("acl_rules", []) if str(r.get("acl_name")) == str(acl_name)]
+    return [r for r in _safe_list(objects.get("acl_rules")) if isinstance(r, dict) and str(r.get("acl_name")) == str(acl_name)]
 
 
 def _guest_internal_deny_candidate(rule, guest_subnet):
@@ -137,7 +226,7 @@ def guest_isolation_status(objects, guest):
             "confidence": 0.94,
         }
     # Detections without application are not enough.
-    for rule in objects.get("acl_rules", []):
+    for rule in _safe_list(objects.get("acl_rules")):
         if _guest_internal_deny_candidate(rule, subnet):
             return {
                 "status": "Review",
@@ -210,7 +299,7 @@ def build_policy_diff(state):
 
         if pool:
             matched_gateway = None
-            for m in objects.get("dhcp_gateway_matches", []):
+            for m in _safe_list(objects.get("dhcp_gateway_matches")):
                 if m.get("pool") == pool.get("name"):
                     matched_gateway = m
                     break
@@ -218,7 +307,7 @@ def build_policy_diff(state):
             diffs.append(_diff_item(
                 f"DHCP-GW-{asset}", asset, "Gateway/DHCP Matching", f"DHCP gateway on VLAN {expected_vlan}",
                 f"Gateway {pool.get('default_gateway')} matched {matched_gateway.get('matched_interface') if matched_gateway else 'no interface'}",
-                gw_status, "Medium" if gw_status != "Pass" else "Info", pool.get("evidence", {}).get("source_line"),
+                gw_status, "Medium" if gw_status != "Pass" else "Info", _evidence(pool).get("source_line"),
                 0.90 if gw_status == "Pass" else 0.55,
                 "Check default-router vs routed subinterface/SVI IP." if gw_status != "Pass" else "No action required.",
                 "DHCP default-router compared with extracted interface IP/VLAN."
@@ -227,7 +316,7 @@ def build_policy_diff(state):
         if trunks:
             carrying = [t for t in trunks if trunk_carries_vlan(t, expected_vlan)]
             trunk_status = "Pass" if carrying else "Fail"
-            evidence = carrying[0].get("evidence", {}).get("source_line") if carrying else trunks[0].get("evidence", {}).get("source_line")
+            evidence = _evidence(carrying[0]).get("source_line") if carrying else _evidence(trunks[0]).get("source_line")
             diffs.append(_diff_item(
                 f"TRUNK-{asset}", asset, "Trunk Coverage", f"A trunk carries VLAN {expected_vlan}",
                 f"{len(carrying)} trunk interface(s) carry VLAN {expected_vlan}" if carrying else f"No trunk evidence carries VLAN {expected_vlan}",
@@ -250,7 +339,7 @@ def build_policy_diff(state):
             diffs.append(_diff_item(
                 f"GUEST-ISOLATION-{asset}", asset, "Guest Isolation", "Guest denied from internal networks",
                 isolation["reason"], isolation["status"], "Critical" if isolation["status"] != "Pass" else "Info",
-                isolation.get("rule", {}).get("evidence", {}).get("source_line") if isolation.get("rule") else None,
+                _evidence(isolation.get("rule")).get("source_line") if isolation.get("rule") else None,
                 isolation["confidence"],
                 "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule." if isolation["status"] != "Pass" else "No action required.",
                 "ACL deny must be both present and applied on the guest VLAN path."
@@ -261,7 +350,7 @@ def build_policy_diff(state):
                 f"ACL-DIRECTION-{asset}", asset, "ACL Direction", f"Limited role has an applied ACL on VLAN {expected_vlan}",
                 f"Applied ACL(s): {', '.join(x[0] for x in applied)}" if applied else "No applied ACL was confirmed",
                 status, "High" if status != "Pass" else "Info",
-                applied[0][2].get("evidence", {}).get("source_line") if applied else None,
+                _evidence(applied[0][2]).get("source_line") if applied else None,
                 0.86 if applied else 0.50,
                 "Apply the student policy ACL to the VLAN gateway in the correct direction." if not applied else "No action required.",
                 "Limited access roles need interface-bound ACL evidence."
@@ -356,8 +445,8 @@ def build_topology(state):
     def add_edge(src, dst, type_, status="review", confidence=0.7, label=""):
         edges.append({"from": src, "to": dst, "type": type_, "status": status, "confidence": confidence, "label": label})
 
-    for d in objects.get("devices", []):
-        add_node(d.get("id") or d.get("hostname"), d.get("hostname"), d.get("type"), d.get("evidence", {}).get("confidence", 0.5))
+    for d in _safe_list(objects.get("devices")):
+        add_node(d.get("id") or d.get("hostname"), d.get("hostname"), d.get("type"), _evidence(d).get("confidence", 0.5))
 
     for ssid in wireless_ssids(state):
         ssid_id = f"SSID:{ssid['ssid']}"
@@ -366,9 +455,9 @@ def build_topology(state):
         add_node(vlan_id, f"VLAN {ssid.get('expected_vlan')}", "vlan", 0.9)
         add_edge(ssid_id, vlan_id, "policy-map", "expected", 1.0, ssid.get("role", ""))
 
-    for i in objects.get("interfaces", []):
+    for i in _safe_list(objects.get("interfaces")):
         iface_id = f"IF:{i.get('name')}"
-        add_node(iface_id, i.get("name"), "interface", i.get("evidence", {}).get("confidence", 0.75), {"mode": i.get("mode")})
+        add_node(iface_id, i.get("name"), "interface", _evidence(i).get("confidence", 0.75), {"mode": i.get("mode")})
         for key in ["access_vlan", "dot1q_vlan", "native_vlan"]:
             if i.get(key):
                 vlan_id = f"VLAN:{i.get(key)}"
@@ -385,18 +474,35 @@ def build_topology(state):
                 add_node(acl_id, i.get(acl_key), "acl", 0.88)
                 add_edge(iface_id, acl_id, f"access-group-{direction}", "enforced", 0.88)
 
-    for p in objects.get("dhcp_scopes", []):
+    for p in _safe_list(objects.get("dhcp_scopes")):
         pool_id = f"DHCP:{p.get('name')}"
-        add_node(pool_id, p.get("name"), "dhcp", p.get("evidence", {}).get("confidence", 0.8), {"cidr": p.get("cidr")})
-        for m in objects.get("dhcp_gateway_matches", []):
+        add_node(pool_id, p.get("name"), "dhcp", _evidence(p).get("confidence", 0.8), {"cidr": p.get("cidr")})
+        for m in _safe_list(objects.get("dhcp_gateway_matches")):
             if m.get("pool") == p.get("name") and m.get("matched_vlan"):
                 add_edge(pool_id, f"VLAN:{m.get('matched_vlan')}", "serves", m.get("status", "review"), m.get("confidence", 0.6), p.get("cidr", ""))
 
-    for link in objects.get("cdp_links", []):
+    for link in _safe_list(objects.get("cdp_links")):
         if link.get("neighbor"):
-            add_node(link["neighbor"], link["neighbor"], "neighbor", link.get("evidence", {}).get("confidence", 0.7))
+            add_node(link["neighbor"], link["neighbor"], "neighbor", _evidence(link).get("confidence", 0.7), {"source": "cdp", "platform": link.get("platform")})
             if link.get("local_interface"):
-                add_edge(f"IF:{link.get('local_interface')}", link["neighbor"], "cdp", "confirmed", link.get("evidence", {}).get("confidence", 0.7), link.get("remote_interface", ""))
+                add_edge(f"IF:{link.get('local_interface')}", link["neighbor"], "cdp", "confirmed", _evidence(link).get("confidence", 0.7), link.get("remote_interface", ""))
+
+    for link in _safe_list(objects.get("lldp_links")):
+        if link.get("neighbor"):
+            add_node(link["neighbor"], link["neighbor"], "neighbor", _evidence(link).get("confidence", 0.68), {"source": "lldp", "platform": link.get("platform")})
+            if link.get("local_interface"):
+                add_edge(f"IF:{link.get('local_interface')}", link["neighbor"], "lldp", "confirmed", _evidence(link).get("confidence", 0.68), link.get("remote_interface", ""))
+
+    if objects.get("policy_controls"):
+        add_node("Extracted-Reality", "Extracted Wired Reality", "network", 0.72)
+    for control in _safe_list(objects.get("policy_controls"))[:16]:
+        if not isinstance(control, dict):
+            continue
+        evidence = _evidence(control)
+        cid = f"CTRL:{control.get('control') or 'unknown'}"
+        add_node(cid, control.get("control") or "Unknown control", "control", control.get("confidence", 0.65), {"status": control.get("status"), "severity": control.get("severity")})
+        if evidence.get("source_line"):
+            add_edge(cid, "Extracted-Reality", "evidence-control", control.get("status", "review"), control.get("confidence", 0.65), f"line {evidence.get('source_line')}")
 
     if not nodes:
         add_node("Expected-Wireless", "Expected Wireless Policy", "policy", 1.0)
@@ -494,11 +600,13 @@ def build_report(state, report_type="full"):
             "passed": sum(1 for d in diffs if d["status"] == "Pass"),
             "confidence": state.get("active_extraction", {}).get("confidence_summary", {}),
             "missing_evidence": state.get("active_extraction", {}).get("missing_evidence", []),
+            "conversion_profile": state.get("active_extraction", {}).get("conversion_profile", objects.get("packet_tracer_profile", {})),
         },
         "executive_summary": build_executive_summary(score, diffs),
         "policy_diff": diffs,
         "root_causes": causes,
         "wireless": wireless,
+        "packet_tracer_conversion": state.get("active_extraction", {}).get("conversion_profile", objects.get("packet_tracer_profile", {})),
         "compliance": build_compliance_matrix(state, wireless, diffs),
     }
     if report_type == "executive":
@@ -516,6 +624,18 @@ def build_report(state, report_type="full"):
         base["evidence_manifest"] = state.get("active_extraction", {}).get("manifest", {})
         base["line_level_evidence"] = objects.get("raw_evidence", [])
         base["source_hash"] = state.get("active_extraction", {}).get("source_hash")
+        return base
+    if report_type == "compliance":
+        return {k: base[k] for k in ["report_type", "generated_at", "project", "risk", "summary", "compliance", "policy_diff"]}
+    if report_type == "packet_tracer":
+        return {k: base[k] for k in ["report_type", "generated_at", "project", "summary", "packet_tracer_conversion"]}
+    if report_type == "wireless_risk":
+        return {k: base[k] for k in ["report_type", "generated_at", "project", "risk", "summary", "wireless", "root_causes"]}
+    if report_type == "evidence_appendix":
+        base["evidence_manifest"] = state.get("active_extraction", {}).get("manifest", {})
+        base["line_level_evidence"] = objects.get("raw_evidence", [])
+        base["source_hash"] = state.get("active_extraction", {}).get("source_hash")
+        base["artifacts"] = state.get("active_extraction", {}).get("artifacts", {})
         return base
     if report_type == "wireless":
         return {k: base[k] for k in ["report_type", "generated_at", "project", "risk", "summary", "wireless", "policy_diff", "root_causes"]}

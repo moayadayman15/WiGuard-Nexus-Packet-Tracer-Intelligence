@@ -1,0 +1,133 @@
+openapi: 3.0.3
+info:
+  title: WiGuard Nexus API
+  version: "5.8.3-packet-tracer-json-xml-intelligence"
+  description: Scope-aware WiGuard API for tenant-scoped state, live event ingestion, reports, jobs, and wireless evidence.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/state:
+    get:
+      summary: Return tenant-scoped WiGuard state
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Tenant-scoped state payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateResponse'
+  /api/v1/events:
+    post:
+      summary: Ingest normalized wireless events
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventIngestRequest'
+      responses:
+        '200':
+          description: Ingestion accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestResponse'
+        '400':
+          description: Invalid payload
+  /api/events:
+    get:
+      summary: Poll tenant-scoped UI events for live dashboard updates
+      parameters:
+        - name: since_id
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100, maximum: 500 }
+      responses:
+        '200':
+          description: Event batch
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  latest_id: { type: integer }
+                  events:
+                    type: array
+                    items: { $ref: '#/components/schemas/WirelessEvent' }
+  /api/jobs:
+    get:
+      summary: List background jobs and retry state
+      responses:
+        '200':
+          description: Job list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items: { $ref: '#/components/schemas/Job' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: WiGuard scoped token
+  schemas:
+    StateResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        tenant_id: { type: string }
+        state: { type: object }
+    EventIngestRequest:
+      type: object
+      properties:
+        connector_type:
+          type: string
+          example: syslog_events
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/WirelessEvent' }
+    IngestResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        job_id: { type: string }
+        count: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+    WirelessEvent:
+      type: object
+      properties:
+        timestamp: { type: string }
+        schema_version: { type: string, example: live-event-v2 }
+        event_type: { type: string, example: authentication_failure }
+        severity: { type: string, enum: [Info, Low, Medium, High, Critical] }
+        severity_score: { type: integer }
+        client: { type: string }
+        mac: { type: string }
+        ssid: { type: string }
+        ap: { type: string }
+        message: { type: string }
+        confidence: { type: number }
+    Job:
+      type: object
+      properties:
+        id: { type: string }
+        job_type: { type: string }
+        status: { type: string, enum: [queued, running, completed, partial, failed] }
+        progress: { type: integer }
+        attempts: { type: integer }
+        error: { type: string }

@@ -1,0 +1,147 @@
+{
+  "generated_at": "2026-04-27 15:49:30",
+  "tool": "WiGuard Nexus v5",
+  "source_file": "campus_production_sample.cfg",
+  "source_hash": "e25e07b4f30209a88f166b16b67b3422afcb5b3ec3bf41f506f0cb3404ae1754",
+  "artifact_count": 23,
+  "files": [
+    {
+      "name": "acl_rules.json",
+      "sha256": "a5b463d24a22e6d78e41458bad31adf607cd9472b7b19498c6f2c0760504c7b5",
+      "size_bytes": 4089,
+      "purpose": "Acl Rules"
+    },
+    {
+      "name": "cdp_links.json",
+      "sha256": "90195c7734733ac591af74dced75dcb93e32f59de74df407e7603de7eca8b1aa",
+      "size_bytes": 268,
+      "purpose": "Cdp Links"
+    },
+    {
+      "name": "devices.json",
+      "sha256": "fc49659ed8cca14abcbcef9a2ee68cfb0e1ecdaff6397b466db9f8f93da4fbcc",
+      "size_bytes": 678,
+      "purpose": "Devices"
+    },
+    {
+      "name": "dhcp_excluded.json",
+      "sha256": "16b8eca2e3a3e1342c946ed803148393cebca4f149960036b9d4e3a55dabc401",
+      "size_bytes": 617,
+      "purpose": "Dhcp Excluded"
+    },
+    {
+      "name": "dhcp_gateway_matches.json",
+      "sha256": "639bf55acc3d8dde6dae1d3ed6aa98a3122ff0fec226e6a6818c3e287b4e6b0e",
+      "size_bytes": 747,
+      "purpose": "Dhcp Gateway Matches"
+    },
+    {
+      "name": "dhcp_scopes.json",
+      "sha256": "f23ccbe5923dbe0d80451612dc16fe632c10ffeabfc30c844bed26f4eebee9c1",
+      "size_bytes": 2151,
+      "purpose": "Dhcp Scopes"
+    },
+    {
+      "name": "full_report.html",
+      "sha256": "76a76966967a3b8c287ea0284e5be7c7a219abcb7cff1994452dbad94b16e224",
+      "size_bytes": 218,
+      "purpose": "Full Report"
+    },
+    {
+      "name": "full_report.json",
+      "sha256": "ab62c6717ccc2465aac804fdbaf88fbbec526b216caf0340f010dc6c74dcb0b0",
+      "size_bytes": 44336,
+      "purpose": "Full Report"
+    },
+    {
+      "name": "interfaces.json",
+      "sha256": "4b9c04d2a5fe18db5e05dd8f9ee09ca5118ad047e0c680b397ad5dc7335a34c0",
+      "size_bytes": 7339,
+      "purpose": "Interfaces"
+    },
+    {
+      "name": "nat_rules.json",
+      "sha256": "a070b0fdbca072b4b0b187d764e977adecc593a23346f3b4906687068c570219",
+      "size_bytes": 914,
+      "purpose": "Nat Rules"
+    },
+    {
+      "name": "object_inventory.json",
+      "sha256": "73e0ee2893356dbd986fba2e310b3eb02f914eef561a2d31934ebca96ec274db",
+      "size_bytes": 26268,
+      "purpose": "Object Inventory"
+    },
+    {
+      "name": "playbooks.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Playbooks"
+    },
+    {
+      "name": "policy_diff.json",
+      "sha256": "181bc1d89916377f029e5fe8ffd7746fc3b68225149de9ee2ff9a6dd7aeb9383",
+      "size_bytes": 5888,
+      "purpose": "Policy Diff"
+    },
+    {
+      "name": "raw_evidence.json",
+      "sha256": "4bf28c462e292408792cb306f5fd6d18084cc9fd98bc67e83a449c3c92b8f3f6",
+      "size_bytes": 2753,
+      "purpose": "Raw Evidence"
+    },
+    {
+      "name": "risk_model.json",
+      "sha256": "59d8722544a7cdea85c586ce6be7060bae2a61c636a19edcb8953eebe2460ced",
+      "size_bytes": 65,
+      "purpose": "Risk Model"
+    },
+    {
+      "name": "risk_timeline.json",
+      "sha256": "281a46de5aa74cdaa42b52db654ebfb2e07f4a3fab383db1c1f8962f3209f65e",
+      "size_bytes": 784,
+      "purpose": "Risk Timeline"
+    },
+    {
+      "name": "root_causes.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Root Causes"
+    },
+    {
+      "name": "routing.json",
+      "sha256": "29bbe646f2f4ae1f069c0943ce9120b9e8c6554608c77046618dd7f026adc4f0",
+      "size_bytes": 364,
+      "purpose": "Routing"
+    },
+    {
+      "name": "snapshot_diff.json",
+      "sha256": "72f66a3edf122de9b734c39d5f4d4266c29e065d014517ddccf4fadb42c24c14",
+      "size_bytes": 995,
+      "purpose": "Snapshot Diff"
+    },
+    {
+      "name": "topology_map.json",
+      "sha256": "43a00572345b8d37d5e99b39493822a74aa389bdbc5735a52ef16e8ad6b0817d",
+      "size_bytes": 7244,
+      "purpose": "Topology Map"
+    },
+    {
+      "name": "validation_rules.json",
+      "sha256": "30c4e4f56d575d9de73ac644cea649ef51a85a4a47b46ba1888ced587a991efc",
+      "size_bytes": 892,
+      "purpose": "Validation Rules"
+    },
+    {
+      "name": "vlans.json",
+      "sha256": "0b1794371c7926962b8be8ff5794c51848e4247a5a5f78ac9262c07396a69966",
+      "size_bytes": 628,
+      "purpose": "Vlans"
+    },
+    {
+      "name": "wired_policy.json",
+      "sha256": "1af560c060d823d6628fd04888d137cd2271674b71cbd50a66334b8649b41dba",
+      "size_bytes": 20660,
+      "purpose": "Wired Policy"
+    }
+  ]
+}

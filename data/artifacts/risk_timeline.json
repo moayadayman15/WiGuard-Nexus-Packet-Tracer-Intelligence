@@ -1,0 +1,32 @@
+[
+  {
+    "time": "2026-04-27 15:49:30",
+    "type": "import",
+    "severity": "Info",
+    "detail": "Loaded production sample and extracted evidence with v5.1 parser."
+  },
+  {
+    "time": "2026-04-27 15:49:30",
+    "type": "association",
+    "severity": "Info",
+    "detail": "Staff client associated to StaffWiFi"
+  },
+  {
+    "time": "2026-04-27 15:49:30",
+    "type": "roaming",
+    "severity": "Info",
+    "detail": "Student roamed from AP-01 to AP-02"
+  },
+  {
+    "time": "2026-04-27 15:49:30",
+    "type": "acl_check",
+    "severity": "Info",
+    "detail": "Guest isolation expected: internal services denied"
+  },
+  {
+    "time": "2026-04-27 15:49:30",
+    "type": "import",
+    "severity": "Info",
+    "detail": "Imported campus_production_sample.cfg with 69 objects"
+  }
+]

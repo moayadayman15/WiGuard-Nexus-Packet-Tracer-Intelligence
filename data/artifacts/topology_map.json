@@ -1,0 +1,346 @@
+{
+  "nodes": [
+    {
+      "id": "R1-Core",
+      "label": "R1-Core",
+      "type": "router",
+      "confidence": 0.98,
+      "meta": {}
+    },
+    {
+      "id": "SW1-Access",
+      "label": "SW1-Access",
+      "type": "switch",
+      "confidence": 0.98,
+      "meta": {}
+    },
+    {
+      "id": "AP-01",
+      "label": "AP-01",
+      "type": "neighbor",
+      "confidence": 0.82,
+      "meta": {}
+    },
+    {
+      "id": "SSID:StaffWiFi",
+      "label": "StaffWiFi",
+      "type": "ssid",
+      "confidence": 1.0,
+      "meta": {
+        "role": "Staff"
+      }
+    },
+    {
+      "id": "VLAN:10",
+      "label": "VLAN 10",
+      "type": "vlan",
+      "confidence": 0.9,
+      "meta": {}
+    },
+    {
+      "id": "SSID:StudentsWiFi",
+      "label": "StudentsWiFi",
+      "type": "ssid",
+      "confidence": 1.0,
+      "meta": {
+        "role": "Student"
+      }
+    },
+    {
+      "id": "VLAN:20",
+      "label": "VLAN 20",
+      "type": "vlan",
+      "confidence": 0.9,
+      "meta": {}
+    },
+    {
+      "id": "SSID:GuestWiFi",
+      "label": "GuestWiFi",
+      "type": "ssid",
+      "confidence": 1.0,
+      "meta": {
+        "role": "Guest"
+      }
+    },
+    {
+      "id": "VLAN:30",
+      "label": "VLAN 30",
+      "type": "vlan",
+      "confidence": 0.9,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/0",
+      "label": "GigabitEthernet0/0",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "unknown"
+      }
+    },
+    {
+      "id": "IF:GigabitEthernet0/0.10",
+      "label": "GigabitEthernet0/0.10",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed-subinterface"
+      }
+    },
+    {
+      "id": "ACL:STAFF_POLICY",
+      "label": "STAFF_POLICY",
+      "type": "acl",
+      "confidence": 0.88,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/0.20",
+      "label": "GigabitEthernet0/0.20",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed-subinterface"
+      }
+    },
+    {
+      "id": "ACL:STUDENT_POLICY",
+      "label": "STUDENT_POLICY",
+      "type": "acl",
+      "confidence": 0.88,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/0.30",
+      "label": "GigabitEthernet0/0.30",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed-subinterface"
+      }
+    },
+    {
+      "id": "ACL:GUEST_ISOLATION",
+      "label": "GUEST_ISOLATION",
+      "type": "acl",
+      "confidence": 0.88,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/1",
+      "label": "GigabitEthernet0/1",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed"
+      }
+    },
+    {
+      "id": "IF:GigabitEthernet0/2",
+      "label": "GigabitEthernet0/2",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "trunk"
+      }
+    },
+    {
+      "id": "IF:FastEthernet0/10",
+      "label": "FastEthernet0/10",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "access"
+      }
+    },
+    {
+      "id": "DHCP:STAFF_POOL",
+      "label": "STAFF_POOL",
+      "type": "dhcp",
+      "confidence": 0.95,
+      "meta": {
+        "cidr": "10.10.10.0/24"
+      }
+    },
+    {
+      "id": "DHCP:STUDENT_POOL",
+      "label": "STUDENT_POOL",
+      "type": "dhcp",
+      "confidence": 0.95,
+      "meta": {
+        "cidr": "10.10.20.0/24"
+      }
+    },
+    {
+      "id": "DHCP:GUEST_POOL",
+      "label": "GUEST_POOL",
+      "type": "dhcp",
+      "confidence": 0.95,
+      "meta": {
+        "cidr": "10.10.30.0/24"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "SSID:StaffWiFi",
+      "to": "VLAN:10",
+      "type": "policy-map",
+      "status": "expected",
+      "confidence": 1.0,
+      "label": "Staff"
+    },
+    {
+      "from": "SSID:StudentsWiFi",
+      "to": "VLAN:20",
+      "type": "policy-map",
+      "status": "expected",
+      "confidence": 1.0,
+      "label": "Student"
+    },
+    {
+      "from": "SSID:GuestWiFi",
+      "to": "VLAN:30",
+      "type": "policy-map",
+      "status": "expected",
+      "confidence": 1.0,
+      "label": "Guest"
+    },
+    {
+      "from": "VLAN:10",
+      "to": "IF:GigabitEthernet0/0.10",
+      "type": "dot1q_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/0.10",
+      "to": "ACL:STAFF_POLICY",
+      "type": "access-group-in",
+      "status": "enforced",
+      "confidence": 0.88,
+      "label": ""
+    },
+    {
+      "from": "VLAN:20",
+      "to": "IF:GigabitEthernet0/0.20",
+      "type": "dot1q_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/0.20",
+      "to": "ACL:STUDENT_POLICY",
+      "type": "access-group-in",
+      "status": "enforced",
+      "confidence": 0.88,
+      "label": ""
+    },
+    {
+      "from": "VLAN:30",
+      "to": "IF:GigabitEthernet0/0.30",
+      "type": "dot1q_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/0.30",
+      "to": "ACL:GUEST_ISOLATION",
+      "type": "access-group-in",
+      "status": "enforced",
+      "confidence": 0.88,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/1",
+      "to": "VLAN:10",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/1",
+      "to": "VLAN:20",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/1",
+      "to": "VLAN:30",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "VLAN:10",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "VLAN:20",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "VLAN:30",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "VLAN:10",
+      "to": "IF:FastEthernet0/10",
+      "type": "access_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "DHCP:STAFF_POOL",
+      "to": "VLAN:10",
+      "type": "serves",
+      "status": "match",
+      "confidence": 0.93,
+      "label": "10.10.10.0/24"
+    },
+    {
+      "from": "DHCP:STUDENT_POOL",
+      "to": "VLAN:20",
+      "type": "serves",
+      "status": "match",
+      "confidence": 0.93,
+      "label": "10.10.20.0/24"
+    },
+    {
+      "from": "DHCP:GUEST_POOL",
+      "to": "VLAN:30",
+      "type": "serves",
+      "status": "match",
+      "confidence": 0.93,
+      "label": "10.10.30.0/24"
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "AP-01",
+      "type": "cdp",
+      "status": "confirmed",
+      "confidence": 0.82,
+      "label": "GigabitEthernet0"
+    }
+  ]
+}

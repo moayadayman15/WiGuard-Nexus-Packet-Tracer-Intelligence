@@ -1,0 +1,1752 @@
+{
+  "report_type": "full",
+  "generated_at": "2026-04-27 15:49:30",
+  "project": {
+    "id": "main-campus",
+    "name": "Main Campus Lab",
+    "environment": "Wireless Campus Policy Validation",
+    "owner": "Network Security Team",
+    "created_at": "2026-04-27 15:49:30",
+    "status": "active"
+  },
+  "risk": {
+    "score": 100,
+    "grade": "Excellent",
+    "risk_level": "Low"
+  },
+  "summary": {
+    "objects": {
+      "devices": 3,
+      "interfaces": 8,
+      "vlans": 3,
+      "dhcp_scopes": 3,
+      "acl_rules": 5,
+      "routing": 1,
+      "nat_rules": 5,
+      "cdp_links": 1,
+      "raw_evidence": 40
+    },
+    "total_diffs": 14,
+    "failed": 0,
+    "review": 0,
+    "passed": 14,
+    "confidence": {
+      "overall": 0.743,
+      "source_confidence": 0.92,
+      "line_mapping_ratio": 0.449,
+      "applied_acl_rules": 5,
+      "mode": "text_config"
+    },
+    "missing_evidence": []
+  },
+  "executive_summary": {
+    "headline": "Wireless policy health is 100/100 (Excellent).",
+    "primary_concern": "No critical policy drift confirmed.",
+    "business_impact": "Current evidence does not show critical segmentation failure.",
+    "recommended_priority": "Immediate remediation for Critical/High failed checks; review Medium items within SLA."
+  },
+  "policy_diff": [
+    {
+      "id": "SSID-VLAN-StaffWiFi",
+      "asset": "StaffWiFi",
+      "category": "SSID-to-VLAN",
+      "expected": "VLAN 10",
+      "actual": "VLAN 10 found in extracted evidence",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 71,
+      "confidence": 0.95,
+      "recommendation": "No action required.",
+      "evidence_reason": "Confirmed via VLAN/interface evidence."
+    },
+    {
+      "id": "DHCP-StaffWiFi",
+      "asset": "StaffWiFi",
+      "category": "DHCP Scope",
+      "expected": "10.10.10.0/24",
+      "actual": "Scope 10.10.10.0/24 found in pool STAFF_POOL",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 8,
+      "confidence": 0.93,
+      "recommendation": "No action required.",
+      "evidence_reason": "Matched expected CIDR to extracted DHCP pool."
+    },
+    {
+      "id": "DHCP-GW-StaffWiFi",
+      "asset": "StaffWiFi",
+      "category": "Gateway/DHCP Matching",
+      "expected": "DHCP gateway on VLAN 10",
+      "actual": "Gateway 10.10.10.1 matched GigabitEthernet0/0.10",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 8,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "DHCP default-router compared with extracted interface IP/VLAN."
+    },
+    {
+      "id": "TRUNK-StaffWiFi",
+      "asset": "StaffWiFi",
+      "category": "Trunk Coverage",
+      "expected": "A trunk carries VLAN 10",
+      "actual": "2 trunk interface(s) carry VLAN 10",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 77,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "Checked switchport trunk allowed VLAN evidence."
+    },
+    {
+      "id": "SSID-VLAN-StudentsWiFi",
+      "asset": "StudentsWiFi",
+      "category": "SSID-to-VLAN",
+      "expected": "VLAN 20",
+      "actual": "VLAN 20 found in extracted evidence",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 73,
+      "confidence": 0.95,
+      "recommendation": "No action required.",
+      "evidence_reason": "Confirmed via VLAN/interface evidence."
+    },
+    {
+      "id": "DHCP-StudentsWiFi",
+      "asset": "StudentsWiFi",
+      "category": "DHCP Scope",
+      "expected": "10.10.20.0/24",
+      "actual": "Scope 10.10.20.0/24 found in pool STUDENT_POOL",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 14,
+      "confidence": 0.93,
+      "recommendation": "No action required.",
+      "evidence_reason": "Matched expected CIDR to extracted DHCP pool."
+    },
+    {
+      "id": "DHCP-GW-StudentsWiFi",
+      "asset": "StudentsWiFi",
+      "category": "Gateway/DHCP Matching",
+      "expected": "DHCP gateway on VLAN 20",
+      "actual": "Gateway 10.10.20.1 matched GigabitEthernet0/0.20",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 14,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "DHCP default-router compared with extracted interface IP/VLAN."
+    },
+    {
+      "id": "TRUNK-StudentsWiFi",
+      "asset": "StudentsWiFi",
+      "category": "Trunk Coverage",
+      "expected": "A trunk carries VLAN 20",
+      "actual": "2 trunk interface(s) carry VLAN 20",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 77,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "Checked switchport trunk allowed VLAN evidence."
+    },
+    {
+      "id": "ACL-DIRECTION-StudentsWiFi",
+      "asset": "StudentsWiFi",
+      "category": "ACL Direction",
+      "expected": "Limited role has an applied ACL on VLAN 20",
+      "actual": "Applied ACL(s): STUDENT_POLICY",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 35,
+      "confidence": 0.86,
+      "recommendation": "No action required.",
+      "evidence_reason": "Limited access roles need interface-bound ACL evidence."
+    },
+    {
+      "id": "SSID-VLAN-GuestWiFi",
+      "asset": "GuestWiFi",
+      "category": "SSID-to-VLAN",
+      "expected": "VLAN 30",
+      "actual": "VLAN 30 found in extracted evidence",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 75,
+      "confidence": 0.95,
+      "recommendation": "No action required.",
+      "evidence_reason": "Confirmed via VLAN/interface evidence."
+    },
+    {
+      "id": "DHCP-GuestWiFi",
+      "asset": "GuestWiFi",
+      "category": "DHCP Scope",
+      "expected": "10.10.30.0/24",
+      "actual": "Scope 10.10.30.0/24 found in pool GUEST_POOL",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 19,
+      "confidence": 0.93,
+      "recommendation": "No action required.",
+      "evidence_reason": "Matched expected CIDR to extracted DHCP pool."
+    },
+    {
+      "id": "DHCP-GW-GuestWiFi",
+      "asset": "GuestWiFi",
+      "category": "Gateway/DHCP Matching",
+      "expected": "DHCP gateway on VLAN 30",
+      "actual": "Gateway 10.10.30.1 matched GigabitEthernet0/0.30",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 19,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "DHCP default-router compared with extracted interface IP/VLAN."
+    },
+    {
+      "id": "TRUNK-GuestWiFi",
+      "asset": "GuestWiFi",
+      "category": "Trunk Coverage",
+      "expected": "A trunk carries VLAN 30",
+      "actual": "2 trunk interface(s) carry VLAN 30",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 77,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "Checked switchport trunk allowed VLAN evidence."
+    },
+    {
+      "id": "GUEST-ISOLATION-GuestWiFi",
+      "asset": "GuestWiFi",
+      "category": "Guest Isolation",
+      "expected": "Guest denied from internal networks",
+      "actual": "ACL GUEST_ISOLATION is applied in on GigabitEthernet0/0.30 and contains a deny rule for guest-to-internal traffic.",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 55,
+      "confidence": 0.94,
+      "recommendation": "No action required.",
+      "evidence_reason": "ACL deny must be both present and applied on the guest VLAN path."
+    }
+  ],
+  "root_causes": [],
+  "objects": {
+    "devices": [
+      {
+        "id": "R1-Core",
+        "hostname": "R1-Core",
+        "type": "router",
+        "role": "network_device",
+        "evidence": {
+          "source_line": 2,
+          "source_text": "hostname R1-Core",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "SW1-Access",
+        "hostname": "SW1-Access",
+        "type": "switch",
+        "role": "network_device",
+        "evidence": {
+          "source_line": 68,
+          "source_text": "hostname SW1-Access",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "AP-01",
+        "hostname": "AP-01",
+        "type": "neighbor",
+        "role": "cdp_neighbor",
+        "evidence": {
+          "source_line": 92,
+          "source_text": "Device ID: AP-01",
+          "confidence": 0.82
+        }
+      }
+    ],
+    "vlans": [
+      {
+        "id": "10",
+        "name": "STAFF",
+        "source": "running-config vlan block",
+        "evidence": {
+          "source_line": 71,
+          "source_text": "vlan 10 name STAFF",
+          "confidence": 0.96
+        }
+      },
+      {
+        "id": "20",
+        "name": "STUDENTS",
+        "source": "running-config vlan block",
+        "evidence": {
+          "source_line": 73,
+          "source_text": "vlan 20 name STUDENTS",
+          "confidence": 0.96
+        }
+      },
+      {
+        "id": "30",
+        "name": "GUESTS",
+        "source": "running-config vlan block",
+        "evidence": {
+          "source_line": 75,
+          "source_text": "vlan 30 name GUESTS",
+          "confidence": 0.96
+        }
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "GigabitEthernet0/0",
+        "description": "Uplink to SW1",
+        "ip_address": null,
+        "subnet_mask": null,
+        "cidr": null,
+        "mode": "unknown",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [],
+        "native_vlan": null,
+        "dot1q_vlan": null,
+        "acl_in": null,
+        "acl_out": null,
+        "nat_role": null,
+        "shutdown": false,
+        "evidence": {
+          "source_line": 24,
+          "source_text": "interface GigabitEthernet0/0",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 25,
+            "text": " description Uplink to SW1"
+          },
+          {
+            "line": 26,
+            "text": " no shutdown"
+          },
+          {
+            "line": 27,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GigabitEthernet0/0.10",
+        "description": "Staff gateway",
+        "ip_address": "10.10.10.1",
+        "subnet_mask": "255.255.255.0",
+        "cidr": "10.10.10.0/24",
+        "mode": "routed-subinterface",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [],
+        "native_vlan": null,
+        "dot1q_vlan": "10",
+        "acl_in": "STAFF_POLICY",
+        "acl_out": null,
+        "nat_role": "inside",
+        "shutdown": false,
+        "evidence": {
+          "source_line": 28,
+          "source_text": "interface GigabitEthernet0/0.10",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 29,
+            "text": " description Staff gateway"
+          },
+          {
+            "line": 30,
+            "text": " encapsulation dot1Q 10"
+          },
+          {
+            "line": 31,
+            "text": " ip address 10.10.10.1 255.255.255.0"
+          },
+          {
+            "line": 32,
+            "text": " ip nat inside"
+          },
+          {
+            "line": 33,
+            "text": " ip access-group STAFF_POLICY in"
+          },
+          {
+            "line": 34,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GigabitEthernet0/0.20",
+        "description": "Student gateway",
+        "ip_address": "10.10.20.1",
+        "subnet_mask": "255.255.255.0",
+        "cidr": "10.10.20.0/24",
+        "mode": "routed-subinterface",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [],
+        "native_vlan": null,
+        "dot1q_vlan": "20",
+        "acl_in": "STUDENT_POLICY",
+        "acl_out": null,
+        "nat_role": "inside",
+        "shutdown": false,
+        "evidence": {
+          "source_line": 35,
+          "source_text": "interface GigabitEthernet0/0.20",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 36,
+            "text": " description Student gateway"
+          },
+          {
+            "line": 37,
+            "text": " encapsulation dot1Q 20"
+          },
+          {
+            "line": 38,
+            "text": " ip address 10.10.20.1 255.255.255.0"
+          },
+          {
+            "line": 39,
+            "text": " ip nat inside"
+          },
+          {
+            "line": 40,
+            "text": " ip access-group STUDENT_POLICY in"
+          },
+          {
+            "line": 41,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GigabitEthernet0/0.30",
+        "description": "Guest gateway",
+        "ip_address": "10.10.30.1",
+        "subnet_mask": "255.255.255.0",
+        "cidr": "10.10.30.0/24",
+        "mode": "routed-subinterface",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [],
+        "native_vlan": null,
+        "dot1q_vlan": "30",
+        "acl_in": "GUEST_ISOLATION",
+        "acl_out": null,
+        "nat_role": "inside",
+        "shutdown": false,
+        "evidence": {
+          "source_line": 42,
+          "source_text": "interface GigabitEthernet0/0.30",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 43,
+            "text": " description Guest gateway"
+          },
+          {
+            "line": 44,
+            "text": " encapsulation dot1Q 30"
+          },
+          {
+            "line": 45,
+            "text": " ip address 10.10.30.1 255.255.255.0"
+          },
+          {
+            "line": 46,
+            "text": " ip nat inside"
+          },
+          {
+            "line": 47,
+            "text": " ip access-group GUEST_ISOLATION in"
+          },
+          {
+            "line": 48,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GigabitEthernet0/1",
+        "description": "Internet uplink",
+        "ip_address": "203.0.113.2",
+        "subnet_mask": "255.255.255.252",
+        "cidr": "203.0.113.0/30",
+        "mode": "routed",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [],
+        "native_vlan": null,
+        "dot1q_vlan": null,
+        "acl_in": null,
+        "acl_out": null,
+        "nat_role": "outside",
+        "shutdown": false,
+        "evidence": {
+          "source_line": 49,
+          "source_text": "interface GigabitEthernet0/1",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 50,
+            "text": " description Internet uplink"
+          },
+          {
+            "line": 51,
+            "text": " ip address 203.0.113.2 255.255.255.252"
+          },
+          {
+            "line": 52,
+            "text": " ip nat outside"
+          },
+          {
+            "line": 53,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GigabitEthernet0/1",
+        "description": "Trunk to R1-Core",
+        "ip_address": null,
+        "subnet_mask": null,
+        "cidr": null,
+        "mode": "trunk",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
+        "native_vlan": null,
+        "dot1q_vlan": null,
+        "acl_in": null,
+        "acl_out": null,
+        "nat_role": null,
+        "shutdown": false,
+        "evidence": {
+          "source_line": 77,
+          "source_text": "interface GigabitEthernet0/1",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 78,
+            "text": " description Trunk to R1-Core"
+          },
+          {
+            "line": 79,
+            "text": " switchport mode trunk"
+          },
+          {
+            "line": 80,
+            "text": " switchport trunk allowed vlan 10,20,30"
+          },
+          {
+            "line": 81,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GigabitEthernet0/2",
+        "description": "Trunk to AP-01",
+        "ip_address": null,
+        "subnet_mask": null,
+        "cidr": null,
+        "mode": "trunk",
+        "access_vlan": null,
+        "trunk_allowed_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
+        "native_vlan": null,
+        "dot1q_vlan": null,
+        "acl_in": null,
+        "acl_out": null,
+        "nat_role": null,
+        "shutdown": false,
+        "evidence": {
+          "source_line": 82,
+          "source_text": "interface GigabitEthernet0/2",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 83,
+            "text": " description Trunk to AP-01"
+          },
+          {
+            "line": 84,
+            "text": " switchport mode trunk"
+          },
+          {
+            "line": 85,
+            "text": " switchport trunk allowed vlan 10,20,30"
+          },
+          {
+            "line": 86,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "FastEthernet0/10",
+        "description": "Staff wired test port",
+        "ip_address": null,
+        "subnet_mask": null,
+        "cidr": null,
+        "mode": "access",
+        "access_vlan": "10",
+        "trunk_allowed_vlans": [],
+        "native_vlan": null,
+        "dot1q_vlan": null,
+        "acl_in": null,
+        "acl_out": null,
+        "nat_role": null,
+        "shutdown": false,
+        "evidence": {
+          "source_line": 87,
+          "source_text": "interface FastEthernet0/10",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 88,
+            "text": " description Staff wired test port"
+          },
+          {
+            "line": 89,
+            "text": " switchport mode access"
+          },
+          {
+            "line": 90,
+            "text": " switchport access vlan 10"
+          },
+          {
+            "line": 91,
+            "text": "!"
+          },
+          {
+            "line": 92,
+            "text": "Device ID: AP-01"
+          }
+        ]
+      }
+    ],
+    "dhcp_scopes": [
+      {
+        "name": "STAFF_POOL",
+        "network": "10.10.10.0",
+        "mask": "255.255.255.0",
+        "cidr": "10.10.10.0/24",
+        "default_gateway": "10.10.10.1",
+        "dns_servers": [
+          "8.8.8.8",
+          "1.1.1.1"
+        ],
+        "domain_name": "campus.local",
+        "evidence": {
+          "source_line": 8,
+          "source_text": "ip dhcp pool STAFF_POOL",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 9,
+            "text": " network 10.10.10.0 255.255.255.0"
+          },
+          {
+            "line": 10,
+            "text": " default-router 10.10.10.1"
+          },
+          {
+            "line": 11,
+            "text": " dns-server 8.8.8.8 1.1.1.1"
+          },
+          {
+            "line": 12,
+            "text": " domain-name campus.local"
+          },
+          {
+            "line": 13,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "STUDENT_POOL",
+        "network": "10.10.20.0",
+        "mask": "255.255.255.0",
+        "cidr": "10.10.20.0/24",
+        "default_gateway": "10.10.20.1",
+        "dns_servers": [
+          "8.8.8.8"
+        ],
+        "domain_name": null,
+        "evidence": {
+          "source_line": 14,
+          "source_text": "ip dhcp pool STUDENT_POOL",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 15,
+            "text": " network 10.10.20.0 255.255.255.0"
+          },
+          {
+            "line": 16,
+            "text": " default-router 10.10.20.1"
+          },
+          {
+            "line": 17,
+            "text": " dns-server 8.8.8.8"
+          },
+          {
+            "line": 18,
+            "text": "!"
+          }
+        ]
+      },
+      {
+        "name": "GUEST_POOL",
+        "network": "10.10.30.0",
+        "mask": "255.255.255.0",
+        "cidr": "10.10.30.0/24",
+        "default_gateway": "10.10.30.1",
+        "dns_servers": [
+          "8.8.8.8"
+        ],
+        "domain_name": null,
+        "evidence": {
+          "source_line": 19,
+          "source_text": "ip dhcp pool GUEST_POOL",
+          "confidence": 0.95
+        },
+        "line_map": [
+          {
+            "line": 20,
+            "text": " network 10.10.30.0 255.255.255.0"
+          },
+          {
+            "line": 21,
+            "text": " default-router 10.10.30.1"
+          },
+          {
+            "line": 22,
+            "text": " dns-server 8.8.8.8"
+          },
+          {
+            "line": 23,
+            "text": "!"
+          }
+        ]
+      }
+    ],
+    "dhcp_excluded": [
+      {
+        "start": "10.10.10.1",
+        "end": "10.10.10.9",
+        "evidence": {
+          "source_line": 4,
+          "source_text": "ip dhcp excluded-address 10.10.10.1 10.10.10.9",
+          "confidence": 0.94
+        }
+      },
+      {
+        "start": "10.10.20.1",
+        "end": "10.10.20.9",
+        "evidence": {
+          "source_line": 5,
+          "source_text": "ip dhcp excluded-address 10.10.20.1 10.10.20.9",
+          "confidence": 0.94
+        }
+      },
+      {
+        "start": "10.10.30.1",
+        "end": "10.10.30.9",
+        "evidence": {
+          "source_line": 6,
+          "source_text": "ip dhcp excluded-address 10.10.30.1 10.10.30.9",
+          "confidence": 0.94
+        }
+      }
+    ],
+    "acl_rules": [
+      {
+        "acl_name": "GUEST_ISOLATION",
+        "type": "extended",
+        "sequence": "10",
+        "action": "deny",
+        "expression": "ip 10.10.30.0 0.0.0.255 10.10.0.0 0.0.255.255",
+        "parsed": {
+          "protocol": "ip",
+          "source": "10.10.30.0",
+          "source_wildcard": "0.0.0.255",
+          "destination": "10.10.0.0",
+          "destination_wildcard": "0.0.255.255",
+          "operator": null,
+          "port": null,
+          "raw_tokens": [
+            "ip",
+            "10.10.30.0",
+            "0.0.0.255",
+            "10.10.0.0",
+            "0.0.255.255"
+          ]
+        },
+        "applied_to": [
+          {
+            "interface": "GigabitEthernet0/0.30",
+            "direction": "in",
+            "evidence_line": 42
+          }
+        ],
+        "is_applied": true,
+        "evidence": {
+          "source_line": 55,
+          "source_text": " 10 deny ip 10.10.30.0 0.0.0.255 10.10.0.0 0.0.255.255",
+          "confidence": 0.92
+        }
+      },
+      {
+        "acl_name": "GUEST_ISOLATION",
+        "type": "extended",
+        "sequence": "20",
+        "action": "permit",
+        "expression": "ip 10.10.30.0 0.0.0.255 any",
+        "parsed": {
+          "protocol": "ip",
+          "source": "10.10.30.0",
+          "source_wildcard": "0.0.0.255",
+          "destination": "any",
+          "destination_wildcard": null,
+          "operator": null,
+          "port": null,
+          "raw_tokens": [
+            "ip",
+            "10.10.30.0",
+            "0.0.0.255",
+            "any"
+          ]
+        },
+        "applied_to": [
+          {
+            "interface": "GigabitEthernet0/0.30",
+            "direction": "in",
+            "evidence_line": 42
+          }
+        ],
+        "is_applied": true,
+        "evidence": {
+          "source_line": 56,
+          "source_text": " 20 permit ip 10.10.30.0 0.0.0.255 any",
+          "confidence": 0.92
+        }
+      },
+      {
+        "acl_name": "STUDENT_POLICY",
+        "type": "extended",
+        "sequence": "10",
+        "action": "deny",
+        "expression": "ip 10.10.20.0 0.0.0.255 host 10.10.50.10",
+        "parsed": {
+          "protocol": "ip",
+          "source": "10.10.20.0",
+          "source_wildcard": "0.0.0.255",
+          "destination": "10.10.50.10",
+          "destination_wildcard": "host",
+          "operator": null,
+          "port": null,
+          "raw_tokens": [
+            "ip",
+            "10.10.20.0",
+            "0.0.0.255",
+            "host",
+            "10.10.50.10"
+          ]
+        },
+        "applied_to": [
+          {
+            "interface": "GigabitEthernet0/0.20",
+            "direction": "in",
+            "evidence_line": 35
+          }
+        ],
+        "is_applied": true,
+        "evidence": {
+          "source_line": 59,
+          "source_text": " 10 deny ip 10.10.20.0 0.0.0.255 host 10.10.50.10",
+          "confidence": 0.92
+        }
+      },
+      {
+        "acl_name": "STUDENT_POLICY",
+        "type": "extended",
+        "sequence": "20",
+        "action": "permit",
+        "expression": "ip 10.10.20.0 0.0.0.255 any",
+        "parsed": {
+          "protocol": "ip",
+          "source": "10.10.20.0",
+          "source_wildcard": "0.0.0.255",
+          "destination": "any",
+          "destination_wildcard": null,
+          "operator": null,
+          "port": null,
+          "raw_tokens": [
+            "ip",
+            "10.10.20.0",
+            "0.0.0.255",
+            "any"
+          ]
+        },
+        "applied_to": [
+          {
+            "interface": "GigabitEthernet0/0.20",
+            "direction": "in",
+            "evidence_line": 35
+          }
+        ],
+        "is_applied": true,
+        "evidence": {
+          "source_line": 60,
+          "source_text": " 20 permit ip 10.10.20.0 0.0.0.255 any",
+          "confidence": 0.92
+        }
+      },
+      {
+        "acl_name": "STAFF_POLICY",
+        "type": "extended",
+        "sequence": "10",
+        "action": "permit",
+        "expression": "ip 10.10.10.0 0.0.0.255 any",
+        "parsed": {
+          "protocol": "ip",
+          "source": "10.10.10.0",
+          "source_wildcard": "0.0.0.255",
+          "destination": "any",
+          "destination_wildcard": null,
+          "operator": null,
+          "port": null,
+          "raw_tokens": [
+            "ip",
+            "10.10.10.0",
+            "0.0.0.255",
+            "any"
+          ]
+        },
+        "applied_to": [
+          {
+            "interface": "GigabitEthernet0/0.10",
+            "direction": "in",
+            "evidence_line": 28
+          }
+        ],
+        "is_applied": true,
+        "evidence": {
+          "source_line": 63,
+          "source_text": " 10 permit ip 10.10.10.0 0.0.0.255 any",
+          "confidence": 0.92
+        }
+      }
+    ],
+    "routing": {
+      "static_routes": [
+        {
+          "type": "static",
+          "destination": "0.0.0.0",
+          "mask": "0.0.0.0",
+          "cidr": "0.0.0.0/0",
+          "next_hop": "203.0.113.1",
+          "extra": "",
+          "evidence": {
+            "source_line": 65,
+            "source_text": "ip route 0.0.0.0 0.0.0.0 203.0.113.1",
+            "confidence": 0.94
+          }
+        }
+      ],
+      "protocols": []
+    },
+    "nat_rules": [
+      {
+        "expression": "ip nat inside",
+        "evidence": {
+          "source_line": 32,
+          "source_text": " ip nat inside",
+          "confidence": 0.88
+        }
+      },
+      {
+        "expression": "ip nat inside",
+        "evidence": {
+          "source_line": 39,
+          "source_text": " ip nat inside",
+          "confidence": 0.88
+        }
+      },
+      {
+        "expression": "ip nat inside",
+        "evidence": {
+          "source_line": 46,
+          "source_text": " ip nat inside",
+          "confidence": 0.88
+        }
+      },
+      {
+        "expression": "ip nat outside",
+        "evidence": {
+          "source_line": 52,
+          "source_text": " ip nat outside",
+          "confidence": 0.88
+        }
+      },
+      {
+        "expression": "ip nat inside source list STAFF_POLICY interface GigabitEthernet0/1 overload",
+        "evidence": {
+          "source_line": 66,
+          "source_text": "ip nat inside source list STAFF_POLICY interface GigabitEthernet0/1 overload",
+          "confidence": 0.88
+        }
+      }
+    ],
+    "cdp_links": [
+      {
+        "neighbor": "AP-01",
+        "local_interface": "GigabitEthernet0/2",
+        "remote_interface": "GigabitEthernet0",
+        "platform": "Cisco AP",
+        "evidence": {
+          "source_line": 92,
+          "source_text": "Device ID: AP-01",
+          "confidence": 0.82
+        }
+      }
+    ],
+    "services": [
+      {
+        "name": "DNS",
+        "hint": "dns-server 8.8.8.8 1.1.1.1",
+        "evidence": {
+          "source_line": 11,
+          "source_text": " dns-server 8.8.8.8 1.1.1.1",
+          "confidence": 0.65
+        }
+      },
+      {
+        "name": "DNS",
+        "hint": "dns-server 8.8.8.8",
+        "evidence": {
+          "source_line": 17,
+          "source_text": " dns-server 8.8.8.8",
+          "confidence": 0.65
+        }
+      },
+      {
+        "name": "DNS",
+        "hint": "dns-server 8.8.8.8",
+        "evidence": {
+          "source_line": 22,
+          "source_text": " dns-server 8.8.8.8",
+          "confidence": 0.65
+        }
+      },
+      {
+        "name": "Internet",
+        "hint": "description Internet uplink",
+        "evidence": {
+          "source_line": 50,
+          "source_text": " description Internet uplink",
+          "confidence": 0.65
+        }
+      }
+    ],
+    "raw_evidence": [
+      {
+        "line": 2,
+        "text": "hostname R1-Core"
+      },
+      {
+        "line": 4,
+        "text": "ip dhcp excluded-address 10.10.10.1 10.10.10.9"
+      },
+      {
+        "line": 5,
+        "text": "ip dhcp excluded-address 10.10.20.1 10.10.20.9"
+      },
+      {
+        "line": 6,
+        "text": "ip dhcp excluded-address 10.10.30.1 10.10.30.9"
+      },
+      {
+        "line": 8,
+        "text": "ip dhcp pool STAFF_POOL"
+      },
+      {
+        "line": 14,
+        "text": "ip dhcp pool STUDENT_POOL"
+      },
+      {
+        "line": 19,
+        "text": "ip dhcp pool GUEST_POOL"
+      },
+      {
+        "line": 24,
+        "text": "interface GigabitEthernet0/0"
+      },
+      {
+        "line": 28,
+        "text": "interface GigabitEthernet0/0.10"
+      },
+      {
+        "line": 32,
+        "text": " ip nat inside"
+      },
+      {
+        "line": 33,
+        "text": " ip access-group STAFF_POLICY in"
+      },
+      {
+        "line": 35,
+        "text": "interface GigabitEthernet0/0.20"
+      },
+      {
+        "line": 39,
+        "text": " ip nat inside"
+      },
+      {
+        "line": 40,
+        "text": " ip access-group STUDENT_POLICY in"
+      },
+      {
+        "line": 42,
+        "text": "interface GigabitEthernet0/0.30"
+      },
+      {
+        "line": 46,
+        "text": " ip nat inside"
+      },
+      {
+        "line": 47,
+        "text": " ip access-group GUEST_ISOLATION in"
+      },
+      {
+        "line": 49,
+        "text": "interface GigabitEthernet0/1"
+      },
+      {
+        "line": 52,
+        "text": " ip nat outside"
+      },
+      {
+        "line": 54,
+        "text": "ip access-list extended GUEST_ISOLATION"
+      },
+      {
+        "line": 58,
+        "text": "ip access-list extended STUDENT_POLICY"
+      },
+      {
+        "line": 62,
+        "text": "ip access-list extended STAFF_POLICY"
+      },
+      {
+        "line": 65,
+        "text": "ip route 0.0.0.0 0.0.0.0 203.0.113.1"
+      },
+      {
+        "line": 66,
+        "text": "ip nat inside source list STAFF_POLICY interface GigabitEthernet0/1 overload"
+      },
+      {
+        "line": 68,
+        "text": "hostname SW1-Access"
+      },
+      {
+        "line": 70,
+        "text": "vlan 10"
+      },
+      {
+        "line": 72,
+        "text": "vlan 20"
+      },
+      {
+        "line": 74,
+        "text": "vlan 30"
+      },
+      {
+        "line": 77,
+        "text": "interface GigabitEthernet0/1"
+      },
+      {
+        "line": 79,
+        "text": " switchport mode trunk"
+      },
+      {
+        "line": 80,
+        "text": " switchport trunk allowed vlan 10,20,30"
+      },
+      {
+        "line": 82,
+        "text": "interface GigabitEthernet0/2"
+      },
+      {
+        "line": 84,
+        "text": " switchport mode trunk"
+      },
+      {
+        "line": 85,
+        "text": " switchport trunk allowed vlan 10,20,30"
+      },
+      {
+        "line": 87,
+        "text": "interface FastEthernet0/10"
+      },
+      {
+        "line": 89,
+        "text": " switchport mode access"
+      },
+      {
+        "line": 90,
+        "text": " switchport access vlan 10"
+      },
+      {
+        "line": 92,
+        "text": "Device ID: AP-01"
+      },
+      {
+        "line": 93,
+        "text": "Interface: GigabitEthernet0/2, Port ID (outgoing port): GigabitEthernet0"
+      },
+      {
+        "line": 94,
+        "text": "Platform: Cisco AP"
+      }
+    ],
+    "dhcp_gateway_matches": [
+      {
+        "pool": "STAFF_POOL",
+        "cidr": "10.10.10.0/24",
+        "default_gateway": "10.10.10.1",
+        "matched_interface": "GigabitEthernet0/0.10",
+        "matched_vlan": "10",
+        "status": "match",
+        "confidence": 0.93,
+        "evidence_line": 8
+      },
+      {
+        "pool": "STUDENT_POOL",
+        "cidr": "10.10.20.0/24",
+        "default_gateway": "10.10.20.1",
+        "matched_interface": "GigabitEthernet0/0.20",
+        "matched_vlan": "20",
+        "status": "match",
+        "confidence": 0.93,
+        "evidence_line": 14
+      },
+      {
+        "pool": "GUEST_POOL",
+        "cidr": "10.10.30.0/24",
+        "default_gateway": "10.10.30.1",
+        "matched_interface": "GigabitEthernet0/0.30",
+        "matched_vlan": "30",
+        "status": "match",
+        "confidence": 0.93,
+        "evidence_line": 19
+      }
+    ],
+    "evidence_profile": {
+      "raw_evidence_lines": 40,
+      "objects_with_line_evidence": 35,
+      "total_list_objects": 78,
+      "line_mapping_ratio": 0.449
+    }
+  },
+  "topology": {
+    "nodes": [
+      {
+        "id": "R1-Core",
+        "label": "R1-Core",
+        "type": "router",
+        "confidence": 0.98,
+        "meta": {}
+      },
+      {
+        "id": "SW1-Access",
+        "label": "SW1-Access",
+        "type": "switch",
+        "confidence": 0.98,
+        "meta": {}
+      },
+      {
+        "id": "AP-01",
+        "label": "AP-01",
+        "type": "neighbor",
+        "confidence": 0.82,
+        "meta": {}
+      },
+      {
+        "id": "SSID:StaffWiFi",
+        "label": "StaffWiFi",
+        "type": "ssid",
+        "confidence": 1.0,
+        "meta": {
+          "role": "Staff"
+        }
+      },
+      {
+        "id": "VLAN:10",
+        "label": "VLAN 10",
+        "type": "vlan",
+        "confidence": 0.9,
+        "meta": {}
+      },
+      {
+        "id": "SSID:StudentsWiFi",
+        "label": "StudentsWiFi",
+        "type": "ssid",
+        "confidence": 1.0,
+        "meta": {
+          "role": "Student"
+        }
+      },
+      {
+        "id": "VLAN:20",
+        "label": "VLAN 20",
+        "type": "vlan",
+        "confidence": 0.9,
+        "meta": {}
+      },
+      {
+        "id": "SSID:GuestWiFi",
+        "label": "GuestWiFi",
+        "type": "ssid",
+        "confidence": 1.0,
+        "meta": {
+          "role": "Guest"
+        }
+      },
+      {
+        "id": "VLAN:30",
+        "label": "VLAN 30",
+        "type": "vlan",
+        "confidence": 0.9,
+        "meta": {}
+      },
+      {
+        "id": "IF:GigabitEthernet0/0",
+        "label": "GigabitEthernet0/0",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "unknown"
+        }
+      },
+      {
+        "id": "IF:GigabitEthernet0/0.10",
+        "label": "GigabitEthernet0/0.10",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "routed-subinterface"
+        }
+      },
+      {
+        "id": "ACL:STAFF_POLICY",
+        "label": "STAFF_POLICY",
+        "type": "acl",
+        "confidence": 0.88,
+        "meta": {}
+      },
+      {
+        "id": "IF:GigabitEthernet0/0.20",
+        "label": "GigabitEthernet0/0.20",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "routed-subinterface"
+        }
+      },
+      {
+        "id": "ACL:STUDENT_POLICY",
+        "label": "STUDENT_POLICY",
+        "type": "acl",
+        "confidence": 0.88,
+        "meta": {}
+      },
+      {
+        "id": "IF:GigabitEthernet0/0.30",
+        "label": "GigabitEthernet0/0.30",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "routed-subinterface"
+        }
+      },
+      {
+        "id": "ACL:GUEST_ISOLATION",
+        "label": "GUEST_ISOLATION",
+        "type": "acl",
+        "confidence": 0.88,
+        "meta": {}
+      },
+      {
+        "id": "IF:GigabitEthernet0/1",
+        "label": "GigabitEthernet0/1",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "routed"
+        }
+      },
+      {
+        "id": "IF:GigabitEthernet0/2",
+        "label": "GigabitEthernet0/2",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "trunk"
+        }
+      },
+      {
+        "id": "IF:FastEthernet0/10",
+        "label": "FastEthernet0/10",
+        "type": "interface",
+        "confidence": 0.95,
+        "meta": {
+          "mode": "access"
+        }
+      },
+      {
+        "id": "DHCP:STAFF_POOL",
+        "label": "STAFF_POOL",
+        "type": "dhcp",
+        "confidence": 0.95,
+        "meta": {
+          "cidr": "10.10.10.0/24"
+        }
+      },
+      {
+        "id": "DHCP:STUDENT_POOL",
+        "label": "STUDENT_POOL",
+        "type": "dhcp",
+        "confidence": 0.95,
+        "meta": {
+          "cidr": "10.10.20.0/24"
+        }
+      },
+      {
+        "id": "DHCP:GUEST_POOL",
+        "label": "GUEST_POOL",
+        "type": "dhcp",
+        "confidence": 0.95,
+        "meta": {
+          "cidr": "10.10.30.0/24"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "SSID:StaffWiFi",
+        "to": "VLAN:10",
+        "type": "policy-map",
+        "status": "expected",
+        "confidence": 1.0,
+        "label": "Staff"
+      },
+      {
+        "from": "SSID:StudentsWiFi",
+        "to": "VLAN:20",
+        "type": "policy-map",
+        "status": "expected",
+        "confidence": 1.0,
+        "label": "Student"
+      },
+      {
+        "from": "SSID:GuestWiFi",
+        "to": "VLAN:30",
+        "type": "policy-map",
+        "status": "expected",
+        "confidence": 1.0,
+        "label": "Guest"
+      },
+      {
+        "from": "VLAN:10",
+        "to": "IF:GigabitEthernet0/0.10",
+        "type": "dot1q_vlan",
+        "status": "confirmed",
+        "confidence": 0.85,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/0.10",
+        "to": "ACL:STAFF_POLICY",
+        "type": "access-group-in",
+        "status": "enforced",
+        "confidence": 0.88,
+        "label": ""
+      },
+      {
+        "from": "VLAN:20",
+        "to": "IF:GigabitEthernet0/0.20",
+        "type": "dot1q_vlan",
+        "status": "confirmed",
+        "confidence": 0.85,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/0.20",
+        "to": "ACL:STUDENT_POLICY",
+        "type": "access-group-in",
+        "status": "enforced",
+        "confidence": 0.88,
+        "label": ""
+      },
+      {
+        "from": "VLAN:30",
+        "to": "IF:GigabitEthernet0/0.30",
+        "type": "dot1q_vlan",
+        "status": "confirmed",
+        "confidence": 0.85,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/0.30",
+        "to": "ACL:GUEST_ISOLATION",
+        "type": "access-group-in",
+        "status": "enforced",
+        "confidence": 0.88,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/1",
+        "to": "VLAN:10",
+        "type": "trunk-allows",
+        "status": "confirmed",
+        "confidence": 0.78,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/1",
+        "to": "VLAN:20",
+        "type": "trunk-allows",
+        "status": "confirmed",
+        "confidence": 0.78,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/1",
+        "to": "VLAN:30",
+        "type": "trunk-allows",
+        "status": "confirmed",
+        "confidence": 0.78,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/2",
+        "to": "VLAN:10",
+        "type": "trunk-allows",
+        "status": "confirmed",
+        "confidence": 0.78,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/2",
+        "to": "VLAN:20",
+        "type": "trunk-allows",
+        "status": "confirmed",
+        "confidence": 0.78,
+        "label": ""
+      },
+      {
+        "from": "IF:GigabitEthernet0/2",
+        "to": "VLAN:30",
+        "type": "trunk-allows",
+        "status": "confirmed",
+        "confidence": 0.78,
+        "label": ""
+      },
+      {
+        "from": "VLAN:10",
+        "to": "IF:FastEthernet0/10",
+        "type": "access_vlan",
+        "status": "confirmed",
+        "confidence": 0.85,
+        "label": ""
+      },
+      {
+        "from": "DHCP:STAFF_POOL",
+        "to": "VLAN:10",
+        "type": "serves",
+        "status": "match",
+        "confidence": 0.93,
+        "label": "10.10.10.0/24"
+      },
+      {
+        "from": "DHCP:STUDENT_POOL",
+        "to": "VLAN:20",
+        "type": "serves",
+        "status": "match",
+        "confidence": 0.93,
+        "label": "10.10.20.0/24"
+      },
+      {
+        "from": "DHCP:GUEST_POOL",
+        "to": "VLAN:30",
+        "type": "serves",
+        "status": "match",
+        "confidence": 0.93,
+        "label": "10.10.30.0/24"
+      },
+      {
+        "from": "IF:GigabitEthernet0/2",
+        "to": "AP-01",
+        "type": "cdp",
+        "status": "confirmed",
+        "confidence": 0.82,
+        "label": "GigabitEthernet0"
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "time": "2026-04-27 15:49:30",
+      "type": "import",
+      "severity": "Info",
+      "detail": "Loaded production sample and extracted evidence with v5.1 parser."
+    },
+    {
+      "time": "2026-04-27 15:49:30",
+      "type": "association",
+      "severity": "Info",
+      "detail": "Staff client associated to StaffWiFi"
+    },
+    {
+      "time": "2026-04-27 15:49:30",
+      "type": "roaming",
+      "severity": "Info",
+      "detail": "Student roamed from AP-01 to AP-02"
+    },
+    {
+      "time": "2026-04-27 15:49:30",
+      "type": "acl_check",
+      "severity": "Info",
+      "detail": "Guest isolation expected: internal services denied"
+    },
+    {
+      "time": "2026-04-27 15:49:30",
+      "type": "import",
+      "severity": "Info",
+      "detail": "Imported campus_production_sample.cfg with 69 objects"
+    }
+  ],
+  "playbooks": [],
+  "rules": [
+    {
+      "id": "GUEST-ISOLATION-001",
+      "title": "Guest VLAN must not access internal networks",
+      "severity": "Critical",
+      "owner": "Network Security",
+      "sla": "Immediate"
+    },
+    {
+      "id": "SSID-VLAN-001",
+      "title": "Each SSID must map to its expected VLAN",
+      "severity": "High",
+      "owner": "Wireless Team",
+      "sla": "24h"
+    },
+    {
+      "id": "TRUNK-COVERAGE-001",
+      "title": "AP/uplink trunks must carry all WLAN VLANs",
+      "severity": "High",
+      "owner": "Network Operations",
+      "sla": "24h"
+    },
+    {
+      "id": "DHCP-SCOPE-001",
+      "title": "DHCP scope must match expected VLAN subnet",
+      "severity": "Medium",
+      "owner": "Network Operations",
+      "sla": "72h"
+    },
+    {
+      "id": "ACL-DIRECTION-001",
+      "title": "ACLs must be applied to the correct interface and direction",
+      "severity": "High",
+      "owner": "Network Security",
+      "sla": "24h"
+    }
+  ],
+  "snapshot_diff": {
+    "baseline": null,
+    "current": "campus_production_sample.cfg",
+    "changes": [
+      {
+        "object_type": "acl_rules",
+        "before": 0,
+        "after": 5,
+        "delta": 5
+      },
+      {
+        "object_type": "cdp_links",
+        "before": 0,
+        "after": 1,
+        "delta": 1
+      },
+      {
+        "object_type": "devices",
+        "before": 0,
+        "after": 3,
+        "delta": 3
+      },
+      {
+        "object_type": "dhcp_scopes",
+        "before": 0,
+        "after": 3,
+        "delta": 3
+      },
+      {
+        "object_type": "interfaces",
+        "before": 0,
+        "after": 8,
+        "delta": 8
+      },
+      {
+        "object_type": "nat_rules",
+        "before": 0,
+        "after": 5,
+        "delta": 5
+      },
+      {
+        "object_type": "raw_evidence",
+        "before": 0,
+        "after": 40,
+        "delta": 40
+      },
+      {
+        "object_type": "routing",
+        "before": 0,
+        "after": 1,
+        "delta": 1
+      },
+      {
+        "object_type": "vlans",
+        "before": 0,
+        "after": 3,
+        "delta": 3
+      }
+    ]
+  }
+}

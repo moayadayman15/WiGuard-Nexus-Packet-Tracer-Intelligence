@@ -1,0 +1,346 @@
+[
+  {
+    "name": "GigabitEthernet0/0",
+    "description": "Uplink to SW1",
+    "ip_address": null,
+    "subnet_mask": null,
+    "cidr": null,
+    "mode": "unknown",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [],
+    "native_vlan": null,
+    "dot1q_vlan": null,
+    "acl_in": null,
+    "acl_out": null,
+    "nat_role": null,
+    "shutdown": false,
+    "evidence": {
+      "source_line": 24,
+      "source_text": "interface GigabitEthernet0/0",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 25,
+        "text": " description Uplink to SW1"
+      },
+      {
+        "line": 26,
+        "text": " no shutdown"
+      },
+      {
+        "line": 27,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "GigabitEthernet0/0.10",
+    "description": "Staff gateway",
+    "ip_address": "10.10.10.1",
+    "subnet_mask": "255.255.255.0",
+    "cidr": "10.10.10.0/24",
+    "mode": "routed-subinterface",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [],
+    "native_vlan": null,
+    "dot1q_vlan": "10",
+    "acl_in": "STAFF_POLICY",
+    "acl_out": null,
+    "nat_role": "inside",
+    "shutdown": false,
+    "evidence": {
+      "source_line": 28,
+      "source_text": "interface GigabitEthernet0/0.10",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 29,
+        "text": " description Staff gateway"
+      },
+      {
+        "line": 30,
+        "text": " encapsulation dot1Q 10"
+      },
+      {
+        "line": 31,
+        "text": " ip address 10.10.10.1 255.255.255.0"
+      },
+      {
+        "line": 32,
+        "text": " ip nat inside"
+      },
+      {
+        "line": 33,
+        "text": " ip access-group STAFF_POLICY in"
+      },
+      {
+        "line": 34,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "GigabitEthernet0/0.20",
+    "description": "Student gateway",
+    "ip_address": "10.10.20.1",
+    "subnet_mask": "255.255.255.0",
+    "cidr": "10.10.20.0/24",
+    "mode": "routed-subinterface",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [],
+    "native_vlan": null,
+    "dot1q_vlan": "20",
+    "acl_in": "STUDENT_POLICY",
+    "acl_out": null,
+    "nat_role": "inside",
+    "shutdown": false,
+    "evidence": {
+      "source_line": 35,
+      "source_text": "interface GigabitEthernet0/0.20",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 36,
+        "text": " description Student gateway"
+      },
+      {
+        "line": 37,
+        "text": " encapsulation dot1Q 20"
+      },
+      {
+        "line": 38,
+        "text": " ip address 10.10.20.1 255.255.255.0"
+      },
+      {
+        "line": 39,
+        "text": " ip nat inside"
+      },
+      {
+        "line": 40,
+        "text": " ip access-group STUDENT_POLICY in"
+      },
+      {
+        "line": 41,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "GigabitEthernet0/0.30",
+    "description": "Guest gateway",
+    "ip_address": "10.10.30.1",
+    "subnet_mask": "255.255.255.0",
+    "cidr": "10.10.30.0/24",
+    "mode": "routed-subinterface",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [],
+    "native_vlan": null,
+    "dot1q_vlan": "30",
+    "acl_in": "GUEST_ISOLATION",
+    "acl_out": null,
+    "nat_role": "inside",
+    "shutdown": false,
+    "evidence": {
+      "source_line": 42,
+      "source_text": "interface GigabitEthernet0/0.30",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 43,
+        "text": " description Guest gateway"
+      },
+      {
+        "line": 44,
+        "text": " encapsulation dot1Q 30"
+      },
+      {
+        "line": 45,
+        "text": " ip address 10.10.30.1 255.255.255.0"
+      },
+      {
+        "line": 46,
+        "text": " ip nat inside"
+      },
+      {
+        "line": 47,
+        "text": " ip access-group GUEST_ISOLATION in"
+      },
+      {
+        "line": 48,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "GigabitEthernet0/1",
+    "description": "Internet uplink",
+    "ip_address": "203.0.113.2",
+    "subnet_mask": "255.255.255.252",
+    "cidr": "203.0.113.0/30",
+    "mode": "routed",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [],
+    "native_vlan": null,
+    "dot1q_vlan": null,
+    "acl_in": null,
+    "acl_out": null,
+    "nat_role": "outside",
+    "shutdown": false,
+    "evidence": {
+      "source_line": 49,
+      "source_text": "interface GigabitEthernet0/1",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 50,
+        "text": " description Internet uplink"
+      },
+      {
+        "line": 51,
+        "text": " ip address 203.0.113.2 255.255.255.252"
+      },
+      {
+        "line": 52,
+        "text": " ip nat outside"
+      },
+      {
+        "line": 53,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "GigabitEthernet0/1",
+    "description": "Trunk to R1-Core",
+    "ip_address": null,
+    "subnet_mask": null,
+    "cidr": null,
+    "mode": "trunk",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [
+      "10",
+      "20",
+      "30"
+    ],
+    "native_vlan": null,
+    "dot1q_vlan": null,
+    "acl_in": null,
+    "acl_out": null,
+    "nat_role": null,
+    "shutdown": false,
+    "evidence": {
+      "source_line": 77,
+      "source_text": "interface GigabitEthernet0/1",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 78,
+        "text": " description Trunk to R1-Core"
+      },
+      {
+        "line": 79,
+        "text": " switchport mode trunk"
+      },
+      {
+        "line": 80,
+        "text": " switchport trunk allowed vlan 10,20,30"
+      },
+      {
+        "line": 81,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "GigabitEthernet0/2",
+    "description": "Trunk to AP-01",
+    "ip_address": null,
+    "subnet_mask": null,
+    "cidr": null,
+    "mode": "trunk",
+    "access_vlan": null,
+    "trunk_allowed_vlans": [
+      "10",
+      "20",
+      "30"
+    ],
+    "native_vlan": null,
+    "dot1q_vlan": null,
+    "acl_in": null,
+    "acl_out": null,
+    "nat_role": null,
+    "shutdown": false,
+    "evidence": {
+      "source_line": 82,
+      "source_text": "interface GigabitEthernet0/2",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 83,
+        "text": " description Trunk to AP-01"
+      },
+      {
+        "line": 84,
+        "text": " switchport mode trunk"
+      },
+      {
+        "line": 85,
+        "text": " switchport trunk allowed vlan 10,20,30"
+      },
+      {
+        "line": 86,
+        "text": "!"
+      }
+    ]
+  },
+  {
+    "name": "FastEthernet0/10",
+    "description": "Staff wired test port",
+    "ip_address": null,
+    "subnet_mask": null,
+    "cidr": null,
+    "mode": "access",
+    "access_vlan": "10",
+    "trunk_allowed_vlans": [],
+    "native_vlan": null,
+    "dot1q_vlan": null,
+    "acl_in": null,
+    "acl_out": null,
+    "nat_role": null,
+    "shutdown": false,
+    "evidence": {
+      "source_line": 87,
+      "source_text": "interface FastEthernet0/10",
+      "confidence": 0.95
+    },
+    "line_map": [
+      {
+        "line": 88,
+        "text": " description Staff wired test port"
+      },
+      {
+        "line": 89,
+        "text": " switchport mode access"
+      },
+      {
+        "line": 90,
+        "text": " switchport access vlan 10"
+      },
+      {
+        "line": 91,
+        "text": "!"
+      },
+      {
+        "line": 92,
+        "text": "Device ID: AP-01"
+      }
+    ]
+  }
+]

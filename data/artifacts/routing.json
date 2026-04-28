@@ -1,0 +1,18 @@
+{
+  "static_routes": [
+    {
+      "type": "static",
+      "destination": "0.0.0.0",
+      "mask": "0.0.0.0",
+      "cidr": "0.0.0.0/0",
+      "next_hop": "203.0.113.1",
+      "extra": "",
+      "evidence": {
+        "source_line": 65,
+        "source_text": "ip route 0.0.0.0 0.0.0.0 203.0.113.1",
+        "confidence": 0.94
+      }
+    }
+  ],
+  "protocols": []
+}

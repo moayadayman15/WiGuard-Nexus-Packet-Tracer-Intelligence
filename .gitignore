@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+instance/
+data/uploads/*
+data/reports/*
+data/*.bak
+!data/uploads/.gitkeep
+!data/reports/.gitkeep
+.DS_Store
+build/
+dist/
+*.spec

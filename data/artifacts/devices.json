@@ -1,0 +1,35 @@
+[
+  {
+    "id": "R1-Core",
+    "hostname": "R1-Core",
+    "type": "router",
+    "role": "network_device",
+    "evidence": {
+      "source_line": 2,
+      "source_text": "hostname R1-Core",
+      "confidence": 0.98
+    }
+  },
+  {
+    "id": "SW1-Access",
+    "hostname": "SW1-Access",
+    "type": "switch",
+    "role": "network_device",
+    "evidence": {
+      "source_line": 68,
+      "source_text": "hostname SW1-Access",
+      "confidence": 0.98
+    }
+  },
+  {
+    "id": "AP-01",
+    "hostname": "AP-01",
+    "type": "neighbor",
+    "role": "cdp_neighbor",
+    "evidence": {
+      "source_line": 92,
+      "source_text": "Device ID: AP-01",
+      "confidence": 0.82
+    }
+  }
+]

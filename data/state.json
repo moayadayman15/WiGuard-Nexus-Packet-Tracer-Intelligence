@@ -1,0 +1,316 @@
+{
+  "meta": {
+    "product": "WiGuard Nexus v5.2",
+    "tagline": "Wireless Policy Manager with wired evidence intelligence",
+    "workflow": [
+      "Project",
+      "Wireless",
+      "Import",
+      "Extract",
+      "Validate",
+      "Analyze",
+      "Report",
+      "Verify"
+    ]
+  },
+  "projects": [
+    {
+      "id": "main-campus",
+      "name": "Main Campus Lab",
+      "environment": "Wireless Campus Policy Validation",
+      "owner": "Network Security Team",
+      "created_at": "2026-04-27 16:01:41",
+      "status": "active"
+    }
+  ],
+  "current_project": "main-campus",
+  "wireless_policy": {
+    "ssids": [
+      {
+        "ssid": "StaffWiFi",
+        "role": "Staff",
+        "expected_vlan": "10",
+        "expected_subnet": "10.10.10.0/24",
+        "dhcp_scope": "10.10.10.10 - 10.10.10.200",
+        "security": "WPA2-Enterprise",
+        "internet": true,
+        "internal_access": true,
+        "client_isolation": false,
+        "allowed_services": [
+          "Internet",
+          "DNS",
+          "ERP",
+          "File Server",
+          "Internal Portal"
+        ],
+        "business_purpose": "Trusted employee access"
+      },
+      {
+        "ssid": "StudentsWiFi",
+        "role": "Student",
+        "expected_vlan": "20",
+        "expected_subnet": "10.10.20.0/24",
+        "dhcp_scope": "10.10.20.10 - 10.10.20.220",
+        "security": "WPA2-PSK",
+        "internet": true,
+        "internal_access": "limited",
+        "client_isolation": false,
+        "allowed_services": [
+          "Internet",
+          "DNS",
+          "Internal Portal"
+        ],
+        "business_purpose": "Limited student access"
+      },
+      {
+        "ssid": "GuestWiFi",
+        "role": "Guest",
+        "expected_vlan": "30",
+        "expected_subnet": "10.10.30.0/24",
+        "dhcp_scope": "10.10.30.10 - 10.10.30.240",
+        "security": "Captive Portal",
+        "internet": true,
+        "internal_access": false,
+        "client_isolation": true,
+        "allowed_services": [
+          "Internet"
+        ],
+        "business_purpose": "Untrusted guest isolation"
+      }
+    ]
+  },
+  "ap_inventory": [
+    {
+      "id": "AP-01",
+      "name": "AP-01",
+      "location": "Admin Floor",
+      "switch": "SW1",
+      "uplink_interface": "GigabitEthernet0/1",
+      "supported_vlans": [
+        "10",
+        "20",
+        "30"
+      ],
+      "max_clients": 30,
+      "status": "online"
+    },
+    {
+      "id": "AP-02",
+      "name": "AP-02",
+      "location": "Lecture Hall",
+      "switch": "SW1",
+      "uplink_interface": "GigabitEthernet0/2",
+      "supported_vlans": [
+        "10",
+        "20",
+        "30"
+      ],
+      "max_clients": 30,
+      "status": "online"
+    },
+    {
+      "id": "AP-03",
+      "name": "AP-03",
+      "location": "Guest Lobby",
+      "switch": "SW2",
+      "uplink_interface": "GigabitEthernet0/3",
+      "supported_vlans": [
+        "30"
+      ],
+      "max_clients": 25,
+      "status": "online"
+    }
+  ],
+  "clients": [
+    {
+      "id": "client-m-salem",
+      "name": "m.salem",
+      "mac": "00:11:22:33:44:10",
+      "role": "Staff",
+      "ssid": "StaffWiFi",
+      "vlan": "10",
+      "expected_subnet": "10.10.10.0/24",
+      "ip": "10.10.10.44",
+      "ap": "AP-01",
+      "status": "associated",
+      "last_seen": "2026-04-27 16:01:41",
+      "services": [
+        "Internet",
+        "DNS",
+        "ERP",
+        "File Server",
+        "Internal Portal"
+      ]
+    },
+    {
+      "id": "client-student-2044",
+      "name": "student_2044",
+      "mac": "00:11:22:33:44:20",
+      "role": "Student",
+      "ssid": "StudentsWiFi",
+      "vlan": "20",
+      "expected_subnet": "10.10.20.0/24",
+      "ip": "10.10.20.86",
+      "ap": "AP-02",
+      "status": "associated",
+      "last_seen": "2026-04-27 16:01:41",
+      "services": [
+        "Internet",
+        "DNS",
+        "Internal Portal"
+      ]
+    },
+    {
+      "id": "client-guest-01",
+      "name": "guest_01",
+      "mac": "00:11:22:33:44:30",
+      "role": "Guest",
+      "ssid": "GuestWiFi",
+      "vlan": "30",
+      "expected_subnet": "10.10.30.0/24",
+      "ip": "10.10.30.121",
+      "ap": "AP-03",
+      "status": "associated",
+      "last_seen": "2026-04-27 16:01:41",
+      "services": [
+        "Internet"
+      ]
+    }
+  ],
+  "client_sessions": [
+    {
+      "id": "session-1",
+      "client": "m.salem",
+      "role": "Staff",
+      "ssid": "StaffWiFi",
+      "ap": "AP-01",
+      "vlan": "10",
+      "ip": "10.10.10.44",
+      "status": "associated",
+      "started_at": "2026-04-27 16:01:41",
+      "last_event": "association"
+    },
+    {
+      "id": "session-2",
+      "client": "student_2044",
+      "role": "Student",
+      "ssid": "StudentsWiFi",
+      "ap": "AP-02",
+      "vlan": "20",
+      "ip": "10.10.20.86",
+      "status": "associated",
+      "started_at": "2026-04-27 16:01:41",
+      "last_event": "roaming"
+    },
+    {
+      "id": "session-3",
+      "client": "guest_01",
+      "role": "Guest",
+      "ssid": "GuestWiFi",
+      "ap": "AP-03",
+      "vlan": "30",
+      "ip": "10.10.30.121",
+      "status": "associated",
+      "started_at": "2026-04-27 16:01:41",
+      "last_event": "association"
+    }
+  ],
+  "policy_settings": {
+    "wireless": {
+      "auth_failure_threshold": 3,
+      "roaming_threshold": 4,
+      "ap_load_warning": 75,
+      "ap_load_critical": 90,
+      "unknown_ap_severity": "High",
+      "enforce_role_ssid_match": true,
+      "enforce_ap_vlan_support": true
+    }
+  },
+  "rules": [
+    {
+      "id": "GUEST-ISOLATION-001",
+      "title": "Guest VLAN must not access internal networks",
+      "severity": "Critical",
+      "owner": "Network Security",
+      "sla": "Immediate"
+    },
+    {
+      "id": "SSID-VLAN-001",
+      "title": "Each SSID must map to its expected VLAN",
+      "severity": "High",
+      "owner": "Wireless Team",
+      "sla": "24h"
+    },
+    {
+      "id": "TRUNK-COVERAGE-001",
+      "title": "AP/uplink trunks must carry all WLAN VLANs",
+      "severity": "High",
+      "owner": "Network Operations",
+      "sla": "24h"
+    },
+    {
+      "id": "DHCP-SCOPE-001",
+      "title": "DHCP scope must match expected VLAN subnet",
+      "severity": "Medium",
+      "owner": "Network Operations",
+      "sla": "72h"
+    },
+    {
+      "id": "ACL-DIRECTION-001",
+      "title": "ACLs must be applied to the correct interface and direction",
+      "severity": "High",
+      "owner": "Network Security",
+      "sla": "24h"
+    },
+    {
+      "id": "WIRELESS-EVENT-001",
+      "title": "Client events must map to the expected SSID, VLAN, DHCP scope, and AP trunk",
+      "severity": "High",
+      "owner": "Wireless Operations",
+      "sla": "24h"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "type": "association",
+      "client": "m.salem",
+      "severity": "Info",
+      "detail": "Staff client associated to StaffWiFi",
+      "ssid": "StaffWiFi",
+      "ap": "AP-01",
+      "vlan": "10",
+      "created_at": "2026-04-27 16:01:41"
+    },
+    {
+      "id": 2,
+      "type": "roaming",
+      "client": "student_2044",
+      "severity": "Info",
+      "detail": "Student roamed from AP-01 to AP-02",
+      "ssid": "StudentsWiFi",
+      "from_ap": "AP-01",
+      "to_ap": "AP-02",
+      "vlan": "20",
+      "created_at": "2026-04-27 16:01:41"
+    },
+    {
+      "id": 3,
+      "type": "acl_check",
+      "client": "guest_01",
+      "severity": "Info",
+      "detail": "Guest isolation expected: internal services denied",
+      "ssid": "GuestWiFi",
+      "ap": "AP-03",
+      "vlan": "30",
+      "created_at": "2026-04-27 16:01:41"
+    }
+  ],
+  "imports": [],
+  "active_extraction": {},
+  "reports": [],
+  "simulations": [],
+  "verifier": {
+    "last_result": null
+  }
+}

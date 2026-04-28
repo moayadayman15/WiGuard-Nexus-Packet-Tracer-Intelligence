@@ -1,0 +1,37 @@
+[
+  {
+    "id": "GUEST-ISOLATION-001",
+    "title": "Guest VLAN must not access internal networks",
+    "severity": "Critical",
+    "owner": "Network Security",
+    "sla": "Immediate"
+  },
+  {
+    "id": "SSID-VLAN-001",
+    "title": "Each SSID must map to its expected VLAN",
+    "severity": "High",
+    "owner": "Wireless Team",
+    "sla": "24h"
+  },
+  {
+    "id": "TRUNK-COVERAGE-001",
+    "title": "AP/uplink trunks must carry all WLAN VLANs",
+    "severity": "High",
+    "owner": "Network Operations",
+    "sla": "24h"
+  },
+  {
+    "id": "DHCP-SCOPE-001",
+    "title": "DHCP scope must match expected VLAN subnet",
+    "severity": "Medium",
+    "owner": "Network Operations",
+    "sla": "72h"
+  },
+  {
+    "id": "ACL-DIRECTION-001",
+    "title": "ACLs must be applied to the correct interface and direction",
+    "severity": "High",
+    "owner": "Network Security",
+    "sla": "24h"
+  }
+]

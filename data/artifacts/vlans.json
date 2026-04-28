@@ -1,0 +1,32 @@
+[
+  {
+    "id": "10",
+    "name": "STAFF",
+    "source": "running-config vlan block",
+    "evidence": {
+      "source_line": 71,
+      "source_text": "vlan 10 name STAFF",
+      "confidence": 0.96
+    }
+  },
+  {
+    "id": "20",
+    "name": "STUDENTS",
+    "source": "running-config vlan block",
+    "evidence": {
+      "source_line": 73,
+      "source_text": "vlan 20 name STUDENTS",
+      "confidence": 0.96
+    }
+  },
+  {
+    "id": "30",
+    "name": "GUESTS",
+    "source": "running-config vlan block",
+    "evidence": {
+      "source_line": 75,
+      "source_text": "vlan 30 name GUESTS",
+      "confidence": 0.96
+    }
+  }
+]

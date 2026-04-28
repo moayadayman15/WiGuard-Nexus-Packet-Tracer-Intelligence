@@ -1,0 +1,5 @@
+timestamp,event_type,client,ssid,from_ap,to_ap,vlan,ip,result,detail
+2026-04-27 12:01:00,association,student_2044,StudentsWiFi,,AP-01,20,10.10.20.86,success,
+2026-04-27 12:05:00,roaming,student_2044,StudentsWiFi,AP-01,AP-02,20,10.10.20.86,success,
+2026-04-27 12:08:00,authentication_failure,guest_01,GuestWiFi,,AP-03,30,10.10.30.121,failed,Wrong captive portal credentials
+2026-04-27 12:10:00,dhcp_assignment,m.salem,StaffWiFi,,AP-01,10,10.10.10.44,success,

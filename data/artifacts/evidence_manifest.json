@@ -1,15 +1,21 @@
 {
-  "generated_at": "2026-04-28 09:57:50",
+  "generated_at": "2026-04-28 14:57:20",
   "tool": "WiGuard Nexus v5.5",
-  "source_file": "Project.pkt",
-  "source_hash": "6cb3b3515aa6d81e7fbcdddd6715044b77db43111baf5296189c5d0c147beae1",
-  "artifact_count": 34,
+  "source_file": "campus_production_sample.cfg",
+  "source_hash": "e25e07b4f30209a88f166b16b67b3422afcb5b3ec3bf41f506f0cb3404ae1754",
+  "artifact_count": 50,
   "files": [
     {
       "name": "acl_rules.json",
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "size_bytes": 2,
+      "sha256": "bddc4a07e13894e1e97acaf965ebe4342c787971299ec860597ee7840fe64568",
+      "size_bytes": 4267,
       "purpose": "Acl Rules"
+    },
+    {
+      "name": "analyst_signoff.json",
+      "sha256": "1e158ff59b6ff79181e692c1e37a72916d33e22b16c5241492ba4dc730c65238",
+      "size_bytes": 1709,
+      "purpose": "Analyst Signoff"
     },
     {
       "name": "arp_table.json",
@@ -18,10 +24,28 @@
       "purpose": "Arp Table"
     },
     {
-      "name": "cdp_links.json",
+      "name": "auto_conversion_pipeline.json",
       "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "size_bytes": 2,
+      "purpose": "Auto Conversion Pipeline"
+    },
+    {
+      "name": "cdp_links.json",
+      "sha256": "5f85c06e8af8d21f64a6abc98f1d00ad64541ae06c45aea4ed560b6bd9ffa269",
+      "size_bytes": 280,
       "purpose": "Cdp Links"
+    },
+    {
+      "name": "companion_exports.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Companion Exports"
+    },
+    {
+      "name": "decoded_payloads.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Decoded Payloads"
     },
     {
       "name": "device_facts.json",
@@ -31,26 +55,26 @@
     },
     {
       "name": "devices.json",
-      "sha256": "61774dbc057d9fd6ebabb9ede73a223660c40bda0afba14910d001926fcf1bb1",
-      "size_bytes": 302,
+      "sha256": "4c2717d9b68b7f07006bd96b2c02877ab2a25a26670f8f58cdc9828ef7df5029",
+      "size_bytes": 712,
       "purpose": "Devices"
     },
     {
       "name": "dhcp_excluded.json",
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "size_bytes": 2,
+      "sha256": "7a7d4987d3a4906ae6b50101a0125d3b25d26c00b1954ff9c6e87e474b77ccda",
+      "size_bytes": 645,
       "purpose": "Dhcp Excluded"
     },
     {
       "name": "dhcp_gateway_matches.json",
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "size_bytes": 2,
+      "sha256": "03f2e0fcdff48840e296d23a35fd0b02a95eff3da01c51a62ddb9160b3c3fea4",
+      "size_bytes": 841,
       "purpose": "Dhcp Gateway Matches"
     },
     {
       "name": "dhcp_scopes.json",
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "size_bytes": 2,
+      "sha256": "8267326a33783837b78bfc61a52139b9419a1129a0464734395966dc0211fb52",
+      "size_bytes": 2259,
       "purpose": "Dhcp Scopes"
     },
     {
@@ -60,22 +84,52 @@
       "purpose": "Etherchannels"
     },
     {
+      "name": "evidence_quality_matrix.json",
+      "sha256": "b16c28c3b1a4658876eae785ce6883d9758cd0c6e1c0206dd7080530efaec79a",
+      "size_bytes": 5930,
+      "purpose": "Evidence Quality Matrix"
+    },
+    {
+      "name": "evidence_registry.json",
+      "sha256": "257b6cba8716dc9365b7d4c55591c57e5d7d0fbd040f6b6956ce1d2a53650895",
+      "size_bytes": 49114,
+      "purpose": "Evidence Registry"
+    },
+    {
+      "name": "extraction_fidelity.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Extraction Fidelity"
+    },
+    {
       "name": "full_report.html",
-      "sha256": "4358b4e1d52cc2423ce91ad0763f47f262420f58bd8b54b71efb57ffd81194b5",
-      "size_bytes": 12559,
+      "sha256": "76e050e294e3d83e0b5087f156de59797319250b9e7c585cb7682ca3475bcb84",
+      "size_bytes": 11853,
       "purpose": "Full Report"
     },
     {
       "name": "full_report.json",
-      "sha256": "1ac29d20a62d5a7f06e92d1e26af3b6df75a0fb5c65dcd8ebbf57ee630593996",
-      "size_bytes": 101519,
+      "sha256": "f1fa1156dfe094bd3b609ba96145fea2339f1fe84a13371a2c5deb290b015166",
+      "size_bytes": 221069,
       "purpose": "Full Report"
     },
     {
+      "name": "import_diagnostics.json",
+      "sha256": "de566087ba4ca97670a12fec1c6843877de7fc14fa4be955b2df81ed34869538",
+      "size_bytes": 5736,
+      "purpose": "Import Diagnostics"
+    },
+    {
       "name": "interfaces.json",
+      "sha256": "6115b185fdb707d29468aa80a9d498cec03332f282c897397ab441542b87c6bc",
+      "size_bytes": 9203,
+      "purpose": "Interfaces"
+    },
+    {
+      "name": "internal_xml_bridge.json",
       "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "size_bytes": 2,
-      "purpose": "Interfaces"
+      "purpose": "Internal Xml Bridge"
     },
     {
       "name": "ip_inventory.json",
@@ -91,32 +145,38 @@
     },
     {
       "name": "nat_rules.json",
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "size_bytes": 2,
+      "sha256": "4c4cc6f5e10dc64fa2fbaeb5368239936d821d8d5f0662b7541251e4f4427288",
+      "size_bytes": 955,
       "purpose": "Nat Rules"
     },
     {
+      "name": "normalized_json_preview.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Normalized Json Preview"
+    },
+    {
       "name": "object_inventory.json",
-      "sha256": "3f1606a5da50fa805aeb821c4031a0a8d48cce254bcc4e93387edf0af3bdd535",
-      "size_bytes": 20292,
+      "sha256": "15f9f58098211634011b208b63937e873ef705e867e25cfd9539df644383ccb4",
+      "size_bytes": 126716,
       "purpose": "Object Inventory"
     },
     {
       "name": "packet_tracer_conversion_profile.json",
-      "sha256": "5124553d3f7e32d7efae7026981cbdf8de642443afc2c07566965a117960b73a",
-      "size_bytes": 9331,
+      "sha256": "e10feb7e16d0ca484d801c156f9c8b92f30f17fad9a5e279159d10049f7a59a9",
+      "size_bytes": 16428,
       "purpose": "Packet Tracer Conversion Profile"
     },
     {
       "name": "playbooks.json",
-      "sha256": "d7aa513a5b7bd3f8db39faf9c4bd4e2bcb41853baefca0a60419f2cd3f931b5c",
-      "size_bytes": 6579,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
       "purpose": "Playbooks"
     },
     {
       "name": "policy_diff.json",
-      "sha256": "1e9c2c1cfe21d09c8aa4d1ba92da5f434792dbf29246fbc900686bec145702bd",
-      "size_bytes": 5166,
+      "sha256": "abc0971a8b40f9a379aeac4f7847cfabf1664393c4d70c91fd26073087043464",
+      "size_bytes": 6071,
       "purpose": "Policy Diff"
     },
     {
@@ -126,39 +186,57 @@
       "purpose": "Port Security"
     },
     {
-      "name": "raw_evidence.json",
+      "name": "printable_segments_preview.json",
       "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "size_bytes": 2,
+      "purpose": "Printable Segments Preview"
+    },
+    {
+      "name": "raw_evidence.json",
+      "sha256": "fa5dd7e14cbd23fa21537248ffff5eaa8d2a498f4835390403518c84807b6df4",
+      "size_bytes": 3847,
       "purpose": "Raw Evidence"
     },
     {
+      "name": "reconstructed_config_preview.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
+      "purpose": "Reconstructed Config Preview"
+    },
+    {
       "name": "risk_model.json",
-      "sha256": "3cf75dc0b4f8719061e255432dcf85b528ca65bb2568c8caf2b8b9f7a73b7e2c",
-      "size_bytes": 67,
+      "sha256": "fed669f61eb3a5836058fa4b145fe3e2c05998bf776a6f3de5be62ef6264dc91",
+      "size_bytes": 69,
       "purpose": "Risk Model"
     },
     {
       "name": "risk_timeline.json",
-      "sha256": "392700fc20480b3573a8fd1cd8c15b82bdc8f039645c1aa02535e8f2c95e7e91",
-      "size_bytes": 2669,
+      "sha256": "a82d5066c0beff118f9eef7d2e54a03747ad77af8549de4267bb20e07e24c8ad",
+      "size_bytes": 847,
       "purpose": "Risk Timeline"
     },
     {
       "name": "root_causes.json",
-      "sha256": "0e00f57c88af4088b20fcb53c36e58624101566dc92d89daae4fff9e1d51c3ee",
-      "size_bytes": 8038,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "size_bytes": 2,
       "purpose": "Root Causes"
     },
     {
       "name": "routing.json",
-      "sha256": "c30dfda850234fd1c928cbc6cd775349e9aed311e4d35c973e05fa20e74b3b65",
-      "size_bytes": 47,
+      "sha256": "2e201aff49cd8167127c57425a20c4d3418acf9c24cd974f655557d4cd47be86",
+      "size_bytes": 381,
       "purpose": "Routing"
     },
     {
+      "name": "rule_assessment.json",
+      "sha256": "19c816e80a584246688f2e582715553b8708d82bf7c40ea526da7272f3422a0b",
+      "size_bytes": 607,
+      "purpose": "Rule Assessment"
+    },
+    {
       "name": "snapshot_diff.json",
-      "sha256": "b0326ea1557e792ca6428b877e1160fb56547d033c8e2fe26e356216b07b51d9",
-      "size_bytes": 3158,
+      "sha256": "dd17ab98720ea29651ec64fc66b2290c42dcdfe25866b4bc76f22d187fd9d820",
+      "size_bytes": 4213,
       "purpose": "Snapshot Diff"
     },
     {
@@ -168,9 +246,21 @@
       "purpose": "Spanning Tree"
     },
     {
+      "name": "topology_graph.dot",
+      "sha256": "ea5b615003906242e4c197effbfc5283868b3bab6ec842cc1542953beebd74f9",
+      "size_bytes": 3827,
+      "purpose": "Topology Graph.Dot"
+    },
+    {
+      "name": "topology_insights.json",
+      "sha256": "b7a1ff7aaf0849d037f7014bd47d0497b73ded72438aeec89d6f932f263e9867",
+      "size_bytes": 1618,
+      "purpose": "Topology Insights"
+    },
+    {
       "name": "topology_map.json",
-      "sha256": "c5077ddc9576ac2c580aad5e3aceb6b27f49e36dba9474896e77dc3edcb620dd",
-      "size_bytes": 3515,
+      "sha256": "dd9bf621ea510f01879d01fc17e6c39de0b3091cf709f8e696d4cd7e7b50d7a7",
+      "size_bytes": 9983,
       "purpose": "Topology Map"
     },
     {
@@ -180,33 +270,39 @@
       "purpose": "Validation Rules"
     },
     {
+      "name": "verified_extraction_contract.json",
+      "sha256": "19b0c473e2a1975119396404bf400f6b25265057841cd9335bfe3a40b9a58898",
+      "size_bytes": 2064,
+      "purpose": "Verified Extraction Contract"
+    },
+    {
       "name": "vlans.json",
-      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "size_bytes": 2,
+      "sha256": "1fc57e0f224872691cd3907971eff3f99efd676774cc642b0d7b0b80ea783f77",
+      "size_bytes": 659,
       "purpose": "Vlans"
     },
     {
       "name": "wired_policy.json",
-      "sha256": "80e470d4f5f12490a6733ac671cdc9a6cbd9d335e686d4c60e815e11746663fa",
-      "size_bytes": 976,
+      "sha256": "d12f8912c0094f3a64ca132d41c10691489930061381df6d2a335f9fa2575985",
+      "size_bytes": 23377,
       "purpose": "Wired Policy"
     },
     {
       "name": "wireless_event_report.html",
-      "sha256": "d089618c9cfdc0205d5e809f124247ccaca6a1ad870dcb3b3ce6a918b6027747",
-      "size_bytes": 12519,
+      "sha256": "c6e217f08f3693073b57a457b7f62eddeebbbfe6a0b54b708a8f57ae296c5cf3",
+      "size_bytes": 9011,
       "purpose": "Wireless Event Report"
     },
     {
       "name": "wireless_event_report.json",
-      "sha256": "108dc81eb88c65cce2a30542e200ac4e9dafd9e856cfcc2679571fb676ffb326",
-      "size_bytes": 53024,
+      "sha256": "5631bbd6e10bdc0b4dc79f938644e41c0d45c5384e239c553270daa411366dcf",
+      "size_bytes": 41856,
       "purpose": "Wireless Event Report"
     },
     {
       "name": "wireless_policy_manager.json",
-      "sha256": "ed1dbb74992990f3a5874c53c749be158b77cd671aad7c1598cf53742e46b892",
-      "size_bytes": 24159,
+      "sha256": "0140e009154d0152d3fc03049548ed91fa4133c259c46ea3ac8576bffdafd80c",
+      "size_bytes": 13500,
       "purpose": "Wireless Policy Manager"
     }
   ]

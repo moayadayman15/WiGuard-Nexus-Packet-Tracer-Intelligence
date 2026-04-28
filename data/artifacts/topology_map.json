@@ -1,10 +1,24 @@
 {
   "nodes": [
     {
-      "id": "Extracted-Reality",
-      "label": "Extracted Wired Reality",
-      "type": "network",
-      "confidence": 0.35,
+      "id": "R1-Core",
+      "label": "R1-Core",
+      "type": "router",
+      "confidence": 0.98,
+      "meta": {}
+    },
+    {
+      "id": "SW1-Access",
+      "label": "SW1-Access",
+      "type": "switch",
+      "confidence": 0.98,
+      "meta": {}
+    },
+    {
+      "id": "AP-01",
+      "label": "AP-01",
+      "type": "neighbor",
+      "confidence": 0.82,
       "meta": {}
     },
     {
@@ -56,22 +70,140 @@
       "meta": {}
     },
     {
+      "id": "IF:GigabitEthernet0/0",
+      "label": "GigabitEthernet0/0",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "unknown"
+      }
+    },
+    {
+      "id": "IF:GigabitEthernet0/0.10",
+      "label": "GigabitEthernet0/0.10",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed-subinterface"
+      }
+    },
+    {
+      "id": "ACL:STAFF_POLICY",
+      "label": "STAFF_POLICY",
+      "type": "acl",
+      "confidence": 0.88,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/0.20",
+      "label": "GigabitEthernet0/0.20",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed-subinterface"
+      }
+    },
+    {
+      "id": "ACL:STUDENT_POLICY",
+      "label": "STUDENT_POLICY",
+      "type": "acl",
+      "confidence": 0.88,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/0.30",
+      "label": "GigabitEthernet0/0.30",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed-subinterface"
+      }
+    },
+    {
+      "id": "ACL:GUEST_ISOLATION",
+      "label": "GUEST_ISOLATION",
+      "type": "acl",
+      "confidence": 0.88,
+      "meta": {}
+    },
+    {
+      "id": "IF:GigabitEthernet0/1",
+      "label": "GigabitEthernet0/1",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "routed"
+      }
+    },
+    {
+      "id": "IF:GigabitEthernet0/2",
+      "label": "GigabitEthernet0/2",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "trunk"
+      }
+    },
+    {
+      "id": "IF:FastEthernet0/10",
+      "label": "FastEthernet0/10",
+      "type": "interface",
+      "confidence": 0.95,
+      "meta": {
+        "mode": "access"
+      }
+    },
+    {
+      "id": "DHCP:STAFF_POOL",
+      "label": "STAFF_POOL",
+      "type": "dhcp",
+      "confidence": 0.95,
+      "meta": {
+        "cidr": "10.10.10.0/24"
+      }
+    },
+    {
+      "id": "DHCP:STUDENT_POOL",
+      "label": "STUDENT_POOL",
+      "type": "dhcp",
+      "confidence": 0.95,
+      "meta": {
+        "cidr": "10.10.20.0/24"
+      }
+    },
+    {
+      "id": "DHCP:GUEST_POOL",
+      "label": "GUEST_POOL",
+      "type": "dhcp",
+      "confidence": 0.95,
+      "meta": {
+        "cidr": "10.10.30.0/24"
+      }
+    },
+    {
+      "id": "Extracted-Reality",
+      "label": "Extracted Wired Reality",
+      "type": "network",
+      "confidence": 0.72,
+      "meta": {}
+    },
+    {
       "id": "CTRL:SEG-ACL-APPLIED",
       "label": "SEG-ACL-APPLIED",
       "type": "control",
-      "confidence": 0.45,
+      "confidence": 0.9,
       "meta": {
-        "status": "review",
-        "severity": "High"
+        "status": "pass",
+        "severity": "Info"
       }
     },
     {
       "id": "CTRL:L2-TRUNK-COVERAGE",
       "label": "L2-TRUNK-COVERAGE",
       "type": "control",
-      "confidence": 0.4,
+      "confidence": 0.86,
       "meta": {
-        "status": "review",
+        "status": "pass",
         "severity": "Medium"
       }
     },
@@ -99,9 +231,9 @@
       "id": "CTRL:TOPOLOGY-ADJACENCY",
       "label": "TOPOLOGY-ADJACENCY",
       "type": "control",
-      "confidence": 0.42,
+      "confidence": 0.84,
       "meta": {
-        "status": "review",
+        "status": "pass",
         "severity": "Medium"
       }
     },
@@ -160,6 +292,158 @@
       "status": "expected",
       "confidence": 1.0,
       "label": "Guest"
+    },
+    {
+      "from": "VLAN:10",
+      "to": "IF:GigabitEthernet0/0.10",
+      "type": "dot1q_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/0.10",
+      "to": "ACL:STAFF_POLICY",
+      "type": "access-group-in",
+      "status": "enforced",
+      "confidence": 0.88,
+      "label": ""
+    },
+    {
+      "from": "VLAN:20",
+      "to": "IF:GigabitEthernet0/0.20",
+      "type": "dot1q_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/0.20",
+      "to": "ACL:STUDENT_POLICY",
+      "type": "access-group-in",
+      "status": "enforced",
+      "confidence": 0.88,
+      "label": ""
+    },
+    {
+      "from": "VLAN:30",
+      "to": "IF:GigabitEthernet0/0.30",
+      "type": "dot1q_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/0.30",
+      "to": "ACL:GUEST_ISOLATION",
+      "type": "access-group-in",
+      "status": "enforced",
+      "confidence": 0.88,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/1",
+      "to": "VLAN:10",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/1",
+      "to": "VLAN:20",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/1",
+      "to": "VLAN:30",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "VLAN:10",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "VLAN:20",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "VLAN:30",
+      "type": "trunk-allows",
+      "status": "confirmed",
+      "confidence": 0.78,
+      "label": ""
+    },
+    {
+      "from": "VLAN:10",
+      "to": "IF:FastEthernet0/10",
+      "type": "access_vlan",
+      "status": "confirmed",
+      "confidence": 0.85,
+      "label": ""
+    },
+    {
+      "from": "DHCP:STAFF_POOL",
+      "to": "VLAN:10",
+      "type": "serves",
+      "status": "match",
+      "confidence": 0.93,
+      "label": "10.10.10.0/24"
+    },
+    {
+      "from": "DHCP:STUDENT_POOL",
+      "to": "VLAN:20",
+      "type": "serves",
+      "status": "match",
+      "confidence": 0.93,
+      "label": "10.10.20.0/24"
+    },
+    {
+      "from": "DHCP:GUEST_POOL",
+      "to": "VLAN:30",
+      "type": "serves",
+      "status": "match",
+      "confidence": 0.93,
+      "label": "10.10.30.0/24"
+    },
+    {
+      "from": "IF:GigabitEthernet0/2",
+      "to": "AP-01",
+      "type": "cdp",
+      "status": "confirmed",
+      "confidence": 0.82,
+      "label": "GigabitEthernet0"
+    },
+    {
+      "from": "CTRL:SEG-ACL-APPLIED",
+      "to": "Extracted-Reality",
+      "type": "evidence-control",
+      "status": "pass",
+      "confidence": 0.9,
+      "label": "line 55"
+    },
+    {
+      "from": "CTRL:L2-TRUNK-COVERAGE",
+      "to": "Extracted-Reality",
+      "type": "evidence-control",
+      "status": "pass",
+      "confidence": 0.86,
+      "label": "line 77"
     }
   ]
 }

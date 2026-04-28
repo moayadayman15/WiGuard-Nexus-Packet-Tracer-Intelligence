@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "expression": "ip nat inside",
+    "evidence": {
+      "source_line": 32,
+      "source_text": " ip nat inside",
+      "confidence": 0.88
+    }
+  },
+  {
+    "expression": "ip nat inside",
+    "evidence": {
+      "source_line": 39,
+      "source_text": " ip nat inside",
+      "confidence": 0.88
+    }
+  },
+  {
+    "expression": "ip nat inside",
+    "evidence": {
+      "source_line": 46,
+      "source_text": " ip nat inside",
+      "confidence": 0.88
+    }
+  },
+  {
+    "expression": "ip nat outside",
+    "evidence": {
+      "source_line": 52,
+      "source_text": " ip nat outside",
+      "confidence": 0.88
+    }
+  },
+  {
+    "expression": "ip nat inside source list STAFF_POLICY interface GigabitEthernet0/1 overload",
+    "evidence": {
+      "source_line": 66,
+      "source_text": "ip nat inside source list STAFF_POLICY interface GigabitEthernet0/1 overload",
+      "confidence": 0.88
+    }
+  }
+]

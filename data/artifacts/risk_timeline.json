@@ -1,81 +1,15 @@
 [
   {
-    "time": "2026-04-28 09:57:50",
+    "time": "2026-04-28 14:57:19",
     "type": "import",
     "severity": "Info",
-    "detail": "Imported Project.pkt and extracted 15 object/evidence entries."
+    "detail": "Loaded production sample campus_production_sample.cfg and extracted 123 object/evidence entries."
   },
   {
-    "time": "2026-04-28 09:57:50",
+    "time": "2026-04-28 14:57:19",
     "type": "import",
     "severity": "Info",
-    "detail": "Imported Project.pkt with 15 objects"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "High",
-    "detail": "SSID-VLAN-StaffWiFi: Not found in extracted wired policy"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Medium",
-    "detail": "DHCP-StaffWiFi: No matching DHCP evidence"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Medium",
-    "detail": "TRUNK-StaffWiFi: No trunk evidence uploaded"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "High",
-    "detail": "SSID-VLAN-StudentsWiFi: Not found in extracted wired policy"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Medium",
-    "detail": "DHCP-StudentsWiFi: No matching DHCP evidence"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Medium",
-    "detail": "TRUNK-StudentsWiFi: No trunk evidence uploaded"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "High",
-    "detail": "ACL-DIRECTION-StudentsWiFi: No applied ACL was confirmed"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "High",
-    "detail": "SSID-VLAN-GuestWiFi: Not found in extracted wired policy"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Medium",
-    "detail": "DHCP-GuestWiFi: No matching DHCP evidence"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Medium",
-    "detail": "TRUNK-GuestWiFi: No trunk evidence uploaded"
-  },
-  {
-    "time": "2026-04-28 09:57:50",
-    "type": "policy_diff",
-    "severity": "Critical",
-    "detail": "GUEST-ISOLATION-GuestWiFi: No applied deny ACL was found for guest VLAN 30."
+    "detail": "Imported campus_production_sample.cfg with 123 objects"
   },
   {
     "time": "2026-04-27 16:01:41",

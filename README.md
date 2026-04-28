@@ -1,4 +1,19 @@
-# WiGuard Nexus v5.7 — Deep Packet Tracer Intelligence
+# WiGuard Nexus v5.9.3 — Professional Quality Studio
+
+### v5.8.9 Packet Tracer Fidelity + UI Cleanup
+
+`.pkt/.pka` uploads now run automatically through the full background conversion path:
+
+1. preserve the original file and calculate SHA-256,
+2. probe `PTEXPLORER_PATH` or another configured converter if available,
+3. recover embedded ZIP/XML/JSON/config text, wrapped streams, zlib chunks, and visible Cisco-like evidence,
+4. generate `internal_pkt_bridge.xml`,
+5. generate `internal_pkt_bridge.normalized.json`,
+6. parse the bridge and decoded payloads into devices, interfaces, VLANs, links, IP inventory, policy evidence, and report artifacts.
+
+The UI exposes `Background Auto-Conversion Pipeline` and `Decoded Native Payloads` so the upload result is transparent instead of a vague low understanding percentage.
+
+
 
 WiGuard Nexus converts Packet Tracer labs, exported network configurations, and wireless evidence into a verified web workspace for policy validation, topology mapping, reporting, and evidence packaging.
 
@@ -6,13 +21,32 @@ WiGuard Nexus converts Packet Tracer labs, exported network configurations, and 
 Tenant → Project → Upload → Convert → Validate → Map → Analyze → Report → Verify
 ```
 
-## What is new in v5.7
+
+## What is new in v5.9.1
+
+- Import Diagnostics & Truth Contract: the UI now explains exactly why full-fidelity Packet Tracer claims are allowed or blocked.
+- Topology Confidence Insights: confirmed/inferred edge counts, average edge confidence, orphan nodes, and next evidence suggestions.
+- Rule Engine Readiness: rule counts, extracted policy controls, failed/review findings, risk atoms, verified input ratio, and rule gaps.
+- Extra evidence artifacts: `import_diagnostics.json`, `topology_insights.json`, and `rule_assessment.json`.
+- Report Builder Pro can include Packet Tracer diagnostics, topology confidence, and rule readiness in custom exports.
+
+## What is new in v5.8.9
+
+
+### v5.8.9 Fidelity and Reconstruction Layer
+
+- Reconstructs flattened IOS-like commands from native `.pkt/.pka` printable segments before parsing.
+- Adds an Extraction Fidelity Contract: `converter_verified`, `strong_visible_recovery`, `partial_visible_recovery`, or `opaque_native_binary`.
+- Adds UI panels for verified object snapshot, reconstructed config lines, printable segment preview, and backend upload status.
+- Exports `extraction_fidelity.json`, `reconstructed_config_preview.json`, and `printable_segments_preview.json` in the evidence package.
+- Avoids fake 100% certainty for proprietary native binaries; the score reflects what was actually decoded and verified.
 
 ### Packet Tracer Conversion Lab
 
 - Native `.pkt/.pka` intake with safe storage and SHA-256 source hash.
 - Optional external XML converter support through `PTEXPLORER_PATH`.
-- Printable binary recovery fallback for Packet Tracer files when no converter is configured.
+- Internal XML → normalized JSON bridge for native `.pkt/.pka` files when no external converter is configured.
+- Printable binary recovery fallback with visible IP/MAC/interface/SSID/config hints mapped into structured evidence.
 - Conversion Readiness Score that honestly grades how much evidence was confirmed.
 - Quality gates for device identity, interfaces, VLANs, ACLs, topology, line mapping, and native Packet Tracer reliability.
 - Missing command checklist for `show running-config`, `show vlan brief`, `show interfaces trunk`, `show ip interface brief`, `show access-lists`, `show cdp neighbors detail`, `show spanning-tree`, `show port-security interface`, and `show etherchannel summary`.
@@ -189,3 +223,41 @@ This release upgrades WiGuard from a strong demo into a more defensible Packet T
 - Utility exception handling now uses typed exceptions and debug logging instead of broad silent failure.
 - Added `tests/test_v58_cleanup_packet_policy.py`.
 - Full test suite passes: 30 passed.
+
+### v5.8.4 Deep Packet Tracer Import Intelligence
+
+This build upgrades Packet Tracer JSON/XML ingestion with a deeper schema normalizer. The importer can now understand nested device/interface/link/VLAN/DHCP/ACL structures, XML child tags, endpoint-array topology links, embedded configs, endpoint inventory, and validation findings. `/import` now shows a schema path map and structured validation findings so analysts can see exactly what the file proved and what still needs stronger evidence.
+
+
+### v5.8.9 Native PKT XML/JSON Bridge + Fidelity
+
+This build improves the exact weak point that caused low understanding percentages on Packet Tracer uploads. Native `.pkt/.pka` files are still proprietary, so WiGuard stays evidence-honest and does not invent topology from opaque binary noise. However, the importer now creates an internal XML bridge and a normalized JSON profile from every safely recoverable clue: printable strings, zlib chunks, binary signatures, IP candidates, MAC candidates, interface names, SSID/wireless hints, and Cisco-like config lines.
+
+The `/import` page now shows the bridge output directly, including XML preview, normalized JSON preview, visible evidence counts, and artifact files:
+- `internal_pkt_bridge.xml`
+- `internal_pkt_bridge.normalized.json`
+- `internal_xml_bridge.json`
+- `packet_tracer_conversion_profile.json`
+
+For exported JSON/XML, the normalizer now understands more Packet Tracer converter shapes such as nested `attributes`, `properties`, `config`, `ports`, `connections`, and `logicalTopology` wrappers, then turns them into devices, interfaces, VLANs, links, endpoint inventory, schema map entries, and validation findings.
+
+## v5.9.0 — Verified Packet Tracer Extraction System
+
+- Added optional companion export upload for native `.pkt/.pka` files so exported configs/XML/JSON/ZIP bundles can be merged with native recovery.
+- Added an Evidence Registry that classifies each extracted object as `verified`, `recovered`, `inferred`, or `unmapped` with line/path/source evidence.
+- Added a Verified Extraction Contract showing when full-fidelity claims are allowed and which exports are still required.
+- Added artifact exports: `evidence_registry.json`, `verified_extraction_contract.json`, and `companion_exports.json`.
+- Improved Import and Object Explorer UI with companion-export guidance, fidelity contract cards, and registry tables.
+- Added tests for native Packet Tracer + companion export merging and verified export parsing.
+
+### v5.9.3 Professional Quality Studio
+
+This release adds a truth-first quality layer on top of Packet Tracer extraction. Native `.pkt/.pka` parsing is still treated as best-effort unless a companion export/config bundle is supplied, but the UI and reports now make that contract explicit.
+
+New professional gates:
+
+- Evidence Quality Matrix per object category.
+- Analyst Sign-off for executive/technical publish readiness.
+- Forbidden/allowed claim tracking for full-fidelity Packet Tracer reports.
+- Object Explorer filtering by `verified`, `recovered`, `inferred`, and `unmapped` evidence states.
+- Dedicated `quality` report type and custom report sections.

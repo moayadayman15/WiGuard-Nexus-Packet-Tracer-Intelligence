@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-04-28 14:57:20",
+  "classic_rules_total": 6,
+  "classic_rules_enabled": 6,
+  "policy_controls_extracted": 8,
+  "risk_atoms": 0,
+  "findings_total": 14,
+  "failed_findings": 0,
+  "review_findings": 0,
+  "evidence_verified_ratio": 0.262,
+  "gaps": [
+    {
+      "id": "RULE-GAP-RUNTIME",
+      "severity": "Low",
+      "detail": "Runtime counters are missing, so traffic-based rules stay review-level."
+    },
+    {
+      "id": "RULE-GAP-EVIDENCE",
+      "severity": "Medium",
+      "detail": "Most rule inputs are recovered/inferred, not verified."
+    }
+  ]
+}

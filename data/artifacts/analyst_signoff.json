@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-04-28 14:57:20",
+  "can_publish_executive": false,
+  "can_publish_technical": true,
+  "can_claim_full_fidelity": true,
+  "evidence_score": 63,
+  "evidence_grade": "Needs companion exports",
+  "blockers": [],
+  "required_actions": [
+    {
+      "priority": "Evidence",
+      "action": "Upload/export evidence for IP Inventory (L3 addressing).",
+      "why": "Raises report defensibility and extraction quality."
+    },
+    {
+      "priority": "Evidence",
+      "action": "Upload/export evidence for Trunk Operational State (Allowed/native VLAN proof).",
+      "why": "Raises report defensibility and extraction quality."
+    },
+    {
+      "priority": "Evidence",
+      "action": "Upload/export evidence for Routing Table (Reachability/root cause).",
+      "why": "Raises report defensibility and extraction quality."
+    },
+    {
+      "priority": "Evidence",
+      "action": "Upload/export evidence for LLDP Links (Physical topology).",
+      "why": "Raises report defensibility and extraction quality."
+    },
+    {
+      "priority": "Evidence",
+      "action": "Map this object class to raw source lines before reporting as fact.",
+      "why": "Raises report defensibility and extraction quality."
+    }
+  ],
+  "allowed_claims": [
+    "All listed objects are separated by evidence strength: verified, recovered, inferred, or unmapped.",
+    "Native .pkt/.pka extraction is best-effort unless companion exports are parsed.",
+    "Reports include diagnostics, blockers, and required next exports.",
+    "Full-fidelity claims are allowed for the verified object classes covered by companion/export evidence."
+  ],
+  "forbidden_claims": []
+}

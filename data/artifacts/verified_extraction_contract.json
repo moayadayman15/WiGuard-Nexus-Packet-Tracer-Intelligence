@@ -1,0 +1,68 @@
+[
+  {
+    "tier": "verified_export_parse",
+    "can_claim_full_fidelity": true,
+    "claim": "Structured/exported evidence parsed directly; confidence depends on object evidence mapping.",
+    "source_mode": "text_config",
+    "evidence_summary": {
+      "total": 149,
+      "verified": 39,
+      "recovered": 16,
+      "inferred": 16,
+      "unmapped": 78,
+      "high_value_verified": 24,
+      "high_value_total": 26,
+      "verified_ratio": 0.262,
+      "high_value_verified_ratio": 0.923
+    },
+    "companion_export_present": false,
+    "companion_exports": [],
+    "native_recoverability": null,
+    "native_confidence": null,
+    "required_next_exports": [
+      {
+        "artifact": "running-config",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Export/copy running-config for every router/switch."
+      },
+      {
+        "artifact": "show vlan brief",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms VLAN names, status, and access-port membership."
+      },
+      {
+        "artifact": "show interfaces trunk",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms trunk state, allowed VLANs, and native VLAN."
+      },
+      {
+        "artifact": "show ip interface brief",
+        "status": "recommended",
+        "severity": "Medium",
+        "why": "Confirms L3 interface IPs and operational state."
+      },
+      {
+        "artifact": "show access-lists",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms ACL contents and live hit counters."
+      },
+      {
+        "artifact": "show cdp/lldp neighbors detail",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms physical adjacency and cable/path edges."
+      },
+      {
+        "artifact": "show spanning-tree",
+        "status": "recommended",
+        "severity": "Low",
+        "why": "Confirms L2 root/blocked/forwarding state."
+      }
+    ],
+    "evidence": {}
+  }
+]

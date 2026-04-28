@@ -1,65 +1,199 @@
 {
   "metadata": {
-    "filename": "Project.pkt",
-    "extension": ".pkt",
-    "bytes": 273411,
-    "source_mode": "pkt_binary_recovery",
-    "native_packet_tracer": true,
+    "filename": "campus_production_sample.cfg",
+    "extension": ".cfg",
+    "bytes": 2243,
+    "source_mode": "text_config",
+    "native_packet_tracer": false,
+    "structured_source": false,
     "converter_used": false,
-    "printable_lines": 11162,
+    "native_inspector_used": false,
+    "auto_xml_json_bridge_used": false,
+    "printable_lines": 94,
     "markers": [
-      "ios"
+      "cisco",
+      "fastethernet",
+      "gigabitethernet",
+      "access-list"
     ],
-    "format_note": "Native Packet Tracer file. Accuracy is highest when PTEXPLORER_PATH is configured or when configs/show outputs are exported as TXT/ZIP."
+    "format_note": "Text/XML/JSON evidence was decoded directly.",
+    "internal_xml_bridge_used": false
   },
   "relationships": {
-    "interface_to_vlan": [],
-    "vlan_to_interfaces": {},
-    "acl_to_interfaces": {},
-    "dhcp_to_vlan": [],
-    "trunks": []
+    "interface_to_vlan": [
+      {
+        "interface": "GigabitEthernet0/0.10",
+        "normalized": "GigabitEthernet0/0.10",
+        "mode": "routed-subinterface",
+        "vlans": [
+          {
+            "type": "dot1q_vlan",
+            "vlan": "10"
+          }
+        ],
+        "evidence_line": 28
+      },
+      {
+        "interface": "GigabitEthernet0/0.20",
+        "normalized": "GigabitEthernet0/0.20",
+        "mode": "routed-subinterface",
+        "vlans": [
+          {
+            "type": "dot1q_vlan",
+            "vlan": "20"
+          }
+        ],
+        "evidence_line": 35
+      },
+      {
+        "interface": "GigabitEthernet0/0.30",
+        "normalized": "GigabitEthernet0/0.30",
+        "mode": "routed-subinterface",
+        "vlans": [
+          {
+            "type": "dot1q_vlan",
+            "vlan": "30"
+          }
+        ],
+        "evidence_line": 42
+      },
+      {
+        "interface": "FastEthernet0/10",
+        "normalized": "FastEthernet0/10",
+        "mode": "access",
+        "vlans": [
+          {
+            "type": "access_vlan",
+            "vlan": "10"
+          }
+        ],
+        "evidence_line": 87
+      }
+    ],
+    "vlan_to_interfaces": {
+      "10": [
+        "GigabitEthernet0/0.10",
+        "FastEthernet0/10"
+      ],
+      "20": [
+        "GigabitEthernet0/0.20"
+      ],
+      "30": [
+        "GigabitEthernet0/0.30"
+      ]
+    },
+    "acl_to_interfaces": {
+      "STAFF_POLICY": [
+        {
+          "interface": "GigabitEthernet0/0.10",
+          "normalized": "GigabitEthernet0/0.10",
+          "direction": "in"
+        }
+      ],
+      "STUDENT_POLICY": [
+        {
+          "interface": "GigabitEthernet0/0.20",
+          "normalized": "GigabitEthernet0/0.20",
+          "direction": "in"
+        }
+      ],
+      "GUEST_ISOLATION": [
+        {
+          "interface": "GigabitEthernet0/0.30",
+          "normalized": "GigabitEthernet0/0.30",
+          "direction": "in"
+        }
+      ]
+    },
+    "dhcp_to_vlan": [
+      {
+        "pool": "STAFF_POOL",
+        "cidr": "10.10.10.0/24",
+        "gateway": "10.10.10.1",
+        "matched_interface": "GigabitEthernet0/0.10",
+        "matched_vlan": "10",
+        "status": "match",
+        "confidence": 0.93
+      },
+      {
+        "pool": "STUDENT_POOL",
+        "cidr": "10.10.20.0/24",
+        "gateway": "10.10.20.1",
+        "matched_interface": "GigabitEthernet0/0.20",
+        "matched_vlan": "20",
+        "status": "match",
+        "confidence": 0.93
+      },
+      {
+        "pool": "GUEST_POOL",
+        "cidr": "10.10.30.0/24",
+        "gateway": "10.10.30.1",
+        "matched_interface": "GigabitEthernet0/0.30",
+        "matched_vlan": "30",
+        "status": "match",
+        "confidence": 0.93
+      }
+    ],
+    "trunks": [
+      {
+        "interface": "GigabitEthernet0/1",
+        "normalized": "GigabitEthernet0/1",
+        "allowed_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
+        "native_vlan": null,
+        "evidence_line": 77
+      },
+      {
+        "interface": "GigabitEthernet0/2",
+        "normalized": "GigabitEthernet0/2",
+        "allowed_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
+        "native_vlan": null,
+        "evidence_line": 82
+      }
+    ]
   },
   "command_checklist": [
     {
-      "command": "Export Packet Tracer device configs as TXT or ZIP",
-      "status": "recommended",
-      "severity": "High",
-      "why": "Native .pkt/.pka binary recovery can miss structured fields; exported configs raise confidence dramatically."
-    },
-    {
       "command": "show running-config",
-      "status": "missing",
-      "severity": "High",
+      "status": "covered",
+      "severity": "Info",
       "why": "Core configuration, interfaces, VLANs, ACLs, DHCP and routing."
     },
     {
       "command": "show vlan brief",
-      "status": "missing",
-      "severity": "Medium",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms VLAN IDs, names, status, and switchport hints."
     },
     {
       "command": "show interfaces trunk",
-      "status": "missing",
-      "severity": "Medium",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms real trunk membership and allowed VLAN list."
     },
     {
       "command": "show ip interface brief",
-      "status": "missing",
-      "severity": "Medium",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms L3 interfaces, IP addresses, and up/down state."
     },
     {
       "command": "show access-lists",
-      "status": "missing",
-      "severity": "High",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms segmentation rules and deny/permit enforcement."
     },
     {
       "command": "show cdp neighbors detail",
-      "status": "missing",
-      "severity": "Medium",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms physical adjacency and topology edges."
     },
     {
@@ -94,8 +228,8 @@
     },
     {
       "command": "show ip route",
-      "status": "missing",
-      "severity": "Medium",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms L3 forwarding, default routes, and protocol-learned paths."
     },
     {
@@ -130,8 +264,8 @@
     },
     {
       "command": "show protocols / routing protocol summary",
-      "status": "missing",
-      "severity": "Medium",
+      "status": "covered",
+      "severity": "Info",
       "why": "Confirms active L3/NAT/DHCP/HSRP/routing protocol evidence."
     }
   ],
@@ -140,31 +274,31 @@
       "name": "Device identity",
       "status": "pass",
       "score": 1.0,
-      "detail": "1 device node(s) extracted."
+      "detail": "3 device node(s) extracted."
     },
     {
       "name": "Interface coverage",
-      "status": "review",
-      "score": 0.0,
-      "detail": "0 interface block(s)/hint(s) extracted."
+      "status": "pass",
+      "score": 1.0,
+      "detail": "8 interface block(s)/hint(s) extracted."
     },
     {
       "name": "VLAN coverage",
-      "status": "fail",
-      "score": 0.0,
-      "detail": "0 VLAN object(s) extracted."
+      "status": "pass",
+      "score": 0.6,
+      "detail": "3 VLAN object(s) extracted."
     },
     {
       "name": "Security policy coverage",
-      "status": "review",
-      "score": 0.0,
-      "detail": "0 ACL rule(s) extracted."
+      "status": "pass",
+      "score": 0.5,
+      "detail": "5 ACL rule(s) extracted."
     },
     {
       "name": "Topology evidence",
-      "status": "review",
-      "score": 0.0,
-      "detail": "0 CDP/LLDP edge(s) extracted."
+      "status": "pass",
+      "score": 0.25,
+      "detail": "1 CDP/LLDP edge(s) extracted."
     },
     {
       "name": "Operational state coverage",
@@ -191,35 +325,41 @@
       "detail": "0 ACL counter and 0 interface counter row(s)."
     },
     {
-      "name": "Cross-layer VLAN consistency",
+      "name": "Structured schema understanding",
       "status": "review",
       "score": 0.0,
+      "detail": "0 schema path group(s), 0 extracted structured relationship(s), 0 validation finding(s)."
+    },
+    {
+      "name": "Cross-layer VLAN consistency",
+      "status": "pass",
+      "score": 0.6,
       "detail": "0 VLAN trunk mismatch candidate(s)."
     },
     {
       "name": "Line-level traceability",
       "status": "review",
-      "score": 0.286,
-      "detail": "29% of list objects have source-line evidence."
+      "score": 0.365,
+      "detail": "36% of list objects have source-line evidence."
     },
     {
       "name": "Native Packet Tracer confidence",
-      "status": "review",
-      "score": 0.45,
-      "detail": "Native binary recovery used."
+      "status": "pass",
+      "score": 0.92,
+      "detail": "Structured/text source decoded."
     }
   ],
   "readiness": "needs_more_evidence",
-  "readiness_score": 0.228,
-  "objects_total": 22,
+  "readiness_score": 0.48,
+  "objects_total": 307,
   "high_value_objects": {
-    "devices": 1,
-    "interfaces": 0,
-    "vlans": 0,
-    "dhcp_scopes": 0,
-    "acl_rules": 0,
-    "routing_entries": 0,
-    "cdp_links": 0,
+    "devices": 3,
+    "interfaces": 8,
+    "vlans": 3,
+    "dhcp_scopes": 3,
+    "acl_rules": 5,
+    "routing_entries": 1,
+    "cdp_links": 1,
     "port_security": 0,
     "spanning_tree": 0,
     "etherchannels": 0,
@@ -229,20 +369,39 @@
     "lldp_links": 0,
     "security_hardening": 0,
     "policy_controls": 8,
-    "deep_evidence_index": 0,
+    "deep_evidence_index": 37,
     "vlan_brief": 0,
     "acl_hit_counts": 0,
     "interface_counters": 0,
     "stp_root": 0,
-    "protocol_summary": 0,
-    "risk_atoms": 0
+    "protocol_summary": 9,
+    "risk_atoms": 0,
+    "schema_map": 0,
+    "structured_relationships": 0,
+    "validation_findings": 0,
+    "endpoint_inventory": 0,
+    "access_tests": 0,
+    "client_access_matrix": 0,
+    "service_inventory": 0,
+    "roaming_events": 0,
+    "lab_result_summary": 0,
+    "native_pkt_profile": 0,
+    "binary_signatures": 0,
+    "native_visible_hints": 0,
+    "internal_xml_bridge": 0,
+    "converted_xml_preview": 0,
+    "normalized_json_preview": 0,
+    "auto_conversion_pipeline": 0,
+    "decoded_payloads": 0,
+    "companion_exports": 0,
+    "evidence_registry": 149
   },
-  "analyst_next_step": "Export configs/show outputs from Packet Tracer and upload them as TXT or ZIP to move from binary recovery to evidence-grade extraction.",
+  "analyst_next_step": "Upload these missing command outputs to increase confidence: show spanning-tree, show port-security interface, show etherchannel summary, show lldp neighbors detail",
   "coverage_domains": [
     {
       "domain": "Identity",
-      "count": 0,
-      "status": "missing",
+      "count": 3,
+      "status": "good",
       "keys": [
         "devices",
         "device_facts",
@@ -251,8 +410,8 @@
     },
     {
       "domain": "L2/VLAN",
-      "count": 0,
-      "status": "missing",
+      "count": 11,
+      "status": "excellent",
       "keys": [
         "vlans",
         "vlan_brief",
@@ -264,8 +423,8 @@
     },
     {
       "domain": "L3/Routing",
-      "count": 2,
-      "status": "needs_more_evidence",
+      "count": 14,
+      "status": "excellent",
       "keys": [
         "ip_inventory",
         "dhcp_scopes",
@@ -276,8 +435,8 @@
     },
     {
       "domain": "Security",
-      "count": 0,
-      "status": "missing",
+      "count": 5,
+      "status": "good",
       "keys": [
         "acl_rules",
         "acl_hit_counts",
@@ -287,8 +446,8 @@
     },
     {
       "domain": "Topology",
-      "count": 0,
-      "status": "missing",
+      "count": 1,
+      "status": "needs_more_evidence",
       "keys": [
         "cdp_links",
         "lldp_links",
@@ -298,8 +457,8 @@
     },
     {
       "domain": "Wireless",
-      "count": 5,
-      "status": "good",
+      "count": 2,
+      "status": "needs_more_evidence",
       "keys": [
         "wireless_hints"
       ]
@@ -316,23 +475,133 @@
     }
   ],
   "vlan_crosscheck": {
-    "configured_vlans": [],
+    "configured_vlans": [
+      "10",
+      "20",
+      "30"
+    ],
     "show_vlan_vlans": [],
-    "dhcp_gateway_vlans": [],
-    "access_or_svi_vlans": [],
+    "dhcp_gateway_vlans": [
+      "10",
+      "20",
+      "30"
+    ],
+    "access_or_svi_vlans": [
+      "10",
+      "20",
+      "30"
+    ],
     "trunk_allowed_vlans": [],
     "trunk_forwarding_vlans": [],
     "missing_from_trunks": [],
-    "observed_total": 0
+    "observed_total": 3
   },
   "risk_atoms": [],
   "evidence_profile": {
-    "raw_evidence_lines": 0,
-    "objects_with_line_evidence": 6,
-    "total_list_objects": 21,
-    "line_mapping_ratio": 0.286,
-    "deep_evidence_lines": 0,
+    "raw_evidence_lines": 41,
+    "objects_with_line_evidence": 54,
+    "total_list_objects": 148,
+    "line_mapping_ratio": 0.365,
+    "deep_evidence_lines": 37,
     "command_blocks": 1,
-    "confidence": 0.75
+    "confidence": 0.964
+  },
+  "schema_map": [],
+  "structured_relationships": [],
+  "validation_findings": [],
+  "import_warnings": [],
+  "structured_summary": {},
+  "access_tests": [],
+  "client_access_matrix": [],
+  "service_inventory": [],
+  "roaming_events": [],
+  "lab_result_summary": [],
+  "native_pkt_profile": [],
+  "binary_signatures": [],
+  "recovered_string_preview": [],
+  "native_conversion_guidance": [],
+  "native_visible_hints": [],
+  "internal_xml_bridge": [],
+  "converted_xml_preview": [],
+  "normalized_json_preview": [],
+  "auto_conversion_pipeline": [],
+  "decoded_payloads": [],
+  "extraction_fidelity": [],
+  "companion_exports": [],
+  "verified_extraction_contract": {
+    "tier": "verified_export_parse",
+    "can_claim_full_fidelity": true,
+    "claim": "Structured/exported evidence parsed directly; confidence depends on object evidence mapping.",
+    "source_mode": "text_config",
+    "evidence_summary": {
+      "total": 149,
+      "verified": 39,
+      "recovered": 16,
+      "inferred": 16,
+      "unmapped": 78,
+      "high_value_verified": 24,
+      "high_value_total": 26,
+      "verified_ratio": 0.262,
+      "high_value_verified_ratio": 0.923
+    },
+    "companion_export_present": false,
+    "companion_exports": [],
+    "native_recoverability": null,
+    "native_confidence": null,
+    "required_next_exports": [
+      {
+        "artifact": "running-config",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Export/copy running-config for every router/switch."
+      },
+      {
+        "artifact": "show vlan brief",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms VLAN names, status, and access-port membership."
+      },
+      {
+        "artifact": "show interfaces trunk",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms trunk state, allowed VLANs, and native VLAN."
+      },
+      {
+        "artifact": "show ip interface brief",
+        "status": "recommended",
+        "severity": "Medium",
+        "why": "Confirms L3 interface IPs and operational state."
+      },
+      {
+        "artifact": "show access-lists",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms ACL contents and live hit counters."
+      },
+      {
+        "artifact": "show cdp/lldp neighbors detail",
+        "status": "covered",
+        "severity": "Info",
+        "why": "Confirms physical adjacency and cable/path edges."
+      },
+      {
+        "artifact": "show spanning-tree",
+        "status": "recommended",
+        "severity": "Low",
+        "why": "Confirms L2 root/blocked/forwarding state."
+      }
+    ]
+  },
+  "evidence_registry_summary": {
+    "total": 149,
+    "verified": 39,
+    "recovered": 16,
+    "inferred": 16,
+    "unmapped": 78,
+    "high_value_verified": 24,
+    "high_value_total": 26,
+    "verified_ratio": 0.262,
+    "high_value_verified_ratio": 0.923
   }
 }

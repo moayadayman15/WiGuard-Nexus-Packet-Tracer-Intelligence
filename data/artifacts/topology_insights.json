@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-04-28 14:57:20",
+  "node_count": 31,
+  "edge_count": 22,
+  "node_types": {
+    "router": 1,
+    "switch": 1,
+    "neighbor": 1,
+    "ssid": 3,
+    "vlan": 3,
+    "interface": 7,
+    "acl": 3,
+    "dhcp": 3,
+    "network": 1,
+    "control": 8
+  },
+  "confirmed_edges": 19,
+  "inferred_edges": 3,
+  "orphan_nodes": [
+    {
+      "id": "R1-Core",
+      "label": "R1-Core",
+      "type": "router"
+    },
+    {
+      "id": "SW1-Access",
+      "label": "SW1-Access",
+      "type": "switch"
+    },
+    {
+      "id": "IF:GigabitEthernet0/0",
+      "label": "GigabitEthernet0/0",
+      "type": "interface"
+    },
+    {
+      "id": "CTRL:DEVICE-HARDENING",
+      "label": "DEVICE-HARDENING",
+      "type": "control"
+    },
+    {
+      "id": "CTRL:ACCESS-PORT-SECURITY",
+      "label": "ACCESS-PORT-SECURITY",
+      "type": "control"
+    },
+    {
+      "id": "CTRL:TOPOLOGY-ADJACENCY",
+      "label": "TOPOLOGY-ADJACENCY",
+      "type": "control"
+    },
+    {
+      "id": "CTRL:INTERFACE-ERROR-HEALTH",
+      "label": "INTERFACE-ERROR-HEALTH",
+      "type": "control"
+    },
+    {
+      "id": "CTRL:ACL-RUNTIME-HITS",
+      "label": "ACL-RUNTIME-HITS",
+      "type": "control"
+    },
+    {
+      "id": "CTRL:VLAN-TRUNK-CROSSCHECK",
+      "label": "VLAN-TRUNK-CROSSCHECK",
+      "type": "control"
+    }
+  ],
+  "edge_confidence_average": 0.868,
+  "suggestions": [
+    "Import show interfaces trunk to confirm active trunk VLANs and native VLANs.",
+    "Import show ip route to connect VLAN/interface evidence to L3 reachability."
+  ]
+}

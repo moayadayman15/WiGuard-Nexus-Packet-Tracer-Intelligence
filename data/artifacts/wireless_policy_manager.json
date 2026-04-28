@@ -124,7 +124,7 @@
   ],
   "correlations": [
     {
-      "time": "2026-04-28 09:57:50",
+      "time": "2026-04-28 14:57:19",
       "event_type": "import",
       "client": "",
       "ssid": "",
@@ -168,128 +168,17 @@
       "reason": "AP inventory says this AP/uplink supports the expected WLAN VLAN."
     }
   ],
-  "anomalies": [
-    {
-      "id": "WIRED-SSID-VLAN-StaffWiFi",
-      "severity": "High",
-      "category": "Wired policy drift",
-      "asset": "StaffWiFi",
-      "detail": "Not found in extracted wired policy",
-      "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "confidence": 90,
-      "evidence": "Wireless matrix/event correlation for StaffWiFi"
-    },
-    {
-      "id": "WIRED-DHCP-StaffWiFi",
-      "severity": "Medium",
-      "category": "Wired policy drift",
-      "asset": "StaffWiFi",
-      "detail": "No matching DHCP evidence",
-      "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "confidence": 75,
-      "evidence": "Wireless matrix/event correlation for StaffWiFi"
-    },
-    {
-      "id": "WIRED-TRUNK-StaffWiFi",
-      "severity": "Medium",
-      "category": "Wired policy drift",
-      "asset": "StaffWiFi",
-      "detail": "No trunk evidence uploaded",
-      "recommendation": "Upload show interfaces trunk / switchport running-config.",
-      "confidence": 75,
-      "evidence": "Wireless matrix/event correlation for StaffWiFi"
-    },
-    {
-      "id": "WIRED-SSID-VLAN-StudentsWiFi",
-      "severity": "High",
-      "category": "Wired policy drift",
-      "asset": "StudentsWiFi",
-      "detail": "Not found in extracted wired policy",
-      "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "confidence": 90,
-      "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-    },
-    {
-      "id": "WIRED-DHCP-StudentsWiFi",
-      "severity": "Medium",
-      "category": "Wired policy drift",
-      "asset": "StudentsWiFi",
-      "detail": "No matching DHCP evidence",
-      "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "confidence": 75,
-      "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-    },
-    {
-      "id": "WIRED-TRUNK-StudentsWiFi",
-      "severity": "Medium",
-      "category": "Wired policy drift",
-      "asset": "StudentsWiFi",
-      "detail": "No trunk evidence uploaded",
-      "recommendation": "Upload show interfaces trunk / switchport running-config.",
-      "confidence": 75,
-      "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-    },
-    {
-      "id": "WIRED-ACL-DIRECTION-StudentsWiFi",
-      "severity": "High",
-      "category": "Wired policy drift",
-      "asset": "StudentsWiFi",
-      "detail": "No applied ACL was confirmed",
-      "recommendation": "Apply the student policy ACL to the VLAN gateway in the correct direction.",
-      "confidence": 90,
-      "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-    },
-    {
-      "id": "WIRED-SSID-VLAN-GuestWiFi",
-      "severity": "High",
-      "category": "Wired policy drift",
-      "asset": "GuestWiFi",
-      "detail": "Not found in extracted wired policy",
-      "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "confidence": 90,
-      "evidence": "Wireless matrix/event correlation for GuestWiFi"
-    },
-    {
-      "id": "WIRED-DHCP-GuestWiFi",
-      "severity": "Medium",
-      "category": "Wired policy drift",
-      "asset": "GuestWiFi",
-      "detail": "No matching DHCP evidence",
-      "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "confidence": 75,
-      "evidence": "Wireless matrix/event correlation for GuestWiFi"
-    },
-    {
-      "id": "WIRED-TRUNK-GuestWiFi",
-      "severity": "Medium",
-      "category": "Wired policy drift",
-      "asset": "GuestWiFi",
-      "detail": "No trunk evidence uploaded",
-      "recommendation": "Upload show interfaces trunk / switchport running-config.",
-      "confidence": 75,
-      "evidence": "Wireless matrix/event correlation for GuestWiFi"
-    },
-    {
-      "id": "WIRED-GUEST-ISOLATION-GuestWiFi",
-      "severity": "Critical",
-      "category": "Wired policy drift",
-      "asset": "GuestWiFi",
-      "detail": "No applied deny ACL was found for guest VLAN 30.",
-      "recommendation": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule.",
-      "confidence": 90,
-      "evidence": "Wireless matrix/event correlation for GuestWiFi"
-    }
-  ],
+  "anomalies": [],
   "risk": {
-    "score": 12,
-    "grade": "Critical",
-    "risk_level": "High",
-    "anomaly_count": 11,
-    "critical": 1,
-    "high": 4
+    "score": 100,
+    "grade": "Excellent",
+    "risk_level": "Low",
+    "anomaly_count": 0,
+    "critical": 0,
+    "high": 0
   },
   "confidence": {
-    "score": 80,
+    "score": 100,
     "level": "High",
     "reasons": [
       "wired config evidence",
@@ -298,164 +187,9 @@
       "client sessions",
       "SSID policy database"
     ],
-    "wired_drift_penalty": 20
+    "wired_drift_penalty": 0
   },
-  "playbooks": [
-    {
-      "id": "PB-WIRED-SSID-VLAN-StaffWiFi",
-      "finding": "WIRED-SSID-VLAN-StaffWiFi",
-      "severity": "High",
-      "title": "Remediate Wired policy drift",
-      "why": "Not found in extracted wired policy",
-      "fix": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-DHCP-StaffWiFi",
-      "finding": "WIRED-DHCP-StaffWiFi",
-      "severity": "Medium",
-      "title": "Remediate Wired policy drift",
-      "why": "No matching DHCP evidence",
-      "fix": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-TRUNK-StaffWiFi",
-      "finding": "WIRED-TRUNK-StaffWiFi",
-      "severity": "Medium",
-      "title": "Remediate Wired policy drift",
-      "why": "No trunk evidence uploaded",
-      "fix": "Upload show interfaces trunk / switchport running-config.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-SSID-VLAN-StudentsWiFi",
-      "finding": "WIRED-SSID-VLAN-StudentsWiFi",
-      "severity": "High",
-      "title": "Remediate Wired policy drift",
-      "why": "Not found in extracted wired policy",
-      "fix": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-DHCP-StudentsWiFi",
-      "finding": "WIRED-DHCP-StudentsWiFi",
-      "severity": "Medium",
-      "title": "Remediate Wired policy drift",
-      "why": "No matching DHCP evidence",
-      "fix": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-TRUNK-StudentsWiFi",
-      "finding": "WIRED-TRUNK-StudentsWiFi",
-      "severity": "Medium",
-      "title": "Remediate Wired policy drift",
-      "why": "No trunk evidence uploaded",
-      "fix": "Upload show interfaces trunk / switchport running-config.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-ACL-DIRECTION-StudentsWiFi",
-      "finding": "WIRED-ACL-DIRECTION-StudentsWiFi",
-      "severity": "High",
-      "title": "Remediate Wired policy drift",
-      "why": "No applied ACL was confirmed",
-      "fix": "Apply the student policy ACL to the VLAN gateway in the correct direction.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-SSID-VLAN-GuestWiFi",
-      "finding": "WIRED-SSID-VLAN-GuestWiFi",
-      "severity": "High",
-      "title": "Remediate Wired policy drift",
-      "why": "Not found in extracted wired policy",
-      "fix": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-DHCP-GuestWiFi",
-      "finding": "WIRED-DHCP-GuestWiFi",
-      "severity": "Medium",
-      "title": "Remediate Wired policy drift",
-      "why": "No matching DHCP evidence",
-      "fix": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-TRUNK-GuestWiFi",
-      "finding": "WIRED-TRUNK-GuestWiFi",
-      "severity": "Medium",
-      "title": "Remediate Wired policy drift",
-      "why": "No trunk evidence uploaded",
-      "fix": "Upload show interfaces trunk / switchport running-config.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    },
-    {
-      "id": "PB-WIRED-GUEST-ISOLATION-GuestWiFi",
-      "finding": "WIRED-GUEST-ISOLATION-GuestWiFi",
-      "severity": "Critical",
-      "title": "Remediate Wired policy drift",
-      "why": "No applied deny ACL was found for guest VLAN 30.",
-      "fix": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule.",
-      "verify": [
-        "show wlan summary",
-        "show wireless client summary",
-        "show interfaces trunk"
-      ],
-      "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-    }
-  ],
+  "playbooks": [],
   "policy_rules": [
     {
       "id": "PS-GUEST-DENY-INTERNAL",

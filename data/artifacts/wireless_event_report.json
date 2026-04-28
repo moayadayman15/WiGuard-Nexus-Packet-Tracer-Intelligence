@@ -1,6 +1,6 @@
 {
   "report_type": "wireless",
-  "generated_at": "2026-04-28 09:57:50",
+  "generated_at": "2026-04-28 14:57:20",
   "project": {
     "id": "main-campus",
     "name": "Main Campus Lab",
@@ -11,20 +11,20 @@
     "tenant_id": "tenant-main"
   },
   "risk": {
-    "score": 0,
-    "grade": "Critical",
-    "risk_level": "High"
+    "score": 100,
+    "grade": "Excellent",
+    "risk_level": "Low"
   },
   "summary": {
     "objects": {
-      "devices": 1,
-      "interfaces": 0,
-      "vlans": 0,
-      "dhcp_scopes": 0,
-      "acl_rules": 0,
-      "routing": 0,
-      "nat_rules": 0,
-      "cdp_links": 0,
+      "devices": 3,
+      "interfaces": 8,
+      "vlans": 3,
+      "dhcp_scopes": 3,
+      "acl_rules": 5,
+      "routing": 1,
+      "nat_rules": 5,
+      "cdp_links": 1,
       "lldp_links": 0,
       "ip_inventory": 0,
       "interface_status": 0,
@@ -39,52 +39,37 @@
       "device_facts": 0,
       "device_inventory": 0,
       "security_hardening": 0,
-      "wireless_hints": 5,
+      "wireless_hints": 2,
       "command_blocks": 1,
-      "subnet_inventory": 0,
+      "subnet_inventory": 5,
       "policy_controls": 8,
-      "deep_evidence_index": 0,
-      "raw_evidence": 0
+      "deep_evidence_index": 37,
+      "raw_evidence": 41,
+      "schema_map": 0,
+      "structured_relationships": 0,
+      "validation_findings": 0,
+      "endpoint_inventory": 0,
+      "access_tests": 0,
+      "client_access_matrix": 0,
+      "service_inventory": 0,
+      "roaming_events": 0,
+      "lab_result_summary": 0
     },
-    "total_diffs": 11,
-    "failed": 4,
-    "review": 7,
-    "passed": 0,
+    "total_diffs": 14,
+    "failed": 0,
+    "review": 0,
+    "passed": 14,
     "confidence": {
-      "overall": 0.419,
-      "source_confidence": 0.58,
-      "line_mapping_ratio": 0.286,
-      "applied_acl_rules": 0,
-      "mode": "pkt_binary_recovery",
+      "overall": 0.714,
+      "source_confidence": 0.92,
+      "line_mapping_ratio": 0.365,
+      "applied_acl_rules": 5,
+      "mode": "text_config",
       "readiness": "needs_more_evidence",
-      "readiness_score": 0.228
+      "readiness_score": 0.48,
+      "structured_status": null
     },
     "missing_evidence": [
-      {
-        "source": "show running-config interfaces",
-        "why": "No interface blocks were extracted; topology and ACL binding may be incomplete.",
-        "severity": "High"
-      },
-      {
-        "source": "show interfaces trunk",
-        "why": "Trunk coverage cannot be validated without trunk evidence.",
-        "severity": "Medium"
-      },
-      {
-        "source": "show access-lists / running-config ACL sections",
-        "why": "Segmentation checks cannot confirm deny/permit enforcement without ACL evidence.",
-        "severity": "High"
-      },
-      {
-        "source": "show running-config | section ip dhcp",
-        "why": "DHCP/subnet matching will remain review-only without DHCP pool evidence.",
-        "severity": "Medium"
-      },
-      {
-        "source": "show cdp neighbors detail",
-        "why": "Physical adjacency/topology edges are inferred rather than confirmed.",
-        "severity": "Low"
-      },
       {
         "source": "show ip interface brief",
         "why": "Interface operational status and L3 reachability cannot be fully verified.",
@@ -98,66 +83,200 @@
     ],
     "conversion_profile": {
       "metadata": {
-        "filename": "Project.pkt",
-        "extension": ".pkt",
-        "bytes": 273411,
-        "source_mode": "pkt_binary_recovery",
-        "native_packet_tracer": true,
+        "filename": "campus_production_sample.cfg",
+        "extension": ".cfg",
+        "bytes": 2243,
+        "source_mode": "text_config",
+        "native_packet_tracer": false,
+        "structured_source": false,
         "converter_used": false,
-        "printable_lines": 11162,
+        "native_inspector_used": false,
+        "auto_xml_json_bridge_used": false,
+        "printable_lines": 94,
         "markers": [
-          "ios"
+          "cisco",
+          "fastethernet",
+          "gigabitethernet",
+          "access-list"
         ],
-        "format_note": "Native Packet Tracer file. Accuracy is highest when PTEXPLORER_PATH is configured or when configs/show outputs are exported as TXT/ZIP."
+        "format_note": "Text/XML/JSON evidence was decoded directly.",
+        "internal_xml_bridge_used": false
       },
       "relationships": {
-        "interface_to_vlan": [],
-        "vlan_to_interfaces": {},
-        "acl_to_interfaces": {},
-        "dhcp_to_vlan": [],
-        "trunks": []
+        "interface_to_vlan": [
+          {
+            "interface": "GigabitEthernet0/0.10",
+            "normalized": "GigabitEthernet0/0.10",
+            "mode": "routed-subinterface",
+            "vlans": [
+              {
+                "type": "dot1q_vlan",
+                "vlan": "10"
+              }
+            ],
+            "evidence_line": 28
+          },
+          {
+            "interface": "GigabitEthernet0/0.20",
+            "normalized": "GigabitEthernet0/0.20",
+            "mode": "routed-subinterface",
+            "vlans": [
+              {
+                "type": "dot1q_vlan",
+                "vlan": "20"
+              }
+            ],
+            "evidence_line": 35
+          },
+          {
+            "interface": "GigabitEthernet0/0.30",
+            "normalized": "GigabitEthernet0/0.30",
+            "mode": "routed-subinterface",
+            "vlans": [
+              {
+                "type": "dot1q_vlan",
+                "vlan": "30"
+              }
+            ],
+            "evidence_line": 42
+          },
+          {
+            "interface": "FastEthernet0/10",
+            "normalized": "FastEthernet0/10",
+            "mode": "access",
+            "vlans": [
+              {
+                "type": "access_vlan",
+                "vlan": "10"
+              }
+            ],
+            "evidence_line": 87
+          }
+        ],
+        "vlan_to_interfaces": {
+          "10": [
+            "GigabitEthernet0/0.10",
+            "FastEthernet0/10"
+          ],
+          "20": [
+            "GigabitEthernet0/0.20"
+          ],
+          "30": [
+            "GigabitEthernet0/0.30"
+          ]
+        },
+        "acl_to_interfaces": {
+          "STAFF_POLICY": [
+            {
+              "interface": "GigabitEthernet0/0.10",
+              "normalized": "GigabitEthernet0/0.10",
+              "direction": "in"
+            }
+          ],
+          "STUDENT_POLICY": [
+            {
+              "interface": "GigabitEthernet0/0.20",
+              "normalized": "GigabitEthernet0/0.20",
+              "direction": "in"
+            }
+          ],
+          "GUEST_ISOLATION": [
+            {
+              "interface": "GigabitEthernet0/0.30",
+              "normalized": "GigabitEthernet0/0.30",
+              "direction": "in"
+            }
+          ]
+        },
+        "dhcp_to_vlan": [
+          {
+            "pool": "STAFF_POOL",
+            "cidr": "10.10.10.0/24",
+            "gateway": "10.10.10.1",
+            "matched_interface": "GigabitEthernet0/0.10",
+            "matched_vlan": "10",
+            "status": "match",
+            "confidence": 0.93
+          },
+          {
+            "pool": "STUDENT_POOL",
+            "cidr": "10.10.20.0/24",
+            "gateway": "10.10.20.1",
+            "matched_interface": "GigabitEthernet0/0.20",
+            "matched_vlan": "20",
+            "status": "match",
+            "confidence": 0.93
+          },
+          {
+            "pool": "GUEST_POOL",
+            "cidr": "10.10.30.0/24",
+            "gateway": "10.10.30.1",
+            "matched_interface": "GigabitEthernet0/0.30",
+            "matched_vlan": "30",
+            "status": "match",
+            "confidence": 0.93
+          }
+        ],
+        "trunks": [
+          {
+            "interface": "GigabitEthernet0/1",
+            "normalized": "GigabitEthernet0/1",
+            "allowed_vlans": [
+              "10",
+              "20",
+              "30"
+            ],
+            "native_vlan": null,
+            "evidence_line": 77
+          },
+          {
+            "interface": "GigabitEthernet0/2",
+            "normalized": "GigabitEthernet0/2",
+            "allowed_vlans": [
+              "10",
+              "20",
+              "30"
+            ],
+            "native_vlan": null,
+            "evidence_line": 82
+          }
+        ]
       },
       "command_checklist": [
         {
-          "command": "Export Packet Tracer device configs as TXT or ZIP",
-          "status": "recommended",
-          "severity": "High",
-          "why": "Native .pkt/.pka binary recovery can miss structured fields; exported configs raise confidence dramatically."
-        },
-        {
           "command": "show running-config",
-          "status": "missing",
-          "severity": "High",
+          "status": "covered",
+          "severity": "Info",
           "why": "Core configuration, interfaces, VLANs, ACLs, DHCP and routing."
         },
         {
           "command": "show vlan brief",
-          "status": "missing",
-          "severity": "Medium",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms VLAN IDs, names, status, and switchport hints."
         },
         {
           "command": "show interfaces trunk",
-          "status": "missing",
-          "severity": "Medium",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms real trunk membership and allowed VLAN list."
         },
         {
           "command": "show ip interface brief",
-          "status": "missing",
-          "severity": "Medium",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms L3 interfaces, IP addresses, and up/down state."
         },
         {
           "command": "show access-lists",
-          "status": "missing",
-          "severity": "High",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms segmentation rules and deny/permit enforcement."
         },
         {
           "command": "show cdp neighbors detail",
-          "status": "missing",
-          "severity": "Medium",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms physical adjacency and topology edges."
         },
         {
@@ -192,8 +311,8 @@
         },
         {
           "command": "show ip route",
-          "status": "missing",
-          "severity": "Medium",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms L3 forwarding, default routes, and protocol-learned paths."
         },
         {
@@ -228,8 +347,8 @@
         },
         {
           "command": "show protocols / routing protocol summary",
-          "status": "missing",
-          "severity": "Medium",
+          "status": "covered",
+          "severity": "Info",
           "why": "Confirms active L3/NAT/DHCP/HSRP/routing protocol evidence."
         }
       ],
@@ -238,31 +357,31 @@
           "name": "Device identity",
           "status": "pass",
           "score": 1.0,
-          "detail": "1 device node(s) extracted."
+          "detail": "3 device node(s) extracted."
         },
         {
           "name": "Interface coverage",
-          "status": "review",
-          "score": 0.0,
-          "detail": "0 interface block(s)/hint(s) extracted."
+          "status": "pass",
+          "score": 1.0,
+          "detail": "8 interface block(s)/hint(s) extracted."
         },
         {
           "name": "VLAN coverage",
-          "status": "fail",
-          "score": 0.0,
-          "detail": "0 VLAN object(s) extracted."
+          "status": "pass",
+          "score": 0.6,
+          "detail": "3 VLAN object(s) extracted."
         },
         {
           "name": "Security policy coverage",
-          "status": "review",
-          "score": 0.0,
-          "detail": "0 ACL rule(s) extracted."
+          "status": "pass",
+          "score": 0.5,
+          "detail": "5 ACL rule(s) extracted."
         },
         {
           "name": "Topology evidence",
-          "status": "review",
-          "score": 0.0,
-          "detail": "0 CDP/LLDP edge(s) extracted."
+          "status": "pass",
+          "score": 0.25,
+          "detail": "1 CDP/LLDP edge(s) extracted."
         },
         {
           "name": "Operational state coverage",
@@ -289,35 +408,41 @@
           "detail": "0 ACL counter and 0 interface counter row(s)."
         },
         {
-          "name": "Cross-layer VLAN consistency",
+          "name": "Structured schema understanding",
           "status": "review",
           "score": 0.0,
+          "detail": "0 schema path group(s), 0 extracted structured relationship(s), 0 validation finding(s)."
+        },
+        {
+          "name": "Cross-layer VLAN consistency",
+          "status": "pass",
+          "score": 0.6,
           "detail": "0 VLAN trunk mismatch candidate(s)."
         },
         {
           "name": "Line-level traceability",
           "status": "review",
-          "score": 0.286,
-          "detail": "29% of list objects have source-line evidence."
+          "score": 0.365,
+          "detail": "36% of list objects have source-line evidence."
         },
         {
           "name": "Native Packet Tracer confidence",
-          "status": "review",
-          "score": 0.45,
-          "detail": "Native binary recovery used."
+          "status": "pass",
+          "score": 0.92,
+          "detail": "Structured/text source decoded."
         }
       ],
       "readiness": "needs_more_evidence",
-      "readiness_score": 0.228,
-      "objects_total": 22,
+      "readiness_score": 0.48,
+      "objects_total": 307,
       "high_value_objects": {
-        "devices": 1,
-        "interfaces": 0,
-        "vlans": 0,
-        "dhcp_scopes": 0,
-        "acl_rules": 0,
-        "routing_entries": 0,
-        "cdp_links": 0,
+        "devices": 3,
+        "interfaces": 8,
+        "vlans": 3,
+        "dhcp_scopes": 3,
+        "acl_rules": 5,
+        "routing_entries": 1,
+        "cdp_links": 1,
         "port_security": 0,
         "spanning_tree": 0,
         "etherchannels": 0,
@@ -327,20 +452,39 @@
         "lldp_links": 0,
         "security_hardening": 0,
         "policy_controls": 8,
-        "deep_evidence_index": 0,
+        "deep_evidence_index": 37,
         "vlan_brief": 0,
         "acl_hit_counts": 0,
         "interface_counters": 0,
         "stp_root": 0,
-        "protocol_summary": 0,
-        "risk_atoms": 0
+        "protocol_summary": 9,
+        "risk_atoms": 0,
+        "schema_map": 0,
+        "structured_relationships": 0,
+        "validation_findings": 0,
+        "endpoint_inventory": 0,
+        "access_tests": 0,
+        "client_access_matrix": 0,
+        "service_inventory": 0,
+        "roaming_events": 0,
+        "lab_result_summary": 0,
+        "native_pkt_profile": 0,
+        "binary_signatures": 0,
+        "native_visible_hints": 0,
+        "internal_xml_bridge": 0,
+        "converted_xml_preview": 0,
+        "normalized_json_preview": 0,
+        "auto_conversion_pipeline": 0,
+        "decoded_payloads": 0,
+        "companion_exports": 0,
+        "evidence_registry": 149
       },
-      "analyst_next_step": "Export configs/show outputs from Packet Tracer and upload them as TXT or ZIP to move from binary recovery to evidence-grade extraction.",
+      "analyst_next_step": "Upload these missing command outputs to increase confidence: show spanning-tree, show port-security interface, show etherchannel summary, show lldp neighbors detail",
       "coverage_domains": [
         {
           "domain": "Identity",
-          "count": 0,
-          "status": "missing",
+          "count": 3,
+          "status": "good",
           "keys": [
             "devices",
             "device_facts",
@@ -349,8 +493,8 @@
         },
         {
           "domain": "L2/VLAN",
-          "count": 0,
-          "status": "missing",
+          "count": 11,
+          "status": "excellent",
           "keys": [
             "vlans",
             "vlan_brief",
@@ -362,8 +506,8 @@
         },
         {
           "domain": "L3/Routing",
-          "count": 2,
-          "status": "needs_more_evidence",
+          "count": 14,
+          "status": "excellent",
           "keys": [
             "ip_inventory",
             "dhcp_scopes",
@@ -374,8 +518,8 @@
         },
         {
           "domain": "Security",
-          "count": 0,
-          "status": "missing",
+          "count": 5,
+          "status": "good",
           "keys": [
             "acl_rules",
             "acl_hit_counts",
@@ -385,8 +529,8 @@
         },
         {
           "domain": "Topology",
-          "count": 0,
-          "status": "missing",
+          "count": 1,
+          "status": "needs_more_evidence",
           "keys": [
             "cdp_links",
             "lldp_links",
@@ -396,8 +540,8 @@
         },
         {
           "domain": "Wireless",
-          "count": 5,
-          "status": "good",
+          "count": 2,
+          "status": "needs_more_evidence",
           "keys": [
             "wireless_hints"
           ]
@@ -414,24 +558,134 @@
         }
       ],
       "vlan_crosscheck": {
-        "configured_vlans": [],
+        "configured_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
         "show_vlan_vlans": [],
-        "dhcp_gateway_vlans": [],
-        "access_or_svi_vlans": [],
+        "dhcp_gateway_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
+        "access_or_svi_vlans": [
+          "10",
+          "20",
+          "30"
+        ],
         "trunk_allowed_vlans": [],
         "trunk_forwarding_vlans": [],
         "missing_from_trunks": [],
-        "observed_total": 0
+        "observed_total": 3
       },
       "risk_atoms": [],
       "evidence_profile": {
-        "raw_evidence_lines": 0,
-        "objects_with_line_evidence": 6,
-        "total_list_objects": 21,
-        "line_mapping_ratio": 0.286,
-        "deep_evidence_lines": 0,
+        "raw_evidence_lines": 41,
+        "objects_with_line_evidence": 54,
+        "total_list_objects": 148,
+        "line_mapping_ratio": 0.365,
+        "deep_evidence_lines": 37,
         "command_blocks": 1,
-        "confidence": 0.75
+        "confidence": 0.964
+      },
+      "schema_map": [],
+      "structured_relationships": [],
+      "validation_findings": [],
+      "import_warnings": [],
+      "structured_summary": {},
+      "access_tests": [],
+      "client_access_matrix": [],
+      "service_inventory": [],
+      "roaming_events": [],
+      "lab_result_summary": [],
+      "native_pkt_profile": [],
+      "binary_signatures": [],
+      "recovered_string_preview": [],
+      "native_conversion_guidance": [],
+      "native_visible_hints": [],
+      "internal_xml_bridge": [],
+      "converted_xml_preview": [],
+      "normalized_json_preview": [],
+      "auto_conversion_pipeline": [],
+      "decoded_payloads": [],
+      "extraction_fidelity": [],
+      "companion_exports": [],
+      "verified_extraction_contract": {
+        "tier": "verified_export_parse",
+        "can_claim_full_fidelity": true,
+        "claim": "Structured/exported evidence parsed directly; confidence depends on object evidence mapping.",
+        "source_mode": "text_config",
+        "evidence_summary": {
+          "total": 149,
+          "verified": 39,
+          "recovered": 16,
+          "inferred": 16,
+          "unmapped": 78,
+          "high_value_verified": 24,
+          "high_value_total": 26,
+          "verified_ratio": 0.262,
+          "high_value_verified_ratio": 0.923
+        },
+        "companion_export_present": false,
+        "companion_exports": [],
+        "native_recoverability": null,
+        "native_confidence": null,
+        "required_next_exports": [
+          {
+            "artifact": "running-config",
+            "status": "covered",
+            "severity": "Info",
+            "why": "Export/copy running-config for every router/switch."
+          },
+          {
+            "artifact": "show vlan brief",
+            "status": "covered",
+            "severity": "Info",
+            "why": "Confirms VLAN names, status, and access-port membership."
+          },
+          {
+            "artifact": "show interfaces trunk",
+            "status": "covered",
+            "severity": "Info",
+            "why": "Confirms trunk state, allowed VLANs, and native VLAN."
+          },
+          {
+            "artifact": "show ip interface brief",
+            "status": "recommended",
+            "severity": "Medium",
+            "why": "Confirms L3 interface IPs and operational state."
+          },
+          {
+            "artifact": "show access-lists",
+            "status": "covered",
+            "severity": "Info",
+            "why": "Confirms ACL contents and live hit counters."
+          },
+          {
+            "artifact": "show cdp/lldp neighbors detail",
+            "status": "covered",
+            "severity": "Info",
+            "why": "Confirms physical adjacency and cable/path edges."
+          },
+          {
+            "artifact": "show spanning-tree",
+            "status": "recommended",
+            "severity": "Low",
+            "why": "Confirms L2 root/blocked/forwarding state."
+          }
+        ]
+      },
+      "evidence_registry_summary": {
+        "total": 149,
+        "verified": 39,
+        "recovered": 16,
+        "inferred": 16,
+        "unmapped": 78,
+        "high_value_verified": 24,
+        "high_value_total": 26,
+        "verified_ratio": 0.262,
+        "high_value_verified_ratio": 0.923
       }
     }
   },
@@ -561,7 +815,7 @@
     ],
     "correlations": [
       {
-        "time": "2026-04-28 09:57:50",
+        "time": "2026-04-28 14:57:19",
         "event_type": "import",
         "client": "",
         "ssid": "",
@@ -605,128 +859,17 @@
         "reason": "AP inventory says this AP/uplink supports the expected WLAN VLAN."
       }
     ],
-    "anomalies": [
-      {
-        "id": "WIRED-SSID-VLAN-StaffWiFi",
-        "severity": "High",
-        "category": "Wired policy drift",
-        "asset": "StaffWiFi",
-        "detail": "Not found in extracted wired policy",
-        "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-        "confidence": 90,
-        "evidence": "Wireless matrix/event correlation for StaffWiFi"
-      },
-      {
-        "id": "WIRED-DHCP-StaffWiFi",
-        "severity": "Medium",
-        "category": "Wired policy drift",
-        "asset": "StaffWiFi",
-        "detail": "No matching DHCP evidence",
-        "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-        "confidence": 75,
-        "evidence": "Wireless matrix/event correlation for StaffWiFi"
-      },
-      {
-        "id": "WIRED-TRUNK-StaffWiFi",
-        "severity": "Medium",
-        "category": "Wired policy drift",
-        "asset": "StaffWiFi",
-        "detail": "No trunk evidence uploaded",
-        "recommendation": "Upload show interfaces trunk / switchport running-config.",
-        "confidence": 75,
-        "evidence": "Wireless matrix/event correlation for StaffWiFi"
-      },
-      {
-        "id": "WIRED-SSID-VLAN-StudentsWiFi",
-        "severity": "High",
-        "category": "Wired policy drift",
-        "asset": "StudentsWiFi",
-        "detail": "Not found in extracted wired policy",
-        "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-        "confidence": 90,
-        "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-      },
-      {
-        "id": "WIRED-DHCP-StudentsWiFi",
-        "severity": "Medium",
-        "category": "Wired policy drift",
-        "asset": "StudentsWiFi",
-        "detail": "No matching DHCP evidence",
-        "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-        "confidence": 75,
-        "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-      },
-      {
-        "id": "WIRED-TRUNK-StudentsWiFi",
-        "severity": "Medium",
-        "category": "Wired policy drift",
-        "asset": "StudentsWiFi",
-        "detail": "No trunk evidence uploaded",
-        "recommendation": "Upload show interfaces trunk / switchport running-config.",
-        "confidence": 75,
-        "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-      },
-      {
-        "id": "WIRED-ACL-DIRECTION-StudentsWiFi",
-        "severity": "High",
-        "category": "Wired policy drift",
-        "asset": "StudentsWiFi",
-        "detail": "No applied ACL was confirmed",
-        "recommendation": "Apply the student policy ACL to the VLAN gateway in the correct direction.",
-        "confidence": 90,
-        "evidence": "Wireless matrix/event correlation for StudentsWiFi"
-      },
-      {
-        "id": "WIRED-SSID-VLAN-GuestWiFi",
-        "severity": "High",
-        "category": "Wired policy drift",
-        "asset": "GuestWiFi",
-        "detail": "Not found in extracted wired policy",
-        "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-        "confidence": 90,
-        "evidence": "Wireless matrix/event correlation for GuestWiFi"
-      },
-      {
-        "id": "WIRED-DHCP-GuestWiFi",
-        "severity": "Medium",
-        "category": "Wired policy drift",
-        "asset": "GuestWiFi",
-        "detail": "No matching DHCP evidence",
-        "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-        "confidence": 75,
-        "evidence": "Wireless matrix/event correlation for GuestWiFi"
-      },
-      {
-        "id": "WIRED-TRUNK-GuestWiFi",
-        "severity": "Medium",
-        "category": "Wired policy drift",
-        "asset": "GuestWiFi",
-        "detail": "No trunk evidence uploaded",
-        "recommendation": "Upload show interfaces trunk / switchport running-config.",
-        "confidence": 75,
-        "evidence": "Wireless matrix/event correlation for GuestWiFi"
-      },
-      {
-        "id": "WIRED-GUEST-ISOLATION-GuestWiFi",
-        "severity": "Critical",
-        "category": "Wired policy drift",
-        "asset": "GuestWiFi",
-        "detail": "No applied deny ACL was found for guest VLAN 30.",
-        "recommendation": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule.",
-        "confidence": 90,
-        "evidence": "Wireless matrix/event correlation for GuestWiFi"
-      }
-    ],
+    "anomalies": [],
     "risk": {
-      "score": 12,
-      "grade": "Critical",
-      "risk_level": "High",
-      "anomaly_count": 11,
-      "critical": 1,
-      "high": 4
+      "score": 100,
+      "grade": "Excellent",
+      "risk_level": "Low",
+      "anomaly_count": 0,
+      "critical": 0,
+      "high": 0
     },
     "confidence": {
-      "score": 80,
+      "score": 100,
       "level": "High",
       "reasons": [
         "wired config evidence",
@@ -735,164 +878,9 @@
         "client sessions",
         "SSID policy database"
       ],
-      "wired_drift_penalty": 20
+      "wired_drift_penalty": 0
     },
-    "playbooks": [
-      {
-        "id": "PB-WIRED-SSID-VLAN-StaffWiFi",
-        "finding": "WIRED-SSID-VLAN-StaffWiFi",
-        "severity": "High",
-        "title": "Remediate Wired policy drift",
-        "why": "Not found in extracted wired policy",
-        "fix": "Create/restore the VLAN or upload complete VLAN evidence.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-DHCP-StaffWiFi",
-        "finding": "WIRED-DHCP-StaffWiFi",
-        "severity": "Medium",
-        "title": "Remediate Wired policy drift",
-        "why": "No matching DHCP evidence",
-        "fix": "Upload DHCP pool output or create the matching DHCP network statement.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-TRUNK-StaffWiFi",
-        "finding": "WIRED-TRUNK-StaffWiFi",
-        "severity": "Medium",
-        "title": "Remediate Wired policy drift",
-        "why": "No trunk evidence uploaded",
-        "fix": "Upload show interfaces trunk / switchport running-config.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-SSID-VLAN-StudentsWiFi",
-        "finding": "WIRED-SSID-VLAN-StudentsWiFi",
-        "severity": "High",
-        "title": "Remediate Wired policy drift",
-        "why": "Not found in extracted wired policy",
-        "fix": "Create/restore the VLAN or upload complete VLAN evidence.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-DHCP-StudentsWiFi",
-        "finding": "WIRED-DHCP-StudentsWiFi",
-        "severity": "Medium",
-        "title": "Remediate Wired policy drift",
-        "why": "No matching DHCP evidence",
-        "fix": "Upload DHCP pool output or create the matching DHCP network statement.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-TRUNK-StudentsWiFi",
-        "finding": "WIRED-TRUNK-StudentsWiFi",
-        "severity": "Medium",
-        "title": "Remediate Wired policy drift",
-        "why": "No trunk evidence uploaded",
-        "fix": "Upload show interfaces trunk / switchport running-config.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-ACL-DIRECTION-StudentsWiFi",
-        "finding": "WIRED-ACL-DIRECTION-StudentsWiFi",
-        "severity": "High",
-        "title": "Remediate Wired policy drift",
-        "why": "No applied ACL was confirmed",
-        "fix": "Apply the student policy ACL to the VLAN gateway in the correct direction.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-SSID-VLAN-GuestWiFi",
-        "finding": "WIRED-SSID-VLAN-GuestWiFi",
-        "severity": "High",
-        "title": "Remediate Wired policy drift",
-        "why": "Not found in extracted wired policy",
-        "fix": "Create/restore the VLAN or upload complete VLAN evidence.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-DHCP-GuestWiFi",
-        "finding": "WIRED-DHCP-GuestWiFi",
-        "severity": "Medium",
-        "title": "Remediate Wired policy drift",
-        "why": "No matching DHCP evidence",
-        "fix": "Upload DHCP pool output or create the matching DHCP network statement.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-TRUNK-GuestWiFi",
-        "finding": "WIRED-TRUNK-GuestWiFi",
-        "severity": "Medium",
-        "title": "Remediate Wired policy drift",
-        "why": "No trunk evidence uploaded",
-        "fix": "Upload show interfaces trunk / switchport running-config.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      },
-      {
-        "id": "PB-WIRED-GUEST-ISOLATION-GuestWiFi",
-        "finding": "WIRED-GUEST-ISOLATION-GuestWiFi",
-        "severity": "Critical",
-        "title": "Remediate Wired policy drift",
-        "why": "No applied deny ACL was found for guest VLAN 30.",
-        "fix": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule.",
-        "verify": [
-          "show wlan summary",
-          "show wireless client summary",
-          "show interfaces trunk"
-        ],
-        "rollback": "Revert the changed WLAN/VLAN/ACL setting and restore the previous validated backup if impact is observed."
-      }
-    ],
+    "playbooks": [],
     "policy_rules": [
       {
         "id": "PS-GUEST-DENY-INTERNAL",
@@ -1070,90 +1058,116 @@
       "asset": "StaffWiFi",
       "category": "SSID-to-VLAN",
       "expected": "VLAN 10",
-      "actual": "Not found in extracted wired policy",
-      "status": "Fail",
-      "severity": "High",
-      "evidence_line": null,
-      "confidence": 0.72,
-      "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "evidence_reason": "No line-level VLAN evidence found."
+      "actual": "VLAN 10 found in extracted evidence",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 71,
+      "confidence": 0.95,
+      "recommendation": "No action required.",
+      "evidence_reason": "Confirmed via VLAN/interface evidence."
     },
     {
       "id": "DHCP-StaffWiFi",
       "asset": "StaffWiFi",
       "category": "DHCP Scope",
       "expected": "10.10.10.0/24",
-      "actual": "No matching DHCP evidence",
-      "status": "Review",
-      "severity": "Medium",
-      "evidence_line": null,
-      "confidence": 0.48,
-      "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "evidence_reason": "Expected subnet was absent from DHCP pool evidence."
+      "actual": "Scope 10.10.10.0/24 found in pool STAFF_POOL",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 8,
+      "confidence": 0.93,
+      "recommendation": "No action required.",
+      "evidence_reason": "Matched expected CIDR to extracted DHCP pool."
+    },
+    {
+      "id": "DHCP-GW-StaffWiFi",
+      "asset": "StaffWiFi",
+      "category": "Gateway/DHCP Matching",
+      "expected": "DHCP gateway on VLAN 10",
+      "actual": "Gateway 10.10.10.1 matched GigabitEthernet0/0.10",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 8,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "DHCP default-router compared with extracted interface IP/VLAN."
     },
     {
       "id": "TRUNK-StaffWiFi",
       "asset": "StaffWiFi",
       "category": "Trunk Coverage",
       "expected": "A trunk carries VLAN 10",
-      "actual": "No trunk evidence uploaded",
-      "status": "Review",
-      "severity": "Medium",
-      "evidence_line": null,
-      "confidence": 0.42,
-      "recommendation": "Upload show interfaces trunk / switchport running-config.",
-      "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines."
+      "actual": "2 trunk interface(s) carry VLAN 10",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 77,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "Checked switchport trunk allowed VLAN evidence."
     },
     {
       "id": "SSID-VLAN-StudentsWiFi",
       "asset": "StudentsWiFi",
       "category": "SSID-to-VLAN",
       "expected": "VLAN 20",
-      "actual": "Not found in extracted wired policy",
-      "status": "Fail",
-      "severity": "High",
-      "evidence_line": null,
-      "confidence": 0.72,
-      "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "evidence_reason": "No line-level VLAN evidence found."
+      "actual": "VLAN 20 found in extracted evidence",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 73,
+      "confidence": 0.95,
+      "recommendation": "No action required.",
+      "evidence_reason": "Confirmed via VLAN/interface evidence."
     },
     {
       "id": "DHCP-StudentsWiFi",
       "asset": "StudentsWiFi",
       "category": "DHCP Scope",
       "expected": "10.10.20.0/24",
-      "actual": "No matching DHCP evidence",
-      "status": "Review",
-      "severity": "Medium",
-      "evidence_line": null,
-      "confidence": 0.48,
-      "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "evidence_reason": "Expected subnet was absent from DHCP pool evidence."
+      "actual": "Scope 10.10.20.0/24 found in pool STUDENT_POOL",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 14,
+      "confidence": 0.93,
+      "recommendation": "No action required.",
+      "evidence_reason": "Matched expected CIDR to extracted DHCP pool."
+    },
+    {
+      "id": "DHCP-GW-StudentsWiFi",
+      "asset": "StudentsWiFi",
+      "category": "Gateway/DHCP Matching",
+      "expected": "DHCP gateway on VLAN 20",
+      "actual": "Gateway 10.10.20.1 matched GigabitEthernet0/0.20",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 14,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "DHCP default-router compared with extracted interface IP/VLAN."
     },
     {
       "id": "TRUNK-StudentsWiFi",
       "asset": "StudentsWiFi",
       "category": "Trunk Coverage",
       "expected": "A trunk carries VLAN 20",
-      "actual": "No trunk evidence uploaded",
-      "status": "Review",
-      "severity": "Medium",
-      "evidence_line": null,
-      "confidence": 0.42,
-      "recommendation": "Upload show interfaces trunk / switchport running-config.",
-      "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines."
+      "actual": "2 trunk interface(s) carry VLAN 20",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 77,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "Checked switchport trunk allowed VLAN evidence."
     },
     {
       "id": "ACL-DIRECTION-StudentsWiFi",
       "asset": "StudentsWiFi",
       "category": "ACL Direction",
       "expected": "Limited role has an applied ACL on VLAN 20",
-      "actual": "No applied ACL was confirmed",
-      "status": "Review",
-      "severity": "High",
-      "evidence_line": null,
-      "confidence": 0.5,
-      "recommendation": "Apply the student policy ACL to the VLAN gateway in the correct direction.",
+      "actual": "Applied ACL(s): STUDENT_POLICY",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 35,
+      "confidence": 0.86,
+      "recommendation": "No action required.",
       "evidence_reason": "Limited access roles need interface-bound ACL evidence."
     },
     {
@@ -1161,270 +1175,66 @@
       "asset": "GuestWiFi",
       "category": "SSID-to-VLAN",
       "expected": "VLAN 30",
-      "actual": "Not found in extracted wired policy",
-      "status": "Fail",
-      "severity": "High",
-      "evidence_line": null,
-      "confidence": 0.72,
-      "recommendation": "Create/restore the VLAN or upload complete VLAN evidence.",
-      "evidence_reason": "No line-level VLAN evidence found."
+      "actual": "VLAN 30 found in extracted evidence",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 75,
+      "confidence": 0.95,
+      "recommendation": "No action required.",
+      "evidence_reason": "Confirmed via VLAN/interface evidence."
     },
     {
       "id": "DHCP-GuestWiFi",
       "asset": "GuestWiFi",
       "category": "DHCP Scope",
       "expected": "10.10.30.0/24",
-      "actual": "No matching DHCP evidence",
-      "status": "Review",
-      "severity": "Medium",
-      "evidence_line": null,
-      "confidence": 0.48,
-      "recommendation": "Upload DHCP pool output or create the matching DHCP network statement.",
-      "evidence_reason": "Expected subnet was absent from DHCP pool evidence."
+      "actual": "Scope 10.10.30.0/24 found in pool GUEST_POOL",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 19,
+      "confidence": 0.93,
+      "recommendation": "No action required.",
+      "evidence_reason": "Matched expected CIDR to extracted DHCP pool."
+    },
+    {
+      "id": "DHCP-GW-GuestWiFi",
+      "asset": "GuestWiFi",
+      "category": "Gateway/DHCP Matching",
+      "expected": "DHCP gateway on VLAN 30",
+      "actual": "Gateway 10.10.30.1 matched GigabitEthernet0/0.30",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 19,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "DHCP default-router compared with extracted interface IP/VLAN."
     },
     {
       "id": "TRUNK-GuestWiFi",
       "asset": "GuestWiFi",
       "category": "Trunk Coverage",
       "expected": "A trunk carries VLAN 30",
-      "actual": "No trunk evidence uploaded",
-      "status": "Review",
-      "severity": "Medium",
-      "evidence_line": null,
-      "confidence": 0.42,
-      "recommendation": "Upload show interfaces trunk / switchport running-config.",
-      "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines."
+      "actual": "2 trunk interface(s) carry VLAN 30",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 77,
+      "confidence": 0.9,
+      "recommendation": "No action required.",
+      "evidence_reason": "Checked switchport trunk allowed VLAN evidence."
     },
     {
       "id": "GUEST-ISOLATION-GuestWiFi",
       "asset": "GuestWiFi",
       "category": "Guest Isolation",
       "expected": "Guest denied from internal networks",
-      "actual": "No applied deny ACL was found for guest VLAN 30.",
-      "status": "Fail",
-      "severity": "Critical",
-      "evidence_line": null,
-      "confidence": 0.78,
-      "recommendation": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule.",
+      "actual": "ACL GUEST_ISOLATION is applied in on GigabitEthernet0/0.30 and contains a deny rule for guest-to-internal traffic.",
+      "status": "Pass",
+      "severity": "Info",
+      "evidence_line": 55,
+      "confidence": 0.94,
+      "recommendation": "No action required.",
       "evidence_reason": "ACL deny must be both present and applied on the guest VLAN path."
     }
   ],
-  "root_causes": [
-    {
-      "finding_id": "SSID-VLAN-StaffWiFi",
-      "asset": "StaffWiFi",
-      "severity": "High",
-      "confidence": 0.72,
-      "evidence_line": null,
-      "evidence_reason": "No line-level VLAN evidence found.",
-      "hypotheses": [
-        "StaffWiFi expected VLAN is absent from extracted VLAN/interface evidence.",
-        "Uploaded data may not include show vlan brief or complete running-config.",
-        "Wireless policy may be mapped to a VLAN not deployed on the wired side."
-      ],
-      "verification_commands": [
-        "show vlan brief",
-        "show running-config | section vlan",
-        "show interfaces switchport"
-      ],
-      "owner": "Wireless / Switching Team",
-      "recommended_fix": "Create/restore the VLAN or upload complete VLAN evidence."
-    },
-    {
-      "finding_id": "DHCP-StaffWiFi",
-      "asset": "StaffWiFi",
-      "severity": "Medium",
-      "confidence": 0.48,
-      "evidence_line": null,
-      "evidence_reason": "Expected subnet was absent from DHCP pool evidence.",
-      "hypotheses": [
-        "Expected evidence was not found or is incomplete.",
-        "Upload a broader command bundle to raise confidence."
-      ],
-      "verification_commands": [
-        "show running-config",
-        "show access-lists",
-        "show ip route"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Upload DHCP pool output or create the matching DHCP network statement."
-    },
-    {
-      "finding_id": "TRUNK-StaffWiFi",
-      "asset": "StaffWiFi",
-      "severity": "Medium",
-      "confidence": 0.42,
-      "evidence_line": null,
-      "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines.",
-      "hypotheses": [
-        "The WLAN VLAN may not be allowed on AP or uplink trunks.",
-        "show interfaces trunk evidence is missing or incomplete.",
-        "A trunk allowed-list may have drifted from the intended policy."
-      ],
-      "verification_commands": [
-        "show interfaces trunk",
-        "show running-config interface <uplink>",
-        "show cdp neighbors detail"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Upload show interfaces trunk / switchport running-config."
-    },
-    {
-      "finding_id": "SSID-VLAN-StudentsWiFi",
-      "asset": "StudentsWiFi",
-      "severity": "High",
-      "confidence": 0.72,
-      "evidence_line": null,
-      "evidence_reason": "No line-level VLAN evidence found.",
-      "hypotheses": [
-        "StudentsWiFi expected VLAN is absent from extracted VLAN/interface evidence.",
-        "Uploaded data may not include show vlan brief or complete running-config.",
-        "Wireless policy may be mapped to a VLAN not deployed on the wired side."
-      ],
-      "verification_commands": [
-        "show vlan brief",
-        "show running-config | section vlan",
-        "show interfaces switchport"
-      ],
-      "owner": "Wireless / Switching Team",
-      "recommended_fix": "Create/restore the VLAN or upload complete VLAN evidence."
-    },
-    {
-      "finding_id": "DHCP-StudentsWiFi",
-      "asset": "StudentsWiFi",
-      "severity": "Medium",
-      "confidence": 0.48,
-      "evidence_line": null,
-      "evidence_reason": "Expected subnet was absent from DHCP pool evidence.",
-      "hypotheses": [
-        "Expected evidence was not found or is incomplete.",
-        "Upload a broader command bundle to raise confidence."
-      ],
-      "verification_commands": [
-        "show running-config",
-        "show access-lists",
-        "show ip route"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Upload DHCP pool output or create the matching DHCP network statement."
-    },
-    {
-      "finding_id": "TRUNK-StudentsWiFi",
-      "asset": "StudentsWiFi",
-      "severity": "Medium",
-      "confidence": 0.42,
-      "evidence_line": null,
-      "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines.",
-      "hypotheses": [
-        "The WLAN VLAN may not be allowed on AP or uplink trunks.",
-        "show interfaces trunk evidence is missing or incomplete.",
-        "A trunk allowed-list may have drifted from the intended policy."
-      ],
-      "verification_commands": [
-        "show interfaces trunk",
-        "show running-config interface <uplink>",
-        "show cdp neighbors detail"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Upload show interfaces trunk / switchport running-config."
-    },
-    {
-      "finding_id": "ACL-DIRECTION-StudentsWiFi",
-      "asset": "StudentsWiFi",
-      "severity": "High",
-      "confidence": 0.5,
-      "evidence_line": null,
-      "evidence_reason": "Limited access roles need interface-bound ACL evidence.",
-      "hypotheses": [
-        "Expected evidence was not found or is incomplete.",
-        "Upload a broader command bundle to raise confidence."
-      ],
-      "verification_commands": [
-        "show running-config",
-        "show access-lists",
-        "show ip route"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Apply the student policy ACL to the VLAN gateway in the correct direction."
-    },
-    {
-      "finding_id": "SSID-VLAN-GuestWiFi",
-      "asset": "GuestWiFi",
-      "severity": "High",
-      "confidence": 0.72,
-      "evidence_line": null,
-      "evidence_reason": "No line-level VLAN evidence found.",
-      "hypotheses": [
-        "GuestWiFi expected VLAN is absent from extracted VLAN/interface evidence.",
-        "Uploaded data may not include show vlan brief or complete running-config.",
-        "Wireless policy may be mapped to a VLAN not deployed on the wired side."
-      ],
-      "verification_commands": [
-        "show vlan brief",
-        "show running-config | section vlan",
-        "show interfaces switchport"
-      ],
-      "owner": "Wireless / Switching Team",
-      "recommended_fix": "Create/restore the VLAN or upload complete VLAN evidence."
-    },
-    {
-      "finding_id": "DHCP-GuestWiFi",
-      "asset": "GuestWiFi",
-      "severity": "Medium",
-      "confidence": 0.48,
-      "evidence_line": null,
-      "evidence_reason": "Expected subnet was absent from DHCP pool evidence.",
-      "hypotheses": [
-        "Expected evidence was not found or is incomplete.",
-        "Upload a broader command bundle to raise confidence."
-      ],
-      "verification_commands": [
-        "show running-config",
-        "show access-lists",
-        "show ip route"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Upload DHCP pool output or create the matching DHCP network statement."
-    },
-    {
-      "finding_id": "TRUNK-GuestWiFi",
-      "asset": "GuestWiFi",
-      "severity": "Medium",
-      "confidence": 0.42,
-      "evidence_line": null,
-      "evidence_reason": "Trunk analysis requires trunk output or switchport mode trunk lines.",
-      "hypotheses": [
-        "The WLAN VLAN may not be allowed on AP or uplink trunks.",
-        "show interfaces trunk evidence is missing or incomplete.",
-        "A trunk allowed-list may have drifted from the intended policy."
-      ],
-      "verification_commands": [
-        "show interfaces trunk",
-        "show running-config interface <uplink>",
-        "show cdp neighbors detail"
-      ],
-      "owner": "Network Operations",
-      "recommended_fix": "Upload show interfaces trunk / switchport running-config."
-    },
-    {
-      "finding_id": "GUEST-ISOLATION-GuestWiFi",
-      "asset": "GuestWiFi",
-      "severity": "Critical",
-      "confidence": 0.78,
-      "evidence_line": null,
-      "evidence_reason": "ACL deny must be both present and applied on the guest VLAN path.",
-      "hypotheses": [
-        "Guest deny ACL is missing, not applied, or applied in the wrong direction.",
-        "A permit-any rule may allow internal access before the deny is enforced.",
-        "Guest VLAN gateway evidence is incomplete."
-      ],
-      "verification_commands": [
-        "show access-lists",
-        "show running-config | include access-group",
-        "show running-config interface <guest-gateway>"
-      ],
-      "owner": "Network Security Team",
-      "recommended_fix": "Apply a deny ACL inbound on the guest VLAN gateway before any permit-any rule."
-    }
-  ]
+  "root_causes": []
 }

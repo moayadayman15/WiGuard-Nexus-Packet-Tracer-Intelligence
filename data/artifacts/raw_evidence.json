@@ -1,1 +1,207 @@
-[]
+[
+  {
+    "line": 2,
+    "text": "hostname R1-Core",
+    "evidence": {}
+  },
+  {
+    "line": 4,
+    "text": "ip dhcp excluded-address 10.10.10.1 10.10.10.9",
+    "evidence": {}
+  },
+  {
+    "line": 5,
+    "text": "ip dhcp excluded-address 10.10.20.1 10.10.20.9",
+    "evidence": {}
+  },
+  {
+    "line": 6,
+    "text": "ip dhcp excluded-address 10.10.30.1 10.10.30.9",
+    "evidence": {}
+  },
+  {
+    "line": 8,
+    "text": "ip dhcp pool STAFF_POOL",
+    "evidence": {}
+  },
+  {
+    "line": 14,
+    "text": "ip dhcp pool STUDENT_POOL",
+    "evidence": {}
+  },
+  {
+    "line": 19,
+    "text": "ip dhcp pool GUEST_POOL",
+    "evidence": {}
+  },
+  {
+    "line": 24,
+    "text": "interface GigabitEthernet0/0",
+    "evidence": {}
+  },
+  {
+    "line": 28,
+    "text": "interface GigabitEthernet0/0.10",
+    "evidence": {}
+  },
+  {
+    "line": 32,
+    "text": " ip nat inside",
+    "evidence": {}
+  },
+  {
+    "line": 33,
+    "text": " ip access-group STAFF_POLICY in",
+    "evidence": {}
+  },
+  {
+    "line": 35,
+    "text": "interface GigabitEthernet0/0.20",
+    "evidence": {}
+  },
+  {
+    "line": 39,
+    "text": " ip nat inside",
+    "evidence": {}
+  },
+  {
+    "line": 40,
+    "text": " ip access-group STUDENT_POLICY in",
+    "evidence": {}
+  },
+  {
+    "line": 42,
+    "text": "interface GigabitEthernet0/0.30",
+    "evidence": {}
+  },
+  {
+    "line": 46,
+    "text": " ip nat inside",
+    "evidence": {}
+  },
+  {
+    "line": 47,
+    "text": " ip access-group GUEST_ISOLATION in",
+    "evidence": {}
+  },
+  {
+    "line": 49,
+    "text": "interface GigabitEthernet0/1",
+    "evidence": {}
+  },
+  {
+    "line": 50,
+    "text": " description Internet uplink",
+    "evidence": {}
+  },
+  {
+    "line": 52,
+    "text": " ip nat outside",
+    "evidence": {}
+  },
+  {
+    "line": 54,
+    "text": "ip access-list extended GUEST_ISOLATION",
+    "evidence": {}
+  },
+  {
+    "line": 58,
+    "text": "ip access-list extended STUDENT_POLICY",
+    "evidence": {}
+  },
+  {
+    "line": 62,
+    "text": "ip access-list extended STAFF_POLICY",
+    "evidence": {}
+  },
+  {
+    "line": 65,
+    "text": "ip route 0.0.0.0 0.0.0.0 203.0.113.1",
+    "evidence": {}
+  },
+  {
+    "line": 66,
+    "text": "ip nat inside source list STAFF_POLICY interface GigabitEthernet0/1 overload",
+    "evidence": {}
+  },
+  {
+    "line": 68,
+    "text": "hostname SW1-Access",
+    "evidence": {}
+  },
+  {
+    "line": 70,
+    "text": "vlan 10",
+    "evidence": {}
+  },
+  {
+    "line": 72,
+    "text": "vlan 20",
+    "evidence": {}
+  },
+  {
+    "line": 74,
+    "text": "vlan 30",
+    "evidence": {}
+  },
+  {
+    "line": 77,
+    "text": "interface GigabitEthernet0/1",
+    "evidence": {}
+  },
+  {
+    "line": 79,
+    "text": " switchport mode trunk",
+    "evidence": {}
+  },
+  {
+    "line": 80,
+    "text": " switchport trunk allowed vlan 10,20,30",
+    "evidence": {}
+  },
+  {
+    "line": 82,
+    "text": "interface GigabitEthernet0/2",
+    "evidence": {}
+  },
+  {
+    "line": 84,
+    "text": " switchport mode trunk",
+    "evidence": {}
+  },
+  {
+    "line": 85,
+    "text": " switchport trunk allowed vlan 10,20,30",
+    "evidence": {}
+  },
+  {
+    "line": 87,
+    "text": "interface FastEthernet0/10",
+    "evidence": {}
+  },
+  {
+    "line": 89,
+    "text": " switchport mode access",
+    "evidence": {}
+  },
+  {
+    "line": 90,
+    "text": " switchport access vlan 10",
+    "evidence": {}
+  },
+  {
+    "line": 92,
+    "text": "Device ID: AP-01",
+    "evidence": {}
+  },
+  {
+    "line": 93,
+    "text": "Interface: GigabitEthernet0/2, Port ID (outgoing port): GigabitEthernet0",
+    "evidence": {}
+  },
+  {
+    "line": 94,
+    "text": "Platform: Cisco AP",
+    "evidence": {}
+  }
+]

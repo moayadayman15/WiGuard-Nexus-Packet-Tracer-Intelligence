@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: WiGuard Nexus API
-  version: "5.8.3-packet-tracer-json-xml-intelligence"
+  version: "5.8.5-lab-matrix-intelligence"
   description: Scope-aware WiGuard API for tenant-scoped state, live event ingestion, reports, jobs, and wireless evidence.
 servers:
   - url: /

@@ -1,0 +1,191 @@
+{
+  "generated_at": "2026-04-28 14:57:20",
+  "filename": "campus_production_sample.cfg",
+  "source_mode": "text_config",
+  "native_packet_tracer": false,
+  "tier": "verified_export_parse",
+  "claim": "Structured/exported evidence parsed directly; confidence depends on object evidence mapping.",
+  "can_claim_full_fidelity": true,
+  "readiness_score": 0.48,
+  "object_counts": {
+    "devices": 3,
+    "interfaces": 8,
+    "vlans": 3,
+    "dhcp_scopes": 3,
+    "acl_rules": 5,
+    "routing": 1,
+    "nat_rules": 5,
+    "cdp_links": 1,
+    "lldp_links": 0,
+    "ip_inventory": 0,
+    "interface_status": 0,
+    "trunk_operational": 0,
+    "route_table": 0,
+    "ospf_neighbors": 0,
+    "port_security": 0,
+    "spanning_tree": 0,
+    "etherchannels": 0,
+    "mac_table": 0,
+    "arp_table": 0,
+    "device_facts": 0,
+    "device_inventory": 0,
+    "security_hardening": 0,
+    "wireless_hints": 2,
+    "command_blocks": 1,
+    "subnet_inventory": 5,
+    "policy_controls": 8,
+    "deep_evidence_index": 37,
+    "raw_evidence": 41,
+    "schema_map": 0,
+    "structured_relationships": 0,
+    "validation_findings": 0,
+    "endpoint_inventory": 0,
+    "access_tests": 0,
+    "client_access_matrix": 0,
+    "service_inventory": 0,
+    "roaming_events": 0,
+    "lab_result_summary": 0
+  },
+  "evidence_summary": {
+    "verified": 39,
+    "recovered": 16,
+    "inferred": 16,
+    "unmapped": 78,
+    "total": 149,
+    "verified_ratio": 0.262,
+    "high_value_total": 23,
+    "high_value_verified": 23,
+    "high_value_verified_ratio": 1.0
+  },
+  "pipeline": [
+    {
+      "step": 1,
+      "stage": "File Intake",
+      "status": "success",
+      "confidence": 1.0,
+      "detail": "Accepted campus_production_sample.cfg and stored immutable source hash."
+    },
+    {
+      "step": 2,
+      "stage": "Source Decoding",
+      "status": "success",
+      "confidence": 0.95,
+      "detail": "Source mode: text_config."
+    },
+    {
+      "step": 3,
+      "stage": "Structured Schema Normalization",
+      "status": "not_needed",
+      "confidence": 0.55,
+      "detail": "Text/config parser path used."
+    },
+    {
+      "step": 4,
+      "stage": "Packet Tracer Intelligence",
+      "status": "needs_more_evidence",
+      "confidence": 0.48,
+      "detail": "Upload these missing command outputs to increase confidence: show spanning-tree, show port-security interface, show etherchannel summary, show lldp neighbors detail"
+    },
+    {
+      "step": 5,
+      "stage": "Object Extraction",
+      "status": "success",
+      "confidence": 0.9,
+      "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, L2 health, links, structured topology hints, endpoint inventory, and schema validations."
+    },
+    {
+      "step": 6,
+      "stage": "Evidence Mapping",
+      "status": "success",
+      "confidence": 0.9,
+      "detail": "Built an evidence registry that classifies each extracted object as verified, recovered, inferred, or unmapped."
+    }
+  ],
+  "blockers": [],
+  "recommended_actions": [
+    {
+      "priority": "Info",
+      "action": "Upload/export: running-config",
+      "why": "Export/copy running-config for every router/switch."
+    },
+    {
+      "priority": "Info",
+      "action": "Upload/export: show vlan brief",
+      "why": "Confirms VLAN names, status, and access-port membership."
+    },
+    {
+      "priority": "Info",
+      "action": "Upload/export: show interfaces trunk",
+      "why": "Confirms trunk state, allowed VLANs, and native VLAN."
+    },
+    {
+      "priority": "Medium",
+      "action": "Upload/export: show ip interface brief",
+      "why": "Confirms L3 interface IPs and operational state."
+    },
+    {
+      "priority": "Info",
+      "action": "Upload/export: show access-lists",
+      "why": "Confirms ACL contents and live hit counters."
+    },
+    {
+      "priority": "Info",
+      "action": "Upload/export: show cdp/lldp neighbors detail",
+      "why": "Confirms physical adjacency and cable/path edges."
+    },
+    {
+      "priority": "Low",
+      "action": "Upload/export: show spanning-tree",
+      "why": "Confirms L2 root/blocked/forwarding state."
+    },
+    {
+      "priority": "Low",
+      "action": "Add show ip route",
+      "why": "End-to-end reachability/root-cause analysis becomes stronger with L3 forwarding evidence."
+    }
+  ],
+  "required_exports": [
+    {
+      "artifact": "running-config",
+      "status": "covered",
+      "severity": "Info",
+      "why": "Export/copy running-config for every router/switch."
+    },
+    {
+      "artifact": "show vlan brief",
+      "status": "covered",
+      "severity": "Info",
+      "why": "Confirms VLAN names, status, and access-port membership."
+    },
+    {
+      "artifact": "show interfaces trunk",
+      "status": "covered",
+      "severity": "Info",
+      "why": "Confirms trunk state, allowed VLANs, and native VLAN."
+    },
+    {
+      "artifact": "show ip interface brief",
+      "status": "recommended",
+      "severity": "Medium",
+      "why": "Confirms L3 interface IPs and operational state."
+    },
+    {
+      "artifact": "show access-lists",
+      "status": "covered",
+      "severity": "Info",
+      "why": "Confirms ACL contents and live hit counters."
+    },
+    {
+      "artifact": "show cdp/lldp neighbors detail",
+      "status": "covered",
+      "severity": "Info",
+      "why": "Confirms physical adjacency and cable/path edges."
+    },
+    {
+      "artifact": "show spanning-tree",
+      "status": "recommended",
+      "severity": "Low",
+      "why": "Confirms L2 root/blocked/forwarding state."
+    }
+  ]
+}

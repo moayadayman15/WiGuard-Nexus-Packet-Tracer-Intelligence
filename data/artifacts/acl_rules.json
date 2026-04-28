@@ -1,1 +1,179 @@
-[]
+[
+  {
+    "acl_name": "GUEST_ISOLATION",
+    "type": "extended",
+    "sequence": "10",
+    "action": "deny",
+    "expression": "ip 10.10.30.0 0.0.0.255 10.10.0.0 0.0.255.255",
+    "parsed": {
+      "protocol": "ip",
+      "source": "10.10.30.0",
+      "source_wildcard": "0.0.0.255",
+      "destination": "10.10.0.0",
+      "destination_wildcard": "0.0.255.255",
+      "operator": null,
+      "port": null,
+      "raw_tokens": [
+        "ip",
+        "10.10.30.0",
+        "0.0.0.255",
+        "10.10.0.0",
+        "0.0.255.255"
+      ]
+    },
+    "applied_to": [
+      {
+        "interface": "GigabitEthernet0/0.30",
+        "direction": "in",
+        "evidence_line": 42
+      }
+    ],
+    "is_applied": true,
+    "evidence": {
+      "source_line": 55,
+      "source_text": " 10 deny ip 10.10.30.0 0.0.0.255 10.10.0.0 0.0.255.255",
+      "confidence": 0.92
+    }
+  },
+  {
+    "acl_name": "GUEST_ISOLATION",
+    "type": "extended",
+    "sequence": "20",
+    "action": "permit",
+    "expression": "ip 10.10.30.0 0.0.0.255 any",
+    "parsed": {
+      "protocol": "ip",
+      "source": "10.10.30.0",
+      "source_wildcard": "0.0.0.255",
+      "destination": "any",
+      "destination_wildcard": null,
+      "operator": null,
+      "port": null,
+      "raw_tokens": [
+        "ip",
+        "10.10.30.0",
+        "0.0.0.255",
+        "any"
+      ]
+    },
+    "applied_to": [
+      {
+        "interface": "GigabitEthernet0/0.30",
+        "direction": "in",
+        "evidence_line": 42
+      }
+    ],
+    "is_applied": true,
+    "evidence": {
+      "source_line": 56,
+      "source_text": " 20 permit ip 10.10.30.0 0.0.0.255 any",
+      "confidence": 0.92
+    }
+  },
+  {
+    "acl_name": "STUDENT_POLICY",
+    "type": "extended",
+    "sequence": "10",
+    "action": "deny",
+    "expression": "ip 10.10.20.0 0.0.0.255 host 10.10.50.10",
+    "parsed": {
+      "protocol": "ip",
+      "source": "10.10.20.0",
+      "source_wildcard": "0.0.0.255",
+      "destination": "10.10.50.10",
+      "destination_wildcard": "host",
+      "operator": null,
+      "port": null,
+      "raw_tokens": [
+        "ip",
+        "10.10.20.0",
+        "0.0.0.255",
+        "host",
+        "10.10.50.10"
+      ]
+    },
+    "applied_to": [
+      {
+        "interface": "GigabitEthernet0/0.20",
+        "direction": "in",
+        "evidence_line": 35
+      }
+    ],
+    "is_applied": true,
+    "evidence": {
+      "source_line": 59,
+      "source_text": " 10 deny ip 10.10.20.0 0.0.0.255 host 10.10.50.10",
+      "confidence": 0.92
+    }
+  },
+  {
+    "acl_name": "STUDENT_POLICY",
+    "type": "extended",
+    "sequence": "20",
+    "action": "permit",
+    "expression": "ip 10.10.20.0 0.0.0.255 any",
+    "parsed": {
+      "protocol": "ip",
+      "source": "10.10.20.0",
+      "source_wildcard": "0.0.0.255",
+      "destination": "any",
+      "destination_wildcard": null,
+      "operator": null,
+      "port": null,
+      "raw_tokens": [
+        "ip",
+        "10.10.20.0",
+        "0.0.0.255",
+        "any"
+      ]
+    },
+    "applied_to": [
+      {
+        "interface": "GigabitEthernet0/0.20",
+        "direction": "in",
+        "evidence_line": 35
+      }
+    ],
+    "is_applied": true,
+    "evidence": {
+      "source_line": 60,
+      "source_text": " 20 permit ip 10.10.20.0 0.0.0.255 any",
+      "confidence": 0.92
+    }
+  },
+  {
+    "acl_name": "STAFF_POLICY",
+    "type": "extended",
+    "sequence": "10",
+    "action": "permit",
+    "expression": "ip 10.10.10.0 0.0.0.255 any",
+    "parsed": {
+      "protocol": "ip",
+      "source": "10.10.10.0",
+      "source_wildcard": "0.0.0.255",
+      "destination": "any",
+      "destination_wildcard": null,
+      "operator": null,
+      "port": null,
+      "raw_tokens": [
+        "ip",
+        "10.10.10.0",
+        "0.0.0.255",
+        "any"
+      ]
+    },
+    "applied_to": [
+      {
+        "interface": "GigabitEthernet0/0.10",
+        "direction": "in",
+        "evidence_line": 28
+      }
+    ],
+    "is_applied": true,
+    "evidence": {
+      "source_line": 63,
+      "source_text": " 10 permit ip 10.10.10.0 0.0.0.255 any",
+      "confidence": 0.92
+    }
+  }
+]

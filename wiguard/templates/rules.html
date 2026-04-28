@@ -1,30 +1,95 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="page-title">
-  <span class="pill">Policy Studio</span>
-  <h3>Configurable wireless policy rules, owners, severity, SLA, and remediation logic</h3>
-  <p>Define the policy expectations that turn wireless sessions and wired evidence into actionable anomalies.</p>
+  <span class="pill">Policy Studio Engine</span>
+  <h3>Rule builder with scopes, severity scoring, control mapping, versioning, and remediation logic</h3>
+  <p>Build policy checks that convert wireless sessions, AP evidence, VLANs, ACLs, DHCP and imported events into reviewable findings.</p>
 </section>
 
 <section class="two-col" id="studio">
   <div class="panel">
     <div class="panel-head"><h4>Policy Studio Rules</h4><span class="badge info">{{ wireless.policy_rules|length }} active/custom rules</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Rule</th><th>Condition</th><th>Severity</th><th>Owner</th><th>Enabled</th><th>Actions</th></tr></thead><tbody>
-      {% for r in wireless.policy_rules %}<tr><td><b>{{ r.id }}</b><br><small>{{ r.name }}</small></td><td>{{ r.condition }}<br><small>{{ r.scope }}</small></td><td><span class="badge {{ 'fail' if r.severity in ['Critical','High'] else 'review' }}">{{ r.severity }}</span></td><td>{{ r.owner }}</td><td>{{ r.enabled }}</td><td><form method="post" action="{{ url_for('actions.policy_studio_rule_delete', rule_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form></td></tr>{% endfor %}
-    </tbody></table></div>
+    <div class="policy-rule-cards">
+      {% for r in wireless.policy_rules %}
+      <article class="policy-rule-card {{ 'critical-card' if r.severity in ['Critical','High'] else '' }}">
+        <div class="rule-card-head">
+          <div><b>{{ r.id }}</b><h5>{{ r.name }}</h5></div>
+          <span class="badge {{ 'fail' if r.severity in ['Critical','High'] else 'review' }}">{{ r.severity }} · {{ r.severity_score }}</span>
+        </div>
+        <div class="rule-condition"><span>IF</span><code>{{ r.condition_expression or r.condition }}</code></div>
+        <div class="rule-meta-grid">
+          <div><span>Scope</span><b>{{ r.scope }}</b></div>
+          <div><span>Control</span><b>{{ r.control_mapping }}</b></div>
+          <div><span>Action</span><b>{{ r.action_type }}</b></div>
+          <div><span>Version</span><b>v{{ r.version or 1 }}</b></div>
+        </div>
+        <div class="rule-detail-stack">
+          <p><b>Evidence required:</b> {{ r.evidence_required }}</p>
+          <p><b>False-positive guard:</b> {{ r.false_positive_guard }}</p>
+          <p><b>Acceptance criteria:</b> {{ r.acceptance_criteria }}</p>
+        </div>
+        <div class="stack-actions">
+          <span class="badge {{ 'pass' if r.enabled else 'review' }}">{{ 'Enabled' if r.enabled else 'Disabled' }}</span>
+          <form method="post" action="{{ url_for('actions.policy_studio_rule_delete', rule_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form>
+        </div>
+      </article>
+      {% else %}<p class="muted">No custom rules yet.</p>{% endfor %}
+    </div>
   </div>
-  <div class="panel">
-    <div class="panel-head"><h4>Add / Update Rule</h4></div>
+  <div class="panel premium-panel">
+    <div class="panel-head"><h4>Conditions Builder</h4><span class="muted">Create/update rule</span></div>
     <form class="form" method="post" action="{{ url_for('actions.policy_studio_rule_save') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input name="id" placeholder="Rule ID e.g. PS-CUSTOM-001">
       <input name="name" placeholder="Rule name" required>
-      <div class="form-grid"><select name="condition"><option value="role_ssid_match">role_ssid_match</option><option value="ap_vlan_support">ap_vlan_support</option><option value="guest_internal_blocked">guest_internal_blocked</option><option value="dhcp_scope_match">dhcp_scope_match</option></select><select name="severity"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+      <div class="form-grid"><select name="condition"><option value="role_ssid_match">role_ssid_match</option><option value="ap_vlan_support">ap_vlan_support</option><option value="guest_internal_blocked">guest_internal_blocked</option><option value="dhcp_scope_match">dhcp_scope_match</option><option value="event_threshold">event_threshold</option><option value="acl_hit_counts">acl_hit_counts</option><option value="vlan_crosscheck">vlan_crosscheck</option><option value="interface_counters">interface_counters</option><option value="evidence_profile">evidence_profile</option><option value="custom_expression">custom_expression</option></select><select name="severity"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option><option>Info</option></select></div>
+      <div class="form-grid three"><input name="condition_left" placeholder="client.role / ssid.vlan / event.type" value="client.role"><select name="operator"><option>equals</option><option>not_equals</option><option>contains</option><option>greater_than</option><option>missing</option></select><input name="condition_value" placeholder="Expected value"></div>
       <div class="form-grid"><input name="scope" placeholder="Scope e.g. Guest / All"><input name="owner" placeholder="Owner"></div>
-      <textarea name="remediation" placeholder="Remediation guidance and verification commands"></textarea>
+      <div class="form-grid"><input name="control_mapping" placeholder="Control mapping e.g. ISO-AC-4"><select name="action_type"><option value="create_anomaly">Create anomaly</option><option value="raise_risk">Raise risk</option><option value="require_manual_review">Require manual review</option><option value="block_report_pass">Block report pass</option></select></div>
+      <textarea name="evidence_required" placeholder="Evidence required: show command, packet-tracer object, live event, or correlation needed"></textarea>
+      <textarea name="false_positive_guard" placeholder="False-positive guard: what must be proven before this rule becomes confirmed"></textarea>
+      <textarea name="acceptance_criteria" placeholder="Acceptance criteria: exact proof needed to mark the rule as fixed/pass"></textarea>
+      <textarea name="remediation" placeholder="Custom remediation, verification commands, and acceptance criteria"></textarea>
       <label class="checkline"><input type="checkbox" name="enabled" checked> Enabled</label>
-      <button class="primary-btn" type="submit">Save Policy Rule</button>
+      <button class="primary-btn" type="submit">Save Rule Version</button>
     </form>
+  </div>
+</section>
+
+
+<section class="panel">
+  <div class="panel-head"><h4>Policy Precision Cookbook</h4><span>new rule logic patterns</span></div>
+  <div class="policy-cookbook-grid">
+    <article><b>Evidence Required</b><p>Every strong rule should name the exact command or data source needed. Example: <code>show interfaces trunk</code> + <code>show vlan brief</code>.</p></article>
+    <article><b>False Positive Guard</b><p>Rules should explain when to keep a result as Review instead of Fail. Missing operational evidence is not the same as a confirmed failure.</p></article>
+    <article><b>Acceptance Criteria</b><p>Write the proof needed to close the issue: expected VLAN present, ACL applied to interface, counter evidence captured, or risk accepted.</p></article>
+    <article><b>Runtime Proof</b><p>Use ACL hit counters, interface counters, CDP/LLDP, and route table evidence to avoid relying only on planned configuration.</p></article>
+  </div>
+</section>
+
+<section class="panel"><div class="panel-head"><h4>Rule Testing Against Current Evidence</h4><span class="muted">Preview of current validation engine output</span></div><div class="table-wrap"><table>
+<thead><tr><th>Finding</th><th>Asset</th><th>Category</th><th>Status</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>
+{% for d in diffs %}<tr><td>{{ d.id }}</td><td>{{ d.asset }}</td><td>{{ d.category }}</td><td><span class="badge {{ 'pass' if d.status=='Pass' else 'fail' if d.status=='Fail' else 'review' }}">{{ d.status }}</span></td><td>{{ (d.confidence * 100)|round|int }}%</td><td>{{ d.evidence_reason }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No evidence imported yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
+
+
+<section class="panel">
+  <div class="panel-head"><h4>Extracted Policy Controls From Current Packet Tracer Evidence</h4><span>generated from ACLs, trunks, hardening, and adjacency evidence</span></div>
+  <div class="deep-matrix policy-controls-strip">
+    {% for c in objects.policy_controls or [] %}
+    <article><span>{{ c.control }}</span><b>{{ c.status }}</b><small>{{ c.detail }}</small></article>
+    {% else %}<p class="muted">No Packet Tracer control assertions yet. Import evidence first.</p>{% endfor %}
+  </div>
+</section>
+
+
+<section class="panel">
+  <div class="panel-head"><h4>Runtime Risk Atoms From Evidence</h4><span>rule engine inputs generated by the Packet Tracer extractor</span></div>
+  <div class="risk-atom-list compact">
+    {% for r in objects.risk_atoms or [] %}
+    <article class="{{ r.severity|lower }}"><b>{{ r.title }}</b><span>{{ r.severity }} · {{ ((r.confidence or 0)*100)|round|int }}%</span><p>{{ r.why }}</p></article>
+    {% else %}<p class="muted">No runtime risk atoms yet.</p>{% endfor %}
   </div>
 </section>
 

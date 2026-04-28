@@ -1,41 +1,53 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="page-title">
-  <span class="pill">Report Builder</span>
-  <h3>Generate audience-specific or custom wireless assurance reports</h3>
-  <p>Export executive, technical, security, audit, wireless, full, or custom HTML reports with selectable sections.</p>
+  <span class="pill">Report Builder Pro</span>
+  <h3>Audience-specific, branded, previewable reports with evidence appendix</h3>
+  <p>Export Executive, Technical, Compliance, Packet Tracer Conversion, Wireless Risk, Audit, Evidence Appendix, or Full reports.</p>
 </section>
 
 <section class="two-col">
   <div class="panel premium-panel">
-    <div class="panel-head"><h4>Custom Report Builder</h4><span class="muted">HTML export</span></div>
+    <div class="panel-head"><h4>Custom Section Builder</h4><span class="muted">Choose exactly what appears in the HTML export</span></div>
     <form class="form" method="post" action="{{ url_for('actions.download_custom_report_html') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label class="checkline"><input type="checkbox" name="sections" value="summary" checked> Executive summary</label>
-      <label class="checkline"><input type="checkbox" name="sections" value="wireless" checked> Wireless validation matrix</label>
-      <label class="checkline"><input type="checkbox" name="sections" value="anomalies" checked> Anomaly summaries</label>
-      <label class="checkline"><input type="checkbox" name="sections" value="compliance" checked> Compliance matrix</label>
+      <div class="form-grid two">
+        <label class="checkline"><input type="checkbox" name="sections" value="summary" checked> Executive summary</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="wireless" checked> Wireless validation matrix</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="anomalies" checked> Anomaly summaries</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="compliance" checked> Compliance matrix</label>
+      </div>
       <button class="primary-btn" type="submit">Export Custom HTML Report</button>
     </form>
   </div>
   <div class="panel">
-    <div class="panel-head"><h4>Compliance Matrix</h4><span class="badge info">{{ compliance|length }} controls</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Control</th><th>Status</th><th>Risk</th><th>Evidence</th></tr></thead><tbody>{% for c in compliance %}<tr><td><b>{{ c.control }}</b><br><small>{{ c.requirement }}</small></td><td><span class="badge {{ 'pass' if c.status=='Pass' else 'fail' if c.status=='Fail' else 'review' }}">{{ c.status }}</span></td><td>{{ c.risk }}</td><td>{{ c.evidence }}</td></tr>{% endfor %}</tbody></table></div>
+    <div class="panel-head"><h4>Report Branding</h4><span class="muted">Uses product settings</span></div>
+    <p><b>{{ state.meta.product }}</b></p>
+    <p class="muted">{{ state.meta.tagline }}</p>
+    <p>Project: <b>{{ current_project.name }}</b> · Tenant: <b>{{ tenant_id }}</b></p>
+    <p class="muted">PDF/HTML/JSON reports include generation timestamp, project context, conversion readiness, wireless risk, and evidence integrity fields.</p>
   </div>
 </section>
 
 <section class="card-grid two">
   {% for key, title in report_types.items() %}
   <article class="panel report-card">
-    <div class="panel-head"><h4>{{ title }}</h4><span>{{ key }}</span></div>
-    <p>{% if key == 'executive' %}High-level health, business impact, and remediation priority.{% elif key == 'technical' %}Objects, topology, policy diff, line-level extraction data.{% elif key == 'security' %}Critical/high findings, escalation owners, playbooks.{% elif key == 'audit' %}Evidence manifest, hashes, line evidence, integrity context.{% elif key == 'wireless' %}Wireless sessions, AP load, anomalies, validation matrix, and event correlation.{% else %}Complete report package with all sections.{% endif %}</p>
-    <div class="button-row"><a class="ghost-btn" href="{{ url_for('actions.download_report_json', report_type=key) }}">JSON</a><a class="ghost-btn" href="{{ url_for('actions.download_report_html', report_type=key) }}">HTML</a><a class="primary-btn" href="{{ url_for('actions.download_report_pdf', report_type=key) }}">PDF</a></div>
+    <div class="panel-head"><h4>{{ title }}</h4><span class="badge info">{{ key }}</span></div>
+    <p>{% if key == 'executive' %}Board-level health, business impact, top concern, and remediation priority.{% elif key == 'technical' %}Objects, topology, policy diff, extraction confidence, and snapshot comparison.{% elif key == 'compliance' %}Controls matrix with evidence mapping and risk status.{% elif key == 'packet_tracer' %}Conversion readiness, missing commands, extraction confidence, and next steps.{% elif key == 'wireless_risk' %}AP load, anomalies, severity mapping, validation results, and remediation focus.{% elif key == 'audit' %}Evidence manifest, source hashes, line evidence, and integrity context.{% elif key == 'evidence_appendix' %}Artifact inventory and detailed evidence appendix for external review.{% elif key == 'wireless' %}Wireless sessions, AP inventory, event correlation, validation matrix, and anomalies.{% else %}Complete report package with all available sections.{% endif %}</p>
+    <div class="button-row"><a class="ghost-btn" href="{{ url_for('actions.report_preview', report_type=key) }}" target="_blank">Preview</a><a class="ghost-btn" href="{{ url_for('actions.download_report_json', report_type=key) }}">JSON</a><a class="ghost-btn" href="{{ url_for('actions.download_report_html', report_type=key) }}">HTML</a><a class="primary-btn" href="{{ url_for('actions.download_report_pdf', report_type=key) }}">PDF</a></div>
   </article>
   {% endfor %}
 </section>
 
-<section class="panel">
-  <div class="panel-head"><h4>Evidence Package</h4><a class="primary-btn" href="{{ url_for('actions.download_evidence_zip') }}">Download ZIP</a></div>
-  <p class="muted">Includes artifacts, reports, state snapshot, and manifest for verification.</p>
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Compliance Matrix Preview</h4><span class="badge info">{{ compliance|length }} controls</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Control</th><th>Status</th><th>Risk</th><th>Evidence</th></tr></thead><tbody>{% for c in compliance %}<tr><td><b>{{ c.control }}</b><br><small>{{ c.requirement }}</small></td><td><span class="badge {{ 'pass' if c.status=='Pass' else 'fail' if c.status=='Fail' else 'review' }}">{{ c.status }}</span></td><td>{{ c.risk }}</td><td>{{ c.evidence }}</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Evidence Package</h4><a class="primary-btn" href="{{ url_for('actions.download_evidence_zip') }}">Download ZIP</a></div>
+    <p class="muted">Includes generated artifacts, JSON/HTML reports for every template, state snapshot, and verification manifest.</p>
+    <ul class="clean-list"><li>Executive + technical reports</li><li>Packet Tracer conversion appendix</li><li>Wireless risk and compliance outputs</li><li>Evidence manifest and source hashes</li></ul>
+  </div>
 </section>
 {% endblock %}

@@ -2,13 +2,14 @@
 {% block content %}
 <section class="page-title">
   <span class="pill">Project Workspaces</span>
-  <h3>Manage analysis workspaces</h3>
-  <p>Create separate WiGuard workspaces for different campuses, customers, or lab scenarios. The selected project is embedded into every generated report.</p>
+  <h3>Tenant-aware analysis workspaces</h3>
+  <p>Create separate WiGuard workspaces for campuses, customers, or lab scenarios. Projects now carry <code>tenant_id</code> and are embedded into reports and audit snapshots.</p>
 </section>
 
 <section class="two-col">
+  {% if can_role('engineer') %}
   <div class="panel">
-    <div class="panel-head"><h4>Create Project</h4></div>
+    <div class="panel-head"><h4>Create Project</h4><span class="muted">Tenant {{ current_tenant_id }}</span></div>
     <form class="form" method="post" action="{{ url_for('actions.create_project') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Project Name<input name="name" placeholder="Branch Campus Validation" required></label>
@@ -17,10 +18,12 @@
       <button class="primary-btn full" type="submit">Create & Select</button>
     </form>
   </div>
+  {% endif %}
   <div class="panel">
     <div class="panel-head"><h4>Current Project</h4></div>
     <div class="summary-lines">
       <div><span>Name</span><b>{{ current_project.name }}</b></div>
+      <div><span>Tenant</span><b>{{ current_project.tenant_id or tenant_id }}</b></div>
       <div><span>Owner</span><b>{{ current_project.owner }}</b></div>
       <div><span>Environment</span><b>{{ current_project.environment }}</b></div>
     </div>
@@ -28,21 +31,22 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h4>All Projects</h4></div>
+  <div class="panel-head"><h4>Tenant Projects</h4><span class="muted">{{ visible_projects|length }} visible project(s)</span></div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Name</th><th>Environment</th><th>Owner</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Tenant</th><th>Environment</th><th>Owner</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
-      {% for p in state.projects %}
+      {% for p in visible_projects %}
         <tr>
           <td><b>{{ p.name }}</b><br><small class="muted">{{ p.id }}</small></td>
+          <td><code>{{ p.tenant_id or tenant_id }}</code></td>
           <td>{{ p.environment }}</td>
           <td>{{ p.owner }}</td>
           <td>{{ 'Selected' if p.id == state.current_project else p.status }}</td>
           <td>
             <div class="button-row">
               <form method="post" action="{{ url_for('actions.switch_project', project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Switch</button></form>
-              <form method="post" action="{{ url_for('actions.delete_project', project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form>
+              {% if can_role('admin') %}<form method="post" action="{{ url_for('actions.delete_project', project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form>{% endif %}
             </div>
           </td>
         </tr>

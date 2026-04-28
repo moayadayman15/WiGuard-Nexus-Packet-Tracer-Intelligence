@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="page-title">
-  <span class="pill">Searchable Object Explorer</span>
-  <h3>Extracted objects with line-level evidence</h3>
-  <p>Search every parsed object and inspect evidence line, confidence, and raw source text where available.</p>
+<section class="page-title objects-hero">
+  <span class="pill">Searchable Evidence Explorer</span>
+  <h3>Every extracted object with source-line mapping</h3>
+  <p>Search VLANs, interfaces, ACLs, DHCP scopes, Packet Tracer conversion profile, L2 health, MAC/ARP evidence, and raw source lines.</p>
 </section>
 
 <section class="panel">
   <form class="filter-row" method="get">
-    <input type="search" name="q" value="{{ query }}" placeholder="Search VLAN, interface, ACL, IP, hostname...">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search VLAN, interface, ACL, IP, hostname, MAC, command...">
     <select name="category">
       <option value="all">All categories</option>
       {% for key in objects.keys() %}
@@ -20,12 +20,27 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h4>Object Inventory</h4><span>{{ flat_objects|length }} result(s)</span></div>
-  <div class="object-list">
+  <div class="panel-head"><h4>Object Categories</h4><span>{{ flat_objects|length }} searchable result(s)</span></div>
+  <div class="object-grid tight coverage-grid">
+    {% for key, value in counts.items() %}
+    <a class="category-tile" href="{{ url_for('pages.object_explorer', category=key) }}"><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b></a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Object Inventory</h4><span>line evidence + confidence</span></div>
+  <div class="object-list upgraded">
     {% for row in flat_objects %}
     {% set obj = row.object %}
     <article class="object-card">
-      <div class="object-top"><b>{{ row.category }}</b><span>Confidence {{ ((obj.evidence.confidence or 0.5)*100)|round|int if obj.evidence else 50 }}%</span></div>
+      <div class="object-top">
+        <b>{{ row.category }}</b>
+        <span>Confidence {{ ((obj.evidence.confidence or 0.5)*100)|round|int if obj.evidence else 50 }}%</span>
+      </div>
+      {% if obj.evidence %}
+      <div class="evidence-strip"><span>Line {{ obj.evidence.source_line or 'N/A' }}</span><code>{{ obj.evidence.source_text or 'derived evidence' }}</code></div>
+      {% endif %}
       <pre>{{ obj|tojson(indent=2) }}</pre>
     </article>
     {% else %}

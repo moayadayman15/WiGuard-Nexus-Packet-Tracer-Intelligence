@@ -1,36 +1,191 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="page-title">
-  <span class="pill">Import Center</span>
-  <h3>Upload, extract, normalize, and generate evidence</h3>
-  <p>Upload Packet Tracer `.pkt/.pka`, XML, JSON, running-config, or show-command outputs. The platform extracts objects and regenerates all report artifacts.</p>
+<section class="page-title pt-hero">
+  <span class="pill">Packet Tracer Conversion Lab</span>
+  <h3>Turn Packet Tracer evidence into a verified WiGuard workspace</h3>
+  <p>Upload `.pkt/.pka`, exported configs, XML, JSON, or a ZIP of show-command outputs. WiGuard now grades conversion readiness, relationships, missing commands, and evidence traceability before reports are generated.</p>
 </section>
 
-<section class="two-col">
-  <div class="panel">
-    <div class="panel-head"><h4>Upload Network Evidence</h4></div>
+{% set profile = conversion_profile or {} %}
+{% set meta = profile.metadata or {} %}
+{% set readiness = profile.readiness or 'no_import' %}
+{% set readiness_score = ((profile.readiness_score or 0)*100)|round|int %}
+
+<section class="conversion-console">
+  <div class="panel upload-panel">
+    <div class="panel-head"><h4>1. Upload Network Evidence</h4><span>{{ meta.extension or 'waiting' }}</span></div>
     <form class="upload-box" method="post" enctype="multipart/form-data" action="{{ url_for('actions.import_file') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label class="dropzone" id="dropzone">
+      <label class="dropzone pt-dropzone" id="dropzone">
         <input id="file-input" type="file" name="network_file" required>
-        <span>Drop file here or click to choose</span>
-        <small>.pkt .pka .xml .json .txt .cfg .conf</small>
+        <span>Drop Packet Tracer / config bundle here</span>
+        <small>.pkt .pka .xml .json .txt .cfg .conf .zip</small>
         <strong id="file-name">No file selected</strong>
       </label>
-      <button class="primary-btn full" type="submit">Import & Generate Artifacts</button>
+      <button class="primary-btn full" type="submit">Import → Convert → Validate → Generate Artifacts</button>
     </form>
     <form method="post" action="{{ url_for('actions.load_sample') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="ghost-btn full" type="submit">Load Production Sample</button>
     </form>
+    <div class="hint-panel">
+      <strong>Best accuracy workflow</strong>
+      <span>Native `.pkt/.pka` files are stored and recovered safely, but Packet Tracer is proprietary. For evidence-grade accuracy, export each device config and show outputs into a ZIP.</span>
+    </div>
+  </div>
+
+  <div class="panel readiness-panel">
+    <div class="panel-head"><h4>2. Conversion Readiness</h4><span class="badge {{ readiness }}">{{ readiness.replace('_',' ') }}</span></div>
+    <div class="readiness-ring" style="--score: {{ readiness_score }}"><b>{{ readiness_score }}%</b><span>ready</span></div>
+    <div class="summary-lines">
+      <div><span>Mode</span><b>{{ meta.source_mode or active.source_mode or 'N/A' }}</b></div>
+      <div><span>File size</span><b>{{ meta.bytes or 0 }} bytes</b></div>
+      <div><span>Objects</span><b>{{ profile.objects_total or 0 }}</b></div>
+      <div><span>Printable lines</span><b>{{ meta.printable_lines or 0 }}</b></div>
+    </div>
+    <p class="muted">{{ profile.analyst_next_step or 'Run an import to see a conversion decision.' }}</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>3. Extraction Object Coverage</h4><a href="{{ url_for('pages.object_explorer') }}">Open Explorer</a></div>
+  <div class="object-grid tight coverage-grid">
+    {% for key, value in (profile.high_value_objects or counts).items() %}
+    <div><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b></div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>4. Quality Gates</h4></div>
+    <div class="quality-gates">
+      {% for gate in profile.quality_gates or [] %}
+      <article class="gate {{ gate.status }}">
+        <div><b>{{ gate.name }}</b><span>{{ ((gate.score or 0)*100)|round|int }}%</span></div>
+        <p>{{ gate.detail }}</p>
+      </article>
+      {% else %}
+      <p class="muted">Import a Packet Tracer/config bundle to see quality gates.</p>
+      {% endfor %}
+    </div>
   </div>
 
   <div class="panel">
-    <div class="panel-head"><h4>Current Extraction Summary</h4><a href="{{ url_for('pages.object_explorer') }}">Explore</a></div>
-    <div class="object-grid tight">
-      {% for key, value in counts.items() %}
-      <div><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b></div>
+    <div class="panel-head"><h4>5. Missing Command Checklist</h4></div>
+    <div class="command-checklist">
+      {% for row in profile.command_checklist or [] %}
+      <article class="cmd {{ row.status }}">
+        <b>{{ row.command }}</b>
+        <span>{{ row.status }} · {{ row.severity }}</span>
+        <p>{{ row.why }}</p>
+      </article>
+      {% else %}
+      <p class="muted">No checklist yet.</p>
       {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>6. Evidence Relationships</h4><span>Interface ⇄ VLAN ⇄ DHCP ⇄ ACL</span></div>
+    {% set rel = profile.relationships or {} %}
+    <div class="relationship-grid">
+      <article><b>{{ (rel.interface_to_vlan or [])|length }}</b><span>Interface/VLAN bindings</span></article>
+      <article><b>{{ (rel.dhcp_to_vlan or [])|length }}</b><span>DHCP gateway matches</span></article>
+      <article><b>{{ (rel.acl_to_interfaces or {})|length }}</b><span>ACL interface bindings</span></article>
+      <article><b>{{ (rel.trunks or [])|length }}</b><span>Trunk candidates</span></article>
+    </div>
+    <div class="table-wrap mini-table">
+      <table><thead><tr><th>Interface</th><th>Mode</th><th>VLAN Evidence</th><th>Line</th></tr></thead><tbody>
+        {% for row in rel.interface_to_vlan or [] %}
+        <tr><td>{{ row.interface }}</td><td>{{ row.mode }}</td><td>{{ row.vlans|tojson }}</td><td>{{ row.evidence_line }}</td></tr>
+        {% else %}<tr><td colspan="4">No interface/VLAN relationships yet.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>7. Extraction Confidence</h4></div>
+    {% set conf = active.confidence_summary or {} %}
+    <div class="summary-lines">
+      <div><span>Overall</span><b>{{ ((conf.overall or 0)*100)|round|int }}%</b></div>
+      <div><span>Source Confidence</span><b>{{ ((conf.source_confidence or 0)*100)|round|int }}%</b></div>
+      <div><span>Line Mapping</span><b>{{ ((conf.line_mapping_ratio or 0)*100)|round|int }}%</b></div>
+      <div><span>Applied ACL Rules</span><b>{{ conf.applied_acl_rules or 0 }}</b></div>
+    </div>
+    <div class="hint-panel">
+      <strong>{{ meta.format_note or 'No source profile yet.' }}</strong>
+      <span>Detected markers: {{ (meta.markers or [])|join(', ') if meta.markers else 'None yet' }}</span>
+    </div>
+  </div>
+</section>
+
+
+
+<section class="panel deep-intel-panel">
+  <div class="panel-head">
+    <h4>8. Deep Packet Tracer Intelligence Matrix</h4>
+    <span>Evidence atoms, operational state, hardening, and control assertions</span>
+  </div>
+  <div class="deep-matrix">
+    <article><span>Command Blocks</span><b>{{ objects.command_blocks|length if objects.command_blocks else 0 }}</b><small>ZIP members / CLI command streams</small></article>
+    <article><span>Evidence Atoms</span><b>{{ objects.deep_evidence_index|length if objects.deep_evidence_index else 0 }}</b><small>Tagged line-level facts</small></article>
+    <article><span>Operational Ports</span><b>{{ objects.interface_status|length if objects.interface_status else 0 }}</b><small>show interfaces status / brief</small></article>
+    <article><span>Operational Trunks</span><b>{{ objects.trunk_operational|length if objects.trunk_operational else 0 }}</b><small>Allowed, active, forwarding VLANs</small></article>
+    <article><span>Route Table</span><b>{{ objects.route_table|length if objects.route_table else 0 }}</b><small>Connected/static/dynamic route rows</small></article>
+    <article><span>Hardening Signals</span><b>{{ objects.security_hardening|length if objects.security_hardening else 0 }}</b><small>AAA, SSH, SNMP, HTTP, Telnet</small></article>
+    <article><span>Wireless Hints</span><b>{{ objects.wireless_hints|length if objects.wireless_hints else 0 }}</b><small>SSID/WLAN/RADIUS/AP clues</small></article>
+    <article><span>Policy Controls</span><b>{{ objects.policy_controls|length if objects.policy_controls else 0 }}</b><small>Derived pass/review/fail assertions</small></article>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>9. Policy Control Assertions</h4><span>line-linked control logic</span></div>
+    <div class="command-checklist">
+      {% for c in objects.policy_controls or [] %}
+      <article class="cmd {{ c.status }}">
+        <b>{{ c.control }}</b>
+        <span>{{ c.status }} · {{ c.severity }} · {{ ((c.confidence or 0)*100)|round|int }}%</span>
+        <p>{{ c.detail }}</p>
+        {% if c.evidence %}<small>Evidence line: {{ c.evidence.source_line }} — {{ c.evidence.source_text }}</small>{% endif %}
+      </article>
+      {% else %}<p class="muted">Import evidence to generate policy controls.</p>{% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>10. Security Hardening Extractor</h4><span>management-plane posture</span></div>
+    <div class="table-wrap mini-table">
+      <table><thead><tr><th>Signal</th><th>Posture</th><th>Value</th><th>Line</th></tr></thead><tbody>
+      {% for h in objects.security_hardening or [] %}
+      <tr><td>{{ h.name }}</td><td><span class="badge {{ 'fail' if h.posture=='weak' else 'pass' if h.posture=='positive' else 'review' }}">{{ h.posture }}</span></td><td>{{ h.value }}</td><td>{{ h.evidence.source_line }}</td></tr>
+      {% else %}<tr><td colspan="4" class="muted">No hardening lines extracted yet.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>11. Operational Trunk & Port State</h4><span>the part that proves the topology is real</span></div>
+    <div class="table-wrap mini-table">
+      <table><thead><tr><th>Interface</th><th>Status</th><th>Native</th><th>Allowed</th><th>Active</th><th>Forwarding</th></tr></thead><tbody>
+      {% for t in objects.trunk_operational or [] %}
+      <tr><td>{{ t.interface }}</td><td>{{ t.status or t.mode }}</td><td>{{ t.native_vlan }}</td><td>{{ (t.allowed_vlans or [])|join(', ') }}</td><td>{{ (t.active_vlans or [])|join(', ') }}</td><td>{{ (t.forwarding_vlans or [])|join(', ') }}</td></tr>
+      {% else %}<tr><td colspan="6" class="muted">No operational trunk output extracted yet.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>12. Evidence Atom Preview</h4><span>first 20 tagged lines</span></div>
+    <div class="evidence-atom-list">
+      {% for atom in (objects.deep_evidence_index or [])[:20] %}
+      <article><b>Line {{ atom.line }}</b><span>{{ atom.tags|join(' · ') }}</span><p>{{ atom.text }}</p></article>
+      {% else %}<p class="muted">No tagged evidence atoms yet.</p>{% endfor %}
     </div>
   </div>
 </section>
@@ -38,33 +193,85 @@
 
 <section class="two-col">
   <div class="panel">
-    <div class="panel-head"><h4>Extraction Confidence</h4></div>
-    {% set conf = active.confidence_summary or {} %}
-    <div class="summary-lines">
-      <div><span>Overall</span><b>{{ ((conf.overall or 0)*100)|round|int }}%</b></div>
-      <div><span>Source Mode</span><b>{{ conf.mode or active.source_mode or 'N/A' }}</b></div>
-      <div><span>Line Mapping</span><b>{{ ((conf.line_mapping_ratio or 0)*100)|round|int }}%</b></div>
-      <div><span>Applied ACL Rules</span><b>{{ conf.applied_acl_rules or 0 }}</b></div>
+    <div class="panel-head"><h4>13. Coverage Domains</h4><span>what the import can prove</span></div>
+    <div class="domain-grid">
+      {% for d in profile.coverage_domains or objects.coverage_domains or [] %}
+      <article class="{{ d.status }}">
+        <b>{{ d.domain }}</b>
+        <strong>{{ d.count }}</strong>
+        <span>{{ d.status.replace('_',' ') }}</span>
+        <small>{{ (d.get('keys', []) or [])|join(', ') }}</small>
+      </article>
+      {% else %}<p class="muted">No coverage domain profile yet.</p>{% endfor %}
     </div>
   </div>
   <div class="panel">
-    <div class="panel-head"><h4>Missing Evidence Detector</h4></div>
-    <ul>
-      {% for m in active.missing_evidence or [] %}
-      <li><b>{{ m.severity }}</b> — {{ m.source }}<br><small class="muted">{{ m.why }}</small></li>
-      {% else %}
-      <li>No missing evidence warnings.</li>
-      {% endfor %}
-    </ul>
+    <div class="panel-head"><h4>14. VLAN Crosscheck</h4><span>config ⇄ show vlan ⇄ trunk ⇄ DHCP</span></div>
+    {% set vx = profile.vlan_crosscheck or objects.vlan_crosscheck or {} %}
+    <div class="summary-lines">
+      <div><span>Observed VLANs</span><b>{{ vx.observed_total or 0 }}</b></div>
+      <div><span>Configured</span><b>{{ (vx.configured_vlans or [])|join(', ') or '—' }}</b></div>
+      <div><span>Trunk Allowed</span><b>{{ (vx.trunk_allowed_vlans or [])|join(', ') or '—' }}</b></div>
+      <div><span>Missing From Trunks</span><b>{{ (vx.missing_from_trunks or [])|join(', ') or 'None' }}</b></div>
+    </div>
+    <p class="muted">This is the cross-layer consistency check that prevents false confidence when VLAN config exists but operational trunk proof is missing.</p>
   </div>
 </section>
 
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>15. Runtime Risk Atoms</h4><span>auto-created review items</span></div>
+    <div class="risk-atom-list">
+      {% for r in profile.risk_atoms or objects.risk_atoms or [] %}
+      <article class="{{ r.severity|lower }}">
+        <b>{{ r.title }}</b>
+        <span>{{ r.severity }} · {{ ((r.confidence or 0)*100)|round|int }}%</span>
+        <p>{{ r.why }}</p>
+        {% if r.evidence %}<small>Line {{ r.evidence.source_line }} — {{ r.evidence.source_text }}</small>{% endif %}
+      </article>
+      {% else %}<p class="muted">No runtime risk atoms detected from this import.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>16. Runtime Counters</h4><span>ACL hits + interface errors</span></div>
+    <div class="table-wrap mini-table">
+      <table><thead><tr><th>Type</th><th>Object</th><th>Evidence</th><th>Line</th></tr></thead><tbody>
+      {% for h in objects.acl_hit_counts or [] %}
+      <tr><td>ACL Hits</td><td>{{ h.acl_name or 'ACL' }} / {{ h.sequence or 'line' }} / {{ h.matches }} matches</td><td>{{ h.line_text }}</td><td>{{ h.evidence.source_line }}</td></tr>
+      {% endfor %}
+      {% for c in objects.interface_counters or [] %}
+      <tr><td>Interface Counters</td><td>{{ c.interface }} / in={{ c.input_errors }} out={{ c.output_errors }} crc={{ c.crc }}</td><td>{{ c.status }} / {{ c.protocol }}</td><td>{{ c.evidence.source_line }}</td></tr>
+      {% endfor %}
+      {% if not objects.acl_hit_counts and not objects.interface_counters %}<tr><td colspan="4" class="muted">No runtime counter evidence imported yet.</td></tr>{% endif %}
+      </tbody></table>
+    </div>
+  </div>
+</section>
+
+{% set ss = profile.structured_summary or objects.structured_summary or {} %}
+<section class="panel structured-schema-panel">
+  <div class="panel-head"><h4>17. Structured JSON/XML Understanding</h4><span>{{ ss.status or 'waiting' }}</span></div>
+  <div class="summary-lines">
+    <div><span>Format</span><b>{{ ss.format or 'N/A' }}</b></div>
+    <div><span>Records Walked</span><b>{{ ss.records_walked or 0 }}</b></div>
+    <div><span>Embedded Config Chunks</span><b>{{ ss.embedded_text_chunks or 0 }}</b></div>
+    <div><span>Normalizer</span><b>{{ ss.normalizer or 'not started' }}</b></div>
+  </div>
+  <div class="object-grid tight coverage-grid">
+    {% for key, value in (ss.detected_sections or {}).items() %}
+    <div><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b></div>
+    {% else %}
+    <div><span>structured sections</span><b>0</b></div>
+    {% endfor %}
+  </div>
+  <p class="muted">Schema hints: {{ (ss.schema_hints or [])|join(', ') or 'No JSON/XML schema hints extracted yet.' }}</p>
+</section>
+
 <section class="panel">
-  <div class="panel-head"><h4>Extraction Pipeline</h4><span>{{ state.active_extraction.filename or 'No import yet' }}</span></div>
-  <div class="pipeline">
+  <div class="panel-head"><h4>18. Extraction Pipeline</h4><span>{{ state.active_extraction.filename or 'No import yet' }}</span></div>  <div class="pipeline">
     {% for step in state.active_extraction.pipeline or [] %}
     <article>
-      <div><b>{{ step.stage }}</b><span class="badge {{ step.status }}">{{ step.status }}</span></div>
+      <div><b>{{ step.stage }}</b><span class="badge {{ step.status|replace('_','-') }}">{{ step.status }}</span></div>
       <p>{{ step.detail }}</p>
       <small>Items: {{ step.items }} · Confidence: {{ (step.confidence*100)|round|int }}%</small>
     </article>
@@ -75,10 +282,10 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h4>Generated Artifacts</h4><a href="{{ url_for('actions.download_evidence_zip') }}">Download ZIP</a></div>
+  <div class="panel-head"><h4>19. Generated Artifacts</h4><a href="{{ url_for('actions.download_evidence_zip') }}">Download ZIP</a></div>
   <div class="artifact-grid">
   {% for name, path in artifacts.items() %}
-    <a href="{{ url_for('actions.download_artifact', name=name) }}"><b>{{ name }}</b><span>Download JSON</span></a>
+    <a href="{{ url_for('actions.download_artifact', name=name) }}"><b>{{ name }}</b><span>Download</span></a>
   {% else %}
     <p class="muted">No artifacts yet.</p>
   {% endfor %}

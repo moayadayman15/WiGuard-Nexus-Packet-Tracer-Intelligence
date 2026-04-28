@@ -189,12 +189,12 @@
 
 <section class="two-col" id="connectors">
   <div class="panel">
-    <div class="panel-head"><h4>Vendor Connector Import Layer</h4><span class="muted">CSV/JSON adapters for WLC/AP/RADIUS/DHCP/Syslog</span></div>
+    <div class="panel-head"><h4>Vendor Connector Import Layer</h4><span class="muted">Meraki / UniFi / Aruba / Cisco WLC / RADIUS / Syslog</span></div>
     <form class="form" method="post" action="{{ url_for('actions.connector_import') }}" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <select name="connector_type">{% for key, label in connector_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
       <label class="dropzone"><strong>Upload connector CSV/JSON</strong><input type="file" name="connector_file" accept=".csv,.json" required></label>
-      <button class="primary-btn" type="submit">Import Connector Data</button>
+      <button class="primary-btn" type="submit">Queue Import Job</button>
     </form>
     <p class="muted">This is a production-ready adapter scaffold: map real Cisco/Aruba/UniFi/Meraki/RADIUS/DHCP exports into WiGuard's normalized wireless model.</p>
   </div>
@@ -202,6 +202,31 @@
     <div class="panel-head"><h4>Recent Connector Runs</h4></div>
     <div class="table-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Records</th><th>Status</th></tr></thead><tbody>{% for run in connector_runs %}<tr><td>{{ run.created_at }}</td><td>{{ run.connector_type }}</td><td>{{ run.imported_records }}</td><td>{{ run.status }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No connector imports yet.</td></tr>{% endfor %}</tbody></table></div>
   </div>
+</section>
+
+
+<section class="panel" id="connector-status">
+  <div class="panel-head"><h4>Credential Test / Sync Preview</h4><span class="muted">Read-only vendor checks</span></div>
+  <form class="form" method="post" action="{{ url_for('actions.connector_test') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="connector_type">{% for key, label in connector_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+    <input name="base_url" placeholder="Controller/API base URL">
+    <div class="form-grid"><input name="api_key" placeholder="API key / bearer token"><input name="username" placeholder="Username"></div>
+    <input name="password" type="password" placeholder="Password if required">
+    <label class="checkline"><input type="checkbox" name="verify_tls" value="1" checked> Verify TLS certificate</label>
+    <div class="form-grid"><button class="ghost-btn" type="submit">Test Credentials</button><button class="primary-btn" type="submit" formaction="{{ url_for('actions.connector_sync') }}">Sync Preview Job</button></div>
+  </form>
+  <div class="connector-grid">
+    {% for key, label in connector_types.items() %}
+    {% set st = (connector_statuses|selectattr('connector_type','equalto',key)|list|first) %}
+    <article class="status-card"><strong>{{ label }}</strong><small>{{ key }}</small><p>Status: <span class="badge {{ 'pass' if st and st.status in ['connected','reachable','import-only'] else 'review' if st else 'info' }}">{{ st.status if st else 'not tested' }}</span></p><small>{{ st.detail if st else 'No credential test has been recorded yet.' }}</small></article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel" id="jobs">
+  <div class="panel-head"><h4>Background Jobs</h4><span class="muted">Import/report/sync job activity</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Created</th><th>Job</th><th>Status</th><th>Progress</th><th>Tenant</th><th>Error</th></tr></thead><tbody>{% for job in jobs[:12] %}<tr><td>{{ job.created_at }}</td><td>{{ job.job_type }}<br><small>{{ job.id }}</small></td><td><span class="badge {{ 'pass' if job.status in ['completed','partial'] else 'fail' if job.status=='failed' else 'review' }}">{{ job.status }}</span></td><td>{{ job.progress }}%</td><td>{{ job.tenant_id }}</td><td>{{ job.error or '' }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No jobs yet.</td></tr>{% endfor %}</tbody></table></div>
 </section>
 
 <section class="panel" id="playbooks">

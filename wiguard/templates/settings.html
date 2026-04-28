@@ -2,20 +2,20 @@
 {% block content %}
 <section class="page-title">
   <span class="pill">Admin Center</span>
-  <h3>Security, RBAC, database, health, migrations, backups, and audit trail</h3>
-  <p>WiGuard now uses rate-limited authentication, password policy, role-aware actions, SQLite migrations, admin backup/restore, and a dedicated health check.</p>
+  <h3>Production control center: auth, live ingestion, jobs, audit chain, tenants, API, and backup</h3>
+  <p>Manage the real operational features that make WiGuard suitable for demos, labs, and controlled enterprise pilots.</p>
 </section>
 
 <section class="kpi-grid">
   <article class="kpi"><span>Health</span><strong>{{ 'OK' if db_health.ok else 'Issue' }}</strong><small>{{ db_health.path }}</small></article>
-  <article class="kpi"><span>Migrations</span><strong>{{ db_migrations|length }}</strong><small>Applied schema versions</small></article>
-  <article class="kpi"><span>Users</span><strong>{{ users|length }}</strong><small>Local SQLite accounts</small></article>
-  <article class="kpi"><span>Backups</span><strong>{{ db_backups|length }}</strong><small>Database backup records</small></article>
+  <article class="kpi"><span>Audit Chain</span><strong>{{ 'PASS' if audit_chain.ok else 'BROKEN' }}</strong><small>{{ audit_chain.checked }} hash-linked records</small></article>
+  <article class="kpi"><span>Live Listener</span><strong>{{ 'ON' if live_status.running else 'OFF' }}</strong><small>{{ live_settings.host }}:{{ live_settings.port }}</small></article>
+  <article class="kpi"><span>Worker</span><strong>{{ 'ON' if job_runner_status.running else 'OFF' }}</strong><small>{{ jobs|length }} tracked jobs</small></article>
 </section>
 
 <section class="two-col">
   <div class="panel">
-    <div class="panel-head"><h4>Product & Wireless Thresholds</h4></div>
+    <div class="panel-head"><h4>Product & Wireless Thresholds</h4><span class="muted">Runtime policy tuning</span></div>
     <form class="form" method="post" action="{{ url_for('actions.update_settings') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label>Product name<input name="product" value="{{ state.meta.product }}"></label>
@@ -25,6 +25,80 @@
       <button class="primary-btn" type="submit">Save Settings</button>
     </form>
   </div>
+  <div class="panel" id="live-ingestion">
+    <div class="panel-head"><h4>Live Syslog/RADIUS Ingestion</h4><span class="badge {{ 'pass' if live_status.running else 'review' }}">{{ 'Running' if live_status.running else 'Stopped' }}</span></div>
+    <form class="form" method="post" action="{{ url_for('actions.live_ingestion_settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid"><label>Host<input name="host" value="{{ live_settings.host or '0.0.0.0' }}"></label><label>UDP Port<input type="number" name="port" value="{{ live_settings.port or 5514 }}"></label></div>
+      <label class="checkline"><input type="checkbox" name="enabled" value="1" {% if live_settings.enabled %}checked{% endif %}> Mark listener as enabled in config</label>
+      <button class="primary-btn" type="submit">Save Live Settings</button>
+    </form>
+    <div class="button-row">
+      <form method="post" action="{{ url_for('actions.live_ingestion_start') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary-btn" type="submit">Start Listener</button></form>
+      <form method="post" action="{{ url_for('actions.live_ingestion_stop') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Stop Listener</button></form>
+    </div>
+    <p class="muted">Raw packets are persisted, normalized into schema_version=live-event-v2, fingerprinted, deduplicated, and converted into wireless timeline events.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Persistent Raw Live Logs</h4><span class="badge info">{{ raw_live_events|length }} recent</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Severity</th><th>Source IP</th><th>Raw Message</th></tr></thead><tbody>{% for e in raw_live_events %}<tr><td>{{ e.created_at }}</td><td>{{ e.event_type }}</td><td><span class="badge {{ 'fail' if e.severity in ['Critical','High'] else 'review' if e.severity=='Medium' else 'pass' }}">{{ e.severity }}</span></td><td>{{ e.source_ip }}</td><td><code>{{ e.raw_message[:160] }}</code></td></tr>{% else %}<tr><td colspan="5" class="muted">No raw live events yet. Start the listener or POST to /api/v1/events.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+
+<section class="two-col" id="users">
+  <div class="panel">
+    <div class="panel-head"><h4>User Management</h4><a class="ghost-btn" href="{{ url_for('pages.register') }}">Register user</a></div>
+    <div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>{% for u in users %}<tr><td><b>{{ u.username }}</b><br><small>{{ u.tenant_id }}</small></td><td><span class="badge info">{{ u.role }}</span></td><td>{{ 'Active' if u.is_active else 'Disabled' }}<br><small>{{ u.disabled_reason or '' }}</small></td><td>{{ u.last_login or 'Never' }}</td><td class="stack-actions"><form method="post" action="{{ url_for('actions.force_logout_user', username=u.username) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Force logout</button></form>{% if u.is_active %}<form method="post" action="{{ url_for('actions.disable_user', username=u.username) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="reason" value="Disabled from Admin Center"><button class="ghost-btn danger" type="submit">Disable</button></form>{% else %}<form method="post" action="{{ url_for('actions.enable_user', username=u.username) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Enable</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5" class="muted">No SQLite users yet.</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Invite / Reset / Change Password</h4><span class="muted">Admin-controlled production workflows</span></div>
+    <form class="form" method="post" action="{{ url_for('actions.create_user_invite') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid"><input name="email" placeholder="new.user@example.com" required><select name="role"><option>viewer</option><option>auditor</option><option selected>analyst</option><option>engineer</option><option>admin</option></select></div>
+      <button class="primary-btn" type="submit">Create Invite Token</button>
+    </form>
+    <form class="form" method="post" action="#" onsubmit="this.action='/actions/users/'+encodeURIComponent(this.username.value)+'/change-password'">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid"><input name="username" placeholder="username" required><input name="new_password" placeholder="New strong password" required></div>
+      <button class="ghost-btn" type="submit">Change Password + Revoke Sessions</button>
+    </form>
+    <form class="form" method="post" action="#" onsubmit="this.action='/actions/users/'+encodeURIComponent(this.username.value)+'/password-reset-token'">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input name="username" placeholder="username" required>
+      <button class="ghost-btn" type="submit">Issue Reset Token</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel" id="sessions">
+  <div class="panel-head"><h4>Session List</h4><span class="muted">Revocation-aware session registry</span></div>
+  <div class="table-wrap"><table><thead><tr><th>User</th><th>Tenant</th><th>IP</th><th>User Agent</th><th>Created</th><th>Last Seen</th><th>Status</th></tr></thead><tbody>{% for s in sessions %}<tr><td>{{ s.username }}</td><td>{{ s.tenant_id }}</td><td>{{ s.ip_address }}</td><td>{{ s.user_agent[:80] }}</td><td>{{ s.created_at }}</td><td>{{ s.last_seen_at }}</td><td>{{ 'Revoked' if s.revoked_at else 'Active' }}</td></tr>{% else %}<tr><td colspan="7" class="muted">No registered sessions yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+
+<section class="two-col" id="api-tokens">
+  <div class="panel">
+    <div class="panel-head"><h4>Create API Token</h4><span class="muted">Copy once</span></div>
+    <form class="form" method="post" action="{{ url_for('actions.create_api_token') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input name="name" placeholder="Token name e.g. CI ingest token" required>
+      <div class="form-grid three"><label class="checkline"><input type="checkbox" name="scopes" value="read" checked> read</label><label class="checkline"><input type="checkbox" name="scopes" value="ingest"> ingest</label><label class="checkline"><input type="checkbox" name="scopes" value="admin"> admin</label></div>
+      <button class="primary-btn" type="submit">Create Scoped Token</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Existing API Tokens</h4><a class="ghost-btn" href="{{ url_for('actions.openapi_yaml') }}">OpenAPI</a></div>
+    <div class="table-wrap"><table><thead><tr><th>Name</th><th>Prefix</th><th>Scopes</th><th>Status</th><th>Action</th></tr></thead><tbody>{% for t in api_tokens %}<tr><td>{{ t.name }}</td><td><code>{{ t.token_prefix }}</code></td><td>{{ t.scopes }}</td><td>{{ 'Active' if t.is_active else 'Revoked' }}</td><td>{% if t.is_active %}<form method="post" action="{{ url_for('actions.revoke_api_token', token_id=t.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Revoke</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5" class="muted">No API tokens created yet.</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</section>
+
+<section class="panel" id="jobs">
+  <div class="panel-head"><h4>Background Job Queue</h4><span class="badge {{ 'pass' if job_runner_status.running else 'review' }}">Worker {{ 'Running' if job_runner_status.running else 'Stopped' }}</span></div>
+  <div class="button-row"><form method="post" action="{{ url_for('actions.job_worker_start') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="primary-btn" type="submit">Start Worker</button></form><form method="post" action="{{ url_for('actions.job_worker_stop') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Stop Worker</button></form><form method="post" action="{{ url_for('actions.job_run_next') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Run Next Job</button></form></div>
+  <div class="table-wrap"><table><thead><tr><th>Created</th><th>Job</th><th>Status</th><th>Progress</th><th>Attempts</th><th>Error</th><th>Retry</th></tr></thead><tbody>{% for job in jobs %}<tr><td>{{ job.created_at }}</td><td>{{ job.job_type }}<br><small>{{ job.id }}</small></td><td><span class="badge {{ 'pass' if job.status in ['completed','partial'] else 'fail' if job.status=='failed' else 'review' }}">{{ job.status }}</span></td><td><progress value="{{ job.progress }}" max="100"></progress> {{ job.progress }}%</td><td>{{ job.attempts }}</td><td>{{ job.error or '' }}</td><td>{% if job.status=='failed' %}<form method="post" action="{{ url_for('actions.job_retry', job_id=job.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Retry</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="muted">No jobs yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+
+<section class="two-col">
   <div class="panel" id="backups">
     <div class="panel-head"><h4>Database Backup / Restore</h4><a class="primary-btn" href="{{ url_for('actions.download_database_backup') }}">Download Backup</a></div>
     <p class="muted">Restore creates an automatic safety backup first, validates the uploaded SQLite file, then reapplies migrations.</p>
@@ -34,26 +108,17 @@
       <button class="ghost-btn danger" type="submit">Restore Database</button>
     </form>
   </div>
-</section>
-
-<section class="two-col">
   <div class="panel">
-    <div class="panel-head"><h4>RBAC Users</h4><a href="{{ url_for('pages.register') }}">Register user</a></div>
-    <div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Access Meaning</th><th>Created</th><th>Last login</th></tr></thead><tbody>{% for u in users %}<tr><td>{{ u.username }}</td><td><span class="badge info">{{ u.role }}</span></td><td>{% if u.role=='admin' %}Full admin{% elif u.role=='engineer' %}Policy and inventory changes{% elif u.role=='analyst' %}Import/analyze/report{% elif u.role=='auditor' %}Read and export{% else %}Read-only{% endif %}</td><td>{{ u.created_at }}</td><td>{{ u.last_login or 'Never' }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No SQLite users yet. Fallback admin login is still available.</td></tr>{% endfor %}</tbody></table></div>
-  </div>
-  <div class="panel">
-    <div class="panel-head"><h4>Applied Migrations</h4><span class="muted">Database schema history</span></div>
-    <div class="table-wrap"><table><thead><tr><th>Version</th><th>Applied At</th></tr></thead><tbody>{% for m in db_migrations %}<tr><td>{{ m.version }}</td><td>{{ m.applied_at }}</td></tr>{% endfor %}</tbody></table></div>
+    <div class="panel-head"><h4>PostgreSQL Readiness</h4><span class="badge info">{{ db_backend|upper }}</span></div>
+    <p>{% if database_url_configured %}DATABASE_URL is configured.{% else %}SQLite local mode. Set WIGUARD_DB_BACKEND=postgres and DATABASE_URL when you add the production SQLAlchemy backend.{% endif %}</p>
+    <p class="muted">Schema migrations, tenant_id fields, indexes, backup/restore controls, and API boundaries are now prepared for a future PostgreSQL adapter.</p>
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h4>Backup History</h4><span class="muted">Latest manual/automatic DB backups</span></div>
-  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Created By</th><th>Path</th><th>Note</th></tr></thead><tbody>{% for b in db_backups %}<tr><td>{{ b.created_at }}</td><td>{{ b.created_by }}</td><td><code>{{ b.backup_path }}</code></td><td>{{ b.note }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No backups recorded yet.</td></tr>{% endfor %}</tbody></table></div>
-</section>
-
-<section class="panel">
-  <div class="panel-head"><h4>Audit Trail</h4><span class="muted">Last 20 SQLite audit records</span></div>
-  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead><tbody>{% for a in audit_tail %}<tr><td>{{ a.created_at }}</td><td>{{ a.actor }}</td><td>{{ a.action }}</td><td>{{ a.target }}</td><td>{{ a.detail }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No audit records yet.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="panel-head"><h4>Audit Trail + Tamper-Evident Hash Chain</h4><a class="primary-btn" href="{{ url_for('actions.download_audit_csv', audit_q=audit_query, audit_action=audit_action, audit_actor=audit_actor, audit_severity=audit_severity) }}">Export CSV</a></div>
+  <form class="filter-row" method="get" action="{{ url_for('pages.settings') }}"><input name="audit_q" value="{{ audit_query }}" placeholder="Search detail/target"><input name="audit_actor" value="{{ audit_actor }}" placeholder="Actor"><input name="audit_action" value="{{ audit_action }}" placeholder="Action"><select name="audit_severity"><option value="">Any severity</option>{% for sev in ['Info','Low','Medium','High','Critical'] %}<option value="{{ sev }}" {% if audit_severity==sev %}selected{% endif %}>{{ sev }}</option>{% endfor %}</select><button class="primary-btn" type="submit">Filter</button><a class="ghost-btn" href="{{ url_for('pages.settings') }}">Clear</a></form>
+  <p class="muted">Latest hash: <code>{{ audit_chain.latest_hash }}</code></p>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Severity</th><th>Target</th><th>Detail</th><th>Hash</th></tr></thead><tbody>{% for a in audit_tail %}<tr><td>{{ a.created_at }}</td><td>{{ a.actor }}</td><td>{{ a.action }}</td><td>{{ a.severity or 'Info' }}</td><td>{{ a.target }}</td><td>{{ a.detail }}</td><td><code>{{ (a.entry_hash or '')[:16] }}</code></td></tr>{% else %}<tr><td colspan="7" class="muted">No audit records yet.</td></tr>{% endfor %}</tbody></table></div>
 </section>
 {% endblock %}

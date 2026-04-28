@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ state.meta.product }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -13,7 +14,7 @@
       <div class="brand-logo">WG</div>
       <div>
         <h1>WiGuard Nexus</h1>
-        <p>Production Core</p>
+        <p>v5.8.3-packet-tracer-json-xml-intelligence</p>
       </div>
     </div>
 
@@ -21,13 +22,13 @@
       <a class="{{ 'active' if page=='overview' else '' }}" href="{{ url_for('pages.overview') }}">Overview</a>
       <a class="{{ 'active' if page=='projects' else '' }}" href="{{ url_for('pages.projects') }}">Projects</a>
       <a class="{{ 'active' if page=='wireless' else '' }}" href="{{ url_for('pages.wireless_manager') }}">Wireless Manager</a>
-      <a class="{{ 'active' if page=='import' else '' }}" href="{{ url_for('pages.import_center') }}">Import Center</a>
+      {% if can_role('analyst') %}<a class="{{ 'active' if page=='import' else '' }}" href="{{ url_for('pages.import_center') }}">Import Center</a>{% endif %}
       <a class="{{ 'active' if page=='objects' else '' }}" href="{{ url_for('pages.object_explorer') }}">Object Explorer</a>
       <a class="{{ 'active' if page=='topology' else '' }}" href="{{ url_for('pages.topology') }}">Topology</a>
       <a class="{{ 'active' if page=='diff' else '' }}" href="{{ url_for('pages.diff') }}">Policy Diff</a>
       <a class="{{ 'active' if page=='root' else '' }}" href="{{ url_for('pages.root_cause') }}">Root Cause</a>
-      <a class="{{ 'active' if page=='reports' else '' }}" href="{{ url_for('pages.reports') }}">Report Center</a>
-      <a class="{{ 'active' if page=='verifier' else '' }}" href="{{ url_for('pages.verifier') }}">Verifier</a>
+      {% if can_role('auditor') %}<a class="{{ 'active' if page=='reports' else '' }}" href="{{ url_for('pages.reports') }}">Report Center</a>{% endif %}
+      {% if can_role('auditor') %}<a class="{{ 'active' if page=='verifier' else '' }}" href="{{ url_for('pages.verifier') }}">Verifier</a>{% endif %}
       <a class="{{ 'active' if page=='rules' else '' }}" href="{{ url_for('pages.rules') }}">Rules</a>
       <a class="{{ 'active' if page=='simulation' else '' }}" href="{{ url_for('pages.simulation') }}">Simulation Lab</a>
       <a class="{{ 'active' if page=='playbooks' else '' }}" href="{{ url_for('pages.playbooks') }}">Playbooks</a>
@@ -35,18 +36,21 @@
       <a class="{{ 'active' if page=='timeline' else '' }}" href="{{ url_for('pages.timeline') }}">Risk Timeline</a>
       <a class="{{ 'active' if page=='snapshot' else '' }}" href="{{ url_for('pages.snapshot') }}">Snapshot Compare</a>
       <a class="{{ 'active' if page=='events' else '' }}" href="{{ url_for('pages.events') }}">Events</a>
-      <a class="{{ 'active' if page=='settings' else '' }}" href="{{ url_for('pages.settings') }}">Settings</a>
+      {% if can_role('admin') %}<a class="{{ 'active' if page=='settings' else '' }}" href="{{ url_for('pages.settings') }}">Settings</a>{% endif %}
     </nav>
 
     <div class="sidebar-card">
       <span>Current Project</span>
       <strong>{{ current_project.name }}</strong>
+      <small>Tenant: {{ current_tenant_id }}</small>
       <small>Last import: {{ state.active_extraction.imported_at or 'Not yet run' }}</small>
     </div>
+    {% if can_role('admin') %}
     <form method="post" action="{{ url_for('actions.reset') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="ghost-btn full" type="submit">Reset Seed</button>
     </form>
+    {% endif %}
   </aside>
 
   <main class="main">
@@ -56,10 +60,13 @@
         <p>{{ state.meta.tagline }}</p>
       </div>
       <div class="top-actions">
-        <span class="user-pill">{{ current_user or 'analyst' }} · {{ current_role }}</span>
-        <a class="ghost-btn" href="{{ url_for('actions.logout') }}">Logout</a>
-        <a class="ghost-btn" href="{{ url_for('actions.download_evidence_zip') }}">Evidence ZIP</a>
-        <a class="primary-btn" href="{{ url_for('actions.download_report_pdf', report_type='full') }}">Full PDF</a>
+        <span class="user-pill">{{ current_user or 'analyst' }} · {{ current_role }} · {{ current_tenant_id }}</span>
+        <form method="post" action="{{ url_for('actions.logout') }}" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="ghost-btn" type="submit">Logout</button>
+        </form>
+        {% if can_role('auditor') %}<a class="ghost-btn" href="{{ url_for('actions.download_evidence_zip') }}">Evidence ZIP</a>{% endif %}
+        {% if can_role('auditor') %}<a class="primary-btn" href="{{ url_for('actions.download_report_pdf', report_type='full') }}">Full PDF</a>{% endif %}
       </div>
     </header>
 
@@ -87,6 +94,8 @@ window.WIGUARD_COUNTS = {{ counts|tojson }};
 window.WIGUARD_DIFFS = {{ diffs|tojson }};
 window.WIGUARD_TIMELINE = {{ timeline|tojson }};
 window.WIGUARD_WIRELESS = {{ wireless|tojson }};
+window.WIGUARD_TOPOLOGY = {{ topology|tojson }};
+window.WIGUARD_OBJECTS = {{ objects|tojson }};
 </script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

@@ -5,7 +5,7 @@
     <div class="brand-logo big">WG</div>
     <span class="pill">{{ code }}</span>
     <h1>{{ title }}</h1>
-    <p>{{ message }}</p>
+    <p>{{ message }}</p>{% if code == 500 %}<p class="muted">Runtime log: <code>data/logs/wiguard.log</code>. The new runtime layer also keeps pages alive when optional SQLite widgets fail.</p>{% endif %}
     <div class="button-row"><a class="primary-btn" href="{{ url_for('pages.overview') }}">Back to workspace</a><a class="ghost-btn" href="{{ url_for('pages.settings') }}">Open settings</a></div>
   </main>
 </body></html>

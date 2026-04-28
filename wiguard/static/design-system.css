@@ -1,0 +1,22 @@
+:root {
+  --wg-bg: #07111f;
+  --wg-panel: rgba(12, 24, 42, 0.92);
+  --wg-panel-2: rgba(16, 34, 58, 0.86);
+  --wg-border: rgba(148, 163, 184, 0.22);
+  --wg-text: #e5edf7;
+  --wg-muted: #93a4b8;
+  --wg-accent: #58e6ff;
+  --wg-good: #41d99b;
+  --wg-warn: #ffd166;
+  --wg-danger: #ff6b6b;
+  --wg-radius: 20px;
+  --wg-shadow: 0 20px 60px rgba(0,0,0,.28);
+}
+.inline-form { display: inline-flex; margin: 0; }
+.role-hidden { display: none !important; }
+.connector-grid, .enterprise-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.status-card { border:1px solid var(--wg-border); background:var(--wg-panel-2); border-radius:var(--wg-radius); padding:16px; box-shadow:var(--wg-shadow); }
+.status-card strong { display:block; font-size:1.05rem; color:var(--wg-text); }
+.status-card small, .status-card p { color:var(--wg-muted); }
+.form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.code-token { word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:.82rem; }

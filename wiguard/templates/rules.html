@@ -6,7 +6,20 @@
   <p>Build policy checks that convert wireless sessions, AP evidence, VLANs, ACLs, DHCP and imported events into reviewable findings.</p>
 </section>
 
-<section class="two-col" id="studio">
+
+
+{% set ra = rule_assessment or {} %}
+<section class="panel diagnostic-panel">
+  <div class="panel-head"><h4>Rule Engine Readiness</h4><span>{{ ra.findings_total or 0 }} findings - {{ ra.risk_atoms or 0 }} risk atoms</span></div>
+  <div class="diagnostic-grid">
+    <article><span>Classic Rules</span><b>{{ ra.classic_rules_enabled or 0 }} / {{ ra.classic_rules_total or 0 }}</b><small>enabled rule definitions</small></article>
+    <article><span>Extracted Controls</span><b>{{ ra.policy_controls_extracted or 0 }}</b><small>derived from current evidence</small></article>
+    <article><span>Failed / Review</span><b>{{ ra.failed_findings or 0 }} / {{ ra.review_findings or 0 }}</b><small>current validation output</small></article>
+    <article><span>Verified Inputs</span><b>{{ ((ra.evidence_verified_ratio or 0)*100)|round|int }}%</b><small>evidence quality for rule claims</small></article>
+  </div>
+  {% if ra.gaps %}<div class="table-wrap mini-table"><table><thead><tr><th>Gap</th><th>Severity</th><th>Detail</th></tr></thead><tbody>{% for g in ra.gaps %}<tr><td>{{ g.id }}</td><td><span class="badge {{ g.severity|lower }}">{{ g.severity }}</span></td><td>{{ g.detail }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</section>
+\n<section class="two-col" id="studio">
   <div class="panel">
     <div class="panel-head"><h4>Policy Studio Rules</h4><span class="badge info">{{ wireless.policy_rules|length }} active/custom rules</span></div>
     <div class="policy-rule-cards">

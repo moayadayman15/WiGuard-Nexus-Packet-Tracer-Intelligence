@@ -9,6 +9,18 @@
 {% set profile = conversion_profile or {} %}
 {% set rel = profile.relationships or {} %}
 
+{% set tins = topology_insights or {} %}
+<section class="panel topology-insights-panel">
+  <div class="panel-head"><h4>Topology Confidence Insights</h4><span>{{ tins.confirmed_edges or 0 }} confirmed · {{ tins.inferred_edges or 0 }} inferred</span></div>
+  <div class="diagnostic-grid">
+    <article><span>Average Edge Confidence</span><b>{{ ((tins.edge_confidence_average or 0)*100)|round|int }}%</b><small>weighted by evidence status</small></article>
+    <article><span>Orphan Nodes</span><b>{{ tins.orphan_nodes|length if tins.orphan_nodes else 0 }}</b><small>nodes without confirmed/inferred edges</small></article>
+    <article><span>Node Types</span><b>{{ tins.node_types|length if tins.node_types else 0 }}</b><small>{{ tins.node_types }}</small></article>
+    <article><span>Evidence Suggestions</span><b>{{ tins.suggestions|length if tins.suggestions else 0 }}</b><small>imports that strengthen the map</small></article>
+  </div>
+  {% if tins.suggestions %}<div class="hint-panel"><strong>Improve the graph</strong><span>{{ tins.suggestions|join(' ') }}</span></div>{% endif %}
+</section>
+
 <section class="topology-layout">
   <div class="panel topology-panel large">
     <div class="panel-head"><h4>Interactive Evidence Map</h4><span>{{ topology.nodes|length }} nodes · {{ topology.edges|length }} edges</span></div>

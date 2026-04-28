@@ -15,6 +15,16 @@ EXTRACTED_LIST_KEYS = {
     "interface_counters", "stp_root", "protocol_summary", "command_blocks",
     "deep_evidence_index", "raw_evidence", "dhcp_gateway_matches",
     "subnet_inventory", "policy_controls", "risk_atoms", "coverage_domains",
+    "schema_map", "import_warnings", "structured_relationships",
+    "validation_findings", "endpoint_inventory",
+    "access_tests", "client_access_matrix", "service_inventory",
+    "roaming_events", "lab_result_summary",
+    "native_pkt_profile", "binary_signatures", "recovered_string_preview",
+    "native_conversion_guidance", "native_visible_hints", "internal_xml_bridge",
+    "converted_xml_preview", "normalized_json_preview", "auto_conversion_pipeline",
+    "decoded_payloads", "extraction_fidelity", "printable_segments_preview",
+    "reconstructed_config_preview", "evidence_registry", "verified_extraction_contract",
+    "companion_exports",
 }
 
 def _safe_list(value):
@@ -111,6 +121,15 @@ def object_counts(objects):
         "policy_controls": len(_safe_list(objects.get("policy_controls"))),
         "deep_evidence_index": len(_safe_list(objects.get("deep_evidence_index"))),
         "raw_evidence": len(_safe_list(objects.get("raw_evidence"))),
+        "schema_map": len(_safe_list(objects.get("schema_map"))),
+        "structured_relationships": len(_safe_list(objects.get("structured_relationships"))),
+        "validation_findings": len(_safe_list(objects.get("validation_findings"))),
+        "endpoint_inventory": len(_safe_list(objects.get("endpoint_inventory"))),
+        "access_tests": len(_safe_list(objects.get("access_tests"))),
+        "client_access_matrix": len(_safe_list(objects.get("client_access_matrix"))),
+        "service_inventory": len(_safe_list(objects.get("service_inventory"))),
+        "roaming_events": len(_safe_list(objects.get("roaming_events"))),
+        "lab_result_summary": len(_safe_list(objects.get("lab_result_summary"))),
     }
 
 
@@ -580,6 +599,357 @@ def build_snapshot_diff(state):
     return {"baseline": imports[1].get("filename") if len(imports) > 1 else None, "current": imports[0].get("filename") if imports else None, "changes": changes}
 
 
+
+def _registry_summary(objects):
+    registry = _safe_list(objects.get("evidence_registry"))
+    summary = {"verified": 0, "recovered": 0, "inferred": 0, "unmapped": 0, "total": len(registry)}
+    high_value = {"devices", "interfaces", "vlans", "acl_rules", "dhcp_scopes", "cdp_links", "lldp_links", "ip_inventory", "route_table", "trunk_operational"}
+    hv_total = hv_verified = 0
+    for row in registry:
+        if not isinstance(row, dict):
+            continue
+        status = str(row.get("status") or "unmapped").lower()
+        if status not in summary:
+            status = "unmapped"
+        summary[status] += 1
+        if row.get("category") in high_value:
+            hv_total += 1
+            if status == "verified":
+                hv_verified += 1
+    summary["verified_ratio"] = round(summary["verified"] / summary["total"], 3) if summary["total"] else 0
+    summary["high_value_total"] = hv_total
+    summary["high_value_verified"] = hv_verified
+    summary["high_value_verified_ratio"] = round(hv_verified / hv_total, 3) if hv_total else 0
+    return summary
+
+
+def build_extraction_diagnostics(state):
+    """Build a truth-first diagnostics model for imports and reports.
+
+    The UI should never imply that a native .pkt was parsed with complete
+    fidelity unless the evidence contract proves it. This function converts
+    pipeline, object coverage, registry status and missing exports into an
+    analyst-facing checklist.
+    """
+    active = _safe_dict(state.get("active_extraction"))
+    objects = get_objects(state)
+    profile = _safe_dict(active.get("conversion_profile") or objects.get("packet_tracer_profile"))
+    contracts = _safe_list(objects.get("verified_extraction_contract"))
+    contract = contracts[0] if contracts and isinstance(contracts[0], dict) else {}
+    registry = _registry_summary(objects)
+    counts = object_counts(objects)
+    native = bool((active.get("filename") or "").lower().endswith((".pkt", ".pka")) or profile.get("native_packet_tracer"))
+    source_mode = active.get("source_mode") or profile.get("source_mode") or "unknown"
+
+    required_exports = contract.get("required_next_exports") or []
+    blockers = []
+    if native and not contract.get("companion_export_present") and not contract.get("can_claim_full_fidelity"):
+        blockers.append({
+            "id": "PT-COMPANION-EXPORT-MISSING",
+            "severity": "High",
+            "title": "Native Packet Tracer upload has no companion export",
+            "detail": "Upload exported running-config, show-command text, XML, JSON or ZIP to convert best-effort recovery into verified evidence.",
+        })
+    if registry["total"] and registry["high_value_verified_ratio"] < 0.75:
+        blockers.append({
+            "id": "EVIDENCE-HIGH-VALUE-LOW",
+            "severity": "Medium",
+            "title": "High-value objects are not fully verified",
+            "detail": f"Only {int(registry['high_value_verified_ratio']*100)}% of high-value objects are verified by line/path evidence.",
+        })
+    if counts.get("interfaces", 0) == 0:
+        blockers.append({"id": "NO-INTERFACES", "severity": "High", "title": "No interfaces extracted", "detail": "Topology and VLAN analysis need interface blocks or show ip interface brief/status outputs."})
+    if counts.get("vlans", 0) == 0:
+        blockers.append({"id": "NO-VLANS", "severity": "Medium", "title": "No VLAN evidence extracted", "detail": "Upload show vlan brief or running-config VLAN blocks to confirm segmentation."})
+    if counts.get("cdp_links", 0) + counts.get("lldp_links", 0) == 0:
+        blockers.append({"id": "NO-L2-NEIGHBORS", "severity": "Low", "title": "No CDP/LLDP topology links", "detail": "Physical adjacency will remain inferred until CDP/LLDP evidence is uploaded."})
+
+    pipeline = []
+    raw_pipeline = active.get("pipeline") or profile.get("auto_conversion_pipeline") or []
+    if isinstance(raw_pipeline, list):
+        for idx, stage in enumerate(raw_pipeline[:20], start=1):
+            if isinstance(stage, dict):
+                pipeline.append({
+                    "step": idx,
+                    "stage": stage.get("stage") or stage.get("name") or f"stage_{idx}",
+                    "status": stage.get("status") or "recorded",
+                    "confidence": stage.get("confidence"),
+                    "detail": stage.get("detail") or stage.get("message") or "",
+                })
+            else:
+                pipeline.append({"step": idx, "stage": str(stage), "status": "recorded", "confidence": None, "detail": ""})
+
+    readiness_score = profile.get("readiness_score")
+    if readiness_score is None:
+        readiness_score = int(min(100, 25 + counts.get("interfaces", 0) * 4 + counts.get("vlans", 0) * 6 + registry["verified_ratio"] * 45))
+
+    actions = []
+    if required_exports:
+        for item in required_exports[:8]:
+            actions.append({
+                "priority": item.get("severity", "Medium"),
+                "action": f"Upload/export: {item.get('artifact')}",
+                "why": item.get("why", "Required to raise extraction confidence."),
+            })
+    else:
+        actions.append({"priority": "Info", "action": "Re-run import after every topology/config change", "why": "Keeps report artifacts synchronized with evidence."})
+    if counts.get("acl_rules", 0) == 0:
+        actions.append({"priority": "Medium", "action": "Add show access-lists / running-config ACL evidence", "why": "Segmentation claims need ACL proof, not only VLAN placement."})
+    if counts.get("route_table", 0) == 0:
+        actions.append({"priority": "Low", "action": "Add show ip route", "why": "End-to-end reachability/root-cause analysis becomes stronger with L3 forwarding evidence."})
+
+    return {
+        "generated_at": now_iso(),
+        "filename": active.get("filename"),
+        "source_mode": source_mode,
+        "native_packet_tracer": native,
+        "tier": contract.get("tier") or profile.get("readiness") or "unknown",
+        "claim": contract.get("claim") or profile.get("analyst_next_step") or "Import evidence to generate a contract.",
+        "can_claim_full_fidelity": bool(contract.get("can_claim_full_fidelity")),
+        "readiness_score": readiness_score,
+        "object_counts": counts,
+        "evidence_summary": registry,
+        "pipeline": pipeline,
+        "blockers": blockers,
+        "recommended_actions": actions,
+        "required_exports": required_exports,
+    }
+
+
+def build_topology_insights(state):
+    topology = build_topology(state)
+    objects = get_objects(state)
+    nodes = _safe_list(topology.get("nodes"))
+    edges = _safe_list(topology.get("edges"))
+    type_counts = {}
+    for n in nodes:
+        t = str(n.get("type") or "unknown").lower() if isinstance(n, dict) else "unknown"
+        type_counts[t] = type_counts.get(t, 0) + 1
+    strong_status = {"confirmed", "enforced", "expected", "pass", "serves"}
+    confirmed_edges = [e for e in edges if isinstance(e, dict) and str(e.get("status") or "").lower() in strong_status]
+    inferred_edges = [e for e in edges if isinstance(e, dict) and e not in confirmed_edges]
+    connected = set()
+    for e in edges:
+        if isinstance(e, dict):
+            connected.add(e.get("from")); connected.add(e.get("to"))
+    orphan_nodes = [n for n in nodes if isinstance(n, dict) and n.get("id") not in connected]
+    suggestions = []
+    if not _safe_list(objects.get("cdp_links")) and not _safe_list(objects.get("lldp_links")):
+        suggestions.append("Import show cdp neighbors detail or show lldp neighbors detail to confirm physical links.")
+    if not _safe_list(objects.get("trunk_operational")):
+        suggestions.append("Import show interfaces trunk to confirm active trunk VLANs and native VLANs.")
+    if not _safe_list(objects.get("route_table")):
+        suggestions.append("Import show ip route to connect VLAN/interface evidence to L3 reachability.")
+    return {
+        "generated_at": now_iso(),
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "node_types": type_counts,
+        "confirmed_edges": len(confirmed_edges),
+        "inferred_edges": len(inferred_edges),
+        "orphan_nodes": [{"id": n.get("id"), "label": n.get("label"), "type": n.get("type")} for n in orphan_nodes[:30]],
+        "edge_confidence_average": round(sum(float(e.get("confidence") or 0) for e in edges if isinstance(e, dict)) / len(edges), 3) if edges else 0,
+        "suggestions": suggestions,
+    }
+
+
+def build_validation_rule_assessment(state):
+    objects = get_objects(state)
+    diffs = build_policy_diff(state)
+    risk_atoms = _safe_list(objects.get("risk_atoms"))
+    controls = _safe_list(objects.get("policy_controls"))
+    registry = _registry_summary(objects)
+    rules = _safe_list(state.get("rules"))
+    enabled_rules = [r for r in rules if not isinstance(r, dict) or r.get("enabled", True)]
+    failed = [d for d in diffs if d.get("status") == "Fail"]
+    review = [d for d in diffs if d.get("status") == "Review"]
+    gaps = []
+    if not _safe_list(objects.get("acl_rules")):
+        gaps.append({"id": "RULE-GAP-ACL", "severity": "High", "detail": "ACL validation rules cannot become confirmed without ACL evidence."})
+    if not _safe_list(objects.get("interface_counters")):
+        gaps.append({"id": "RULE-GAP-RUNTIME", "severity": "Low", "detail": "Runtime counters are missing, so traffic-based rules stay review-level."})
+    if registry["total"] and registry["verified_ratio"] < 0.5:
+        gaps.append({"id": "RULE-GAP-EVIDENCE", "severity": "Medium", "detail": "Most rule inputs are recovered/inferred, not verified."})
+    return {
+        "generated_at": now_iso(),
+        "classic_rules_total": len(rules),
+        "classic_rules_enabled": len(enabled_rules),
+        "policy_controls_extracted": len(controls),
+        "risk_atoms": len(risk_atoms),
+        "findings_total": len(diffs),
+        "failed_findings": len(failed),
+        "review_findings": len(review),
+        "evidence_verified_ratio": registry["verified_ratio"],
+        "gaps": gaps,
+    }
+
+PROFESSIONAL_EVIDENCE_CATEGORIES = [
+    {"key": "devices", "label": "Device Inventory", "required_for": "Topology identity", "min_count": 1, "critical": True},
+    {"key": "interfaces", "label": "Interface Blocks", "required_for": "VLAN/trunk/IP analysis", "min_count": 1, "critical": True},
+    {"key": "vlans", "label": "VLAN Evidence", "required_for": "Segmentation claims", "min_count": 1, "critical": True},
+    {"key": "ip_inventory", "label": "IP Inventory", "required_for": "L3 addressing", "min_count": 1, "critical": False},
+    {"key": "trunk_operational", "label": "Trunk Operational State", "required_for": "Allowed/native VLAN proof", "min_count": 1, "critical": False},
+    {"key": "acl_rules", "label": "ACL Rules", "required_for": "Access-control claims", "min_count": 1, "critical": False},
+    {"key": "dhcp_scopes", "label": "DHCP Scopes", "required_for": "Client addressing", "min_count": 1, "critical": False},
+    {"key": "route_table", "label": "Routing Table", "required_for": "Reachability/root cause", "min_count": 1, "critical": False},
+    {"key": "cdp_links", "label": "CDP Links", "required_for": "Physical topology", "min_count": 1, "critical": False},
+    {"key": "lldp_links", "label": "LLDP Links", "required_for": "Physical topology", "min_count": 1, "critical": False},
+    {"key": "raw_evidence", "label": "Raw Evidence Lines", "required_for": "Audit traceability", "min_count": 1, "critical": True},
+]
+
+
+def _evidence_rows_by_category(objects):
+    rows = _safe_list(objects.get("evidence_registry"))
+    grouped = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        cat = row.get("category") or "unknown"
+        grouped.setdefault(cat, {"verified": 0, "recovered": 0, "inferred": 0, "unmapped": 0, "total": 0})
+        status = str(row.get("status") or "unmapped").lower()
+        if status not in {"verified", "recovered", "inferred", "unmapped"}:
+            status = "unmapped"
+        grouped[cat][status] += 1
+        grouped[cat]["total"] += 1
+    return grouped
+
+
+def build_evidence_quality_matrix(state):
+    """Return a conservative, category-level evidence QA matrix."""
+    objects = get_objects(state)
+    counts = object_counts(objects)
+    grouped = _evidence_rows_by_category(objects)
+    diagnostics = build_extraction_diagnostics(state)
+    contract = (_safe_list(objects.get("verified_extraction_contract")) or [{}])[0]
+    source_mode = diagnostics.get("source_mode") or (state.get("active_extraction", {}) or {}).get("source_mode") or "unknown"
+    rows = []
+    for spec in PROFESSIONAL_EVIDENCE_CATEGORIES:
+        key = spec["key"]
+        count = int(counts.get(key, 0) or 0)
+        ev = grouped.get(key, {"verified": 0, "recovered": 0, "inferred": 0, "unmapped": 0, "total": 0})
+        verified_ratio = round((ev.get("verified", 0) / ev.get("total", 1)), 3) if ev.get("total") else 0
+        if count <= 0:
+            status = "missing"
+            claim_level = "not_available"
+            action = f"Upload/export evidence for {spec['label']} ({spec['required_for']})."
+        elif ev.get("verified", 0) > 0 and verified_ratio >= 0.70:
+            status = "pass"
+            claim_level = "verified"
+            action = "No immediate action; keep source artifact in evidence package."
+        elif ev.get("verified", 0) > 0:
+            status = "review"
+            claim_level = "partially_verified"
+            action = "Add line/path-backed exports to raise verified ratio."
+        elif ev.get("recovered", 0) > 0 or str(source_mode).startswith("pkt_"):
+            status = "review"
+            claim_level = "recovered_native"
+            action = "Use a companion export to convert recovered evidence into verified evidence."
+        else:
+            status = "review"
+            claim_level = "unmapped"
+            action = "Map this object class to raw source lines before reporting as fact."
+        rows.append({
+            "category": key,
+            "label": spec["label"],
+            "required_for": spec["required_for"],
+            "critical": spec["critical"],
+            "count": count,
+            "evidence_total": ev.get("total", 0),
+            "verified": ev.get("verified", 0),
+            "recovered": ev.get("recovered", 0),
+            "inferred": ev.get("inferred", 0),
+            "unmapped": ev.get("unmapped", 0),
+            "verified_ratio": verified_ratio,
+            "status": status,
+            "claim_level": claim_level,
+            "recommended_action": action,
+        })
+    critical_missing = [r for r in rows if r["critical"] and r["status"] == "missing"]
+    missing_rows = [r for r in rows if r["status"] == "missing"]
+    review_rows = [r for r in rows if r["status"] == "review"]
+    pass_rows = [r for r in rows if r["status"] == "pass"]
+    score = 100 - len(critical_missing) * 18 - len([r for r in missing_rows if not r["critical"]]) * 8 - len(review_rows) * 5
+    score = max(0, min(100, score))
+    grade = "Evidence-ready" if score >= 90 else "Reportable with caveats" if score >= 70 else "Needs companion exports" if score >= 45 else "Insufficient evidence"
+    return {
+        "generated_at": now_iso(),
+        "score": score,
+        "grade": grade,
+        "source_mode": source_mode,
+        "full_fidelity_allowed": bool(contract.get("can_claim_full_fidelity")),
+        "rows": rows,
+        "summary": {
+            "passed": len(pass_rows),
+            "review": len(review_rows),
+            "missing": len(missing_rows),
+            "critical_missing": len(critical_missing),
+        },
+        "top_actions": [r["recommended_action"] for r in rows if r["status"] != "pass"][:8],
+    }
+
+
+def build_analyst_signoff(state):
+    """Create a publish/no-publish checklist for reports and demos."""
+    diagnostics = build_extraction_diagnostics(state)
+    matrix = build_evidence_quality_matrix(state)
+    blockers = _safe_list(diagnostics.get("blockers"))
+    high_blockers = [b for b in blockers if str(b.get("severity") or "").lower() == "high"]
+    critical_missing = matrix.get("summary", {}).get("critical_missing", 0)
+    can_publish_technical = critical_missing == 0 and matrix.get("score", 0) >= 55
+    can_publish_executive = len(high_blockers) == 0 and matrix.get("score", 0) >= 70
+    allowed_claims = [
+        "All listed objects are separated by evidence strength: verified, recovered, inferred, or unmapped.",
+        "Native .pkt/.pka extraction is best-effort unless companion exports are parsed.",
+        "Reports include diagnostics, blockers, and required next exports.",
+    ]
+    if diagnostics.get("can_claim_full_fidelity"):
+        allowed_claims.append("Full-fidelity claims are allowed for the verified object classes covered by companion/export evidence.")
+    forbidden_claims = []
+    if not diagnostics.get("can_claim_full_fidelity"):
+        forbidden_claims.append("Do not claim 100% Packet Tracer parsing fidelity from native .pkt/.pka alone.")
+    if high_blockers:
+        forbidden_claims.append("Do not publish executive-level conclusions without listing High blockers.")
+    if critical_missing:
+        forbidden_claims.append("Do not claim complete topology/policy coverage while critical evidence categories are missing.")
+    required_actions = []
+    for b in high_blockers[:5]:
+        required_actions.append({"priority": b.get("severity", "High"), "action": b.get("title") or b.get("id"), "why": b.get("detail", "Required before sign-off.")})
+    for action in matrix.get("top_actions", [])[:5]:
+        required_actions.append({"priority": "Evidence", "action": action, "why": "Raises report defensibility and extraction quality."})
+    return {
+        "generated_at": now_iso(),
+        "can_publish_executive": can_publish_executive,
+        "can_publish_technical": can_publish_technical,
+        "can_claim_full_fidelity": bool(diagnostics.get("can_claim_full_fidelity")),
+        "evidence_score": matrix.get("score", 0),
+        "evidence_grade": matrix.get("grade", "unknown"),
+        "blockers": blockers,
+        "required_actions": required_actions[:10],
+        "allowed_claims": allowed_claims,
+        "forbidden_claims": forbidden_claims,
+    }
+
+
+def build_topology_dot(state):
+    """Generate a small Graphviz DOT representation for artifact/export review."""
+    topology = build_topology(state)
+    def esc(value):
+        return str(value or "").replace('"', r'\"')[:140]
+    lines = ["digraph WiGuardTopology {", "  rankdir=LR;", "  node [shape=box, style=rounded];"]
+    for node in _safe_list(topology.get("nodes")):
+        if not isinstance(node, dict):
+            continue
+        label = f"{node.get('label') or node.get('id')}\\n{node.get('type','unknown')}\\n{int(float(node.get('confidence') or 0)*100)}%"
+        lines.append(f'  "{esc(node.get("id"))}" [label="{esc(label)}"];')
+    for edge in _safe_list(topology.get("edges")):
+        if not isinstance(edge, dict):
+            continue
+        label = f"{edge.get('type','link')} / {edge.get('status','review')} / {int(float(edge.get('confidence') or 0)*100)}%"
+        lines.append(f'  "{esc(edge.get("from"))}" -> "{esc(edge.get("to"))}" [label="{esc(label)}"];')
+    lines.append("}")
+    return "\n".join(lines)
+
+
 def build_report(state, report_type="full"):
     score = risk_score(state)
     diffs = build_policy_diff(state)
@@ -608,6 +978,11 @@ def build_report(state, report_type="full"):
         "wireless": wireless,
         "packet_tracer_conversion": state.get("active_extraction", {}).get("conversion_profile", objects.get("packet_tracer_profile", {})),
         "compliance": build_compliance_matrix(state, wireless, diffs),
+        "diagnostics": build_extraction_diagnostics(state),
+        "topology_insights": build_topology_insights(state),
+        "rule_assessment": build_validation_rule_assessment(state),
+        "evidence_quality_matrix": build_evidence_quality_matrix(state),
+        "analyst_signoff": build_analyst_signoff(state),
     }
     if report_type == "executive":
         return {k: base[k] for k in ["report_type", "generated_at", "project", "risk", "summary", "executive_summary"]}
@@ -628,7 +1003,9 @@ def build_report(state, report_type="full"):
     if report_type == "compliance":
         return {k: base[k] for k in ["report_type", "generated_at", "project", "risk", "summary", "compliance", "policy_diff"]}
     if report_type == "packet_tracer":
-        return {k: base[k] for k in ["report_type", "generated_at", "project", "summary", "packet_tracer_conversion"]}
+        return {k: base[k] for k in ["report_type", "generated_at", "project", "summary", "packet_tracer_conversion", "diagnostics", "evidence_quality_matrix", "analyst_signoff"]}
+    if report_type == "quality":
+        return {k: base[k] for k in ["report_type", "generated_at", "project", "summary", "diagnostics", "topology_insights", "rule_assessment", "evidence_quality_matrix", "analyst_signoff"]}
     if report_type == "wireless_risk":
         return {k: base[k] for k in ["report_type", "generated_at", "project", "risk", "summary", "wireless", "root_causes"]}
     if report_type == "evidence_appendix":

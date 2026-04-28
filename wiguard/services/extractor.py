@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import subprocess
@@ -15,6 +16,14 @@ except Exception:  # pragma: no cover - fallback for minimal test environments
         return re.sub(r"[^A-Za-z0-9_.-]+", "_", value).strip("._") or "uploaded"
 from .util import now_iso, network_cidr, safe_int
 from .packet_tracer import build_conversion_profile, normalize_interface_name
+from .pkt_native import inspect_native_pkt, build_internal_pkt_xml_bridge, normalized_json_preview, run_native_pkt_auto_pipeline
+from .structured_import import (
+    StructuredEvidenceNormalizer, canonical_from_payload, finalize_objects,
+    has_canonical_objects, merge_unique, blank_objects,
+)
+from .evidence import build_evidence_registry, build_verified_extraction_contract
+
+log = logging.getLogger(__name__)
 
 
 ALLOWED_UPLOAD_EXTENSIONS = {".pkt", ".pka", ".xml", ".json", ".txt", ".cfg", ".conf", ".log", ".zip"}
@@ -503,7 +512,8 @@ class ConfigExtractor:
                 for item in value:
                     if isinstance(item, dict):
                         total += 1
-                        if (item.get("evidence") or {}).get("source_line") is not None:
+                        ev = item.get("evidence") or {}
+                        if ev.get("source_line") is not None or ev.get("source_path"):
                             line_mapped += 1
         ratio = round(line_mapped / total, 3) if total else 0
         deep_count = len(objects.get("deep_evidence_index", []))
@@ -1311,20 +1321,12 @@ class PacketTracerImportService:
         upload_path.write_bytes(raw)
         ext = Path(safe_original).suffix.lower()
 
-        # Optional external converter for .pkt/.pka
-        converter = os.environ.get("PTEXPLORER_PATH")
-        xml_from_converter = None
-        if ext in {".pkt", ".pka"} and converter and Path(converter).exists():
-            try:
-                out_xml = self.upload_dir / f"{Path(stored_name).stem}_converted.xml"
-                result = subprocess.run([converter, str(upload_path), str(out_xml)], capture_output=True, text=True, timeout=45)
-                if result.returncode == 0 and out_xml.exists():
-                    xml_from_converter = out_xml.read_text(encoding="utf-8", errors="replace")
-            except Exception:
-                xml_from_converter = None
-
-        if xml_from_converter:
-            return safe_original, stored_name, raw, xml_from_converter, "external_xml_converter", source_hash
+        # Native .pkt/.pka always enters the automatic background bridge:
+        # external converter probe (if configured) -> internal XML -> normalized JSON -> object extraction.
+        # Converter output is passed as an input payload instead of bypassing the native pipeline, so
+        # the UI can show the full conversion chain every time.
+        if ext in {".pkt", ".pka"}:
+            return safe_original, stored_name, raw, "", "pkt_auto_xml_json_bridge", source_hash
 
         if ext == ".json":
             return safe_original, stored_name, raw, raw.decode("utf-8", errors="replace"), "json", source_hash
@@ -1333,10 +1335,52 @@ class PacketTracerImportService:
         if zipfile.is_zipfile(upload_path):
             return safe_original, stored_name, raw, self._safe_zip_text(upload_path), "zip_text", source_hash
         text = raw.decode("utf-8", errors="replace")
-        if ext in {".pkt", ".pka"}:
-            text += "\n\n--- PRINTABLE_PACKET_TRACER_BINARY_EVIDENCE ---\n" + printable_recovery(raw)
-            return safe_original, stored_name, raw, text, "pkt_binary_recovery", source_hash
         return safe_original, stored_name, raw, text, "text_config", source_hash
+
+    def _read_companion_upload(self, companion_file):
+        """Read an optional companion export beside a native .pkt/.pka upload.
+
+        The companion file is meant to be an exported config/XML/JSON/ZIP bundle.
+        It is stored, hashed, and later merged into the same extraction result so
+        native recovery can be upgraded from best-effort to evidence-backed.
+        """
+        if not companion_file or not getattr(companion_file, "filename", None):
+            return None
+        safe_original, stored_name = self._stored_filename(companion_file.filename)
+        ext = Path(safe_original).suffix.lower()
+        if ext in {".pkt", ".pka"}:
+            raise ValueError("Companion export must be XML, JSON, TXT/CFG/CONF/LOG, or ZIP — not another native .pkt/.pka file.")
+        raw = companion_file.read()
+        if not raw:
+            return None
+        source_hash = hashlib.sha256(raw).hexdigest()
+        upload_path = (self.upload_dir / stored_name).resolve()
+        upload_root = self.upload_dir.resolve()
+        if not upload_path.is_relative_to(upload_root):
+            raise ValueError("Unsafe companion upload path rejected.")
+        upload_path.write_bytes(raw)
+        if ext == ".json":
+            mode = "json"
+            text = raw.decode("utf-8", errors="replace")
+        elif ext == ".xml":
+            mode = "xml"
+            text = raw.decode("utf-8", errors="replace")
+        elif zipfile.is_zipfile(upload_path):
+            mode = "zip_text"
+            text = self._safe_zip_text(upload_path)
+        else:
+            mode = "text_config"
+            text = raw.decode("utf-8", errors="replace")
+        return {
+            "filename": safe_original,
+            "stored_filename": stored_name,
+            "extension": ext,
+            "bytes": len(raw),
+            "sha256": source_hash,
+            "mode": mode,
+            "text": text,
+            "status": "loaded",
+        }
 
     def _missing_evidence(self, objects):
         missing = []
@@ -1361,9 +1405,13 @@ class PacketTracerImportService:
             "text_config": 0.92,
             "json": 0.90,
             "xml": 0.82,
+            "json_structured": 0.94,
+            "xml_structured": 0.91,
             "zip_text": 0.82,
             "external_xml_converter": 0.86,
             "pkt_binary_recovery": 0.58,
+            "pkt_native_inspection": 0.50,
+            "pkt_auto_xml_json_bridge": 0.66,
         }.get(source_mode, 0.70)
         evidence_profile = objects.get("evidence_profile", {})
         ratio = evidence_profile.get("line_mapping_ratio", 0)
@@ -1378,42 +1426,195 @@ class PacketTracerImportService:
             "mode": source_mode,
         }
 
-    def extract(self, uploaded_file):
+    def extract(self, uploaded_file, companion_file=None):
         filename, stored_filename, raw, text, source_mode, source_hash = self.read_upload(uploaded_file)
+        companion = self._read_companion_upload(companion_file)
         extractor = ConfigExtractor()
+        structured_summary = {}
+        structured_text = ""
 
         if source_mode == "json":
             try:
                 payload = json.loads(text)
-                objects = payload.get("objects") or payload.get("extracted") or payload
-                if isinstance(objects, dict) and all(k in objects for k in ["devices", "interfaces"]):
-                    parsed = objects
-                else:
-                    parsed = extractor.parse(text)
-            except Exception:
+                canonical = canonical_from_payload(payload) if has_canonical_objects(payload) else blank_objects()
+                structured, structured_text, structured_summary = StructuredEvidenceNormalizer().normalize_json(payload)
+                text_for_regex = "\n\n".join(part for part in [structured_text, text] if part)
+                regex_parsed = extractor.parse(text_for_regex)
+                parsed = finalize_objects(extractor, merge_unique(merge_unique(regex_parsed, canonical), structured))
+                source_mode = "json_structured" if structured_summary.get("status") == "understood" or has_canonical_objects(payload) else "json"
+            except Exception as exc:
                 parsed = extractor.parse(text)
+                parsed["structured_summary"] = {"format": "json", "status": "json_parse_failed", "error": str(exc)}
         elif source_mode == "xml":
-            # Convert XML text to raw evidence + regex parsing. Real PT XML formats vary.
-            parsed = extractor.parse(text)
+            structured, structured_text, structured_summary = StructuredEvidenceNormalizer().normalize_xml(text)
+            text_for_regex = "\n\n".join(part for part in [structured_text, text] if part)
+            regex_parsed = extractor.parse(text_for_regex)
+            parsed = finalize_objects(extractor, merge_unique(regex_parsed, structured))
             parsed["xml_detected"] = True
+            source_mode = "xml_structured" if structured_summary.get("status") == "understood" else "xml"
+        elif source_mode in {"pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
+            converter_attempts = []
+            external_xml = None
+            if source_mode == "pkt_auto_xml_json_bridge":
+                converter = os.environ.get("PTEXPLORER_PATH")
+                if converter:
+                    try:
+                        upload_path = (self.upload_dir / stored_filename).resolve()
+                        out_xml = self.upload_dir / f"{Path(stored_filename).stem}_converted.xml"
+                        result = subprocess.run([converter, str(upload_path), str(out_xml)], capture_output=True, text=True, timeout=45)
+                        converter_attempts.append({
+                            "tool": "external_converter",
+                            "path": converter,
+                            "status": "success" if result.returncode == 0 and out_xml.exists() else "failed",
+                            "returncode": result.returncode,
+                            "stderr": (result.stderr or "")[:800],
+                        })
+                        if result.returncode == 0 and out_xml.exists():
+                            external_xml = out_xml.read_text(encoding="utf-8", errors="replace")
+                    except Exception as exc:
+                        converter_attempts.append({"tool": "external_converter", "status": "failed", "error": str(exc)[:800]})
+
+                native_profile, native_text, bridge_xml, bridge_json = run_native_pkt_auto_pipeline(raw, filename, external_xml=external_xml, attempts=converter_attempts)
+            else:
+                native_profile, native_text = inspect_native_pkt(raw, filename)
+                bridge_xml, bridge_json = build_internal_pkt_xml_bridge(raw, filename, native_profile, native_text)
+
+            structured, structured_text, structured_summary = StructuredEvidenceNormalizer().normalize_xml(bridge_xml)
+
+            decoded_structured = blank_objects()
+            decoded_texts = []
+            companion_exports = []
+            if companion:
+                companion_row = {k: companion.get(k) for k in ["filename", "stored_filename", "extension", "bytes", "sha256", "mode"]}
+                companion_row["status"] = "parsed"
+                companion_row["purpose"] = "companion_export_for_native_pkt_verification"
+                companion_exports.append(companion_row)
+                companion_text = companion.get("text") or ""
+                if companion_text:
+                    decoded_texts.append(f"! companion-export: {companion.get('filename')}\n" + companion_text)
+                try:
+                    if companion.get("mode") == "json":
+                        extra, extra_text, _extra_summary = StructuredEvidenceNormalizer().normalize_json(json.loads(companion_text))
+                        decoded_structured = merge_unique(decoded_structured, extra)
+                        if extra_text:
+                            decoded_texts.append(extra_text)
+                    elif companion.get("mode") == "xml":
+                        extra, extra_text, _extra_summary = StructuredEvidenceNormalizer().normalize_xml(companion_text)
+                        decoded_structured = merge_unique(decoded_structured, extra)
+                        if extra_text:
+                            decoded_texts.append(extra_text)
+                except Exception as exc:
+                    companion_exports[-1]["status"] = "parsed_as_text"
+                    companion_exports[-1]["schema_error"] = str(exc)[:500]
+                    log.info("Companion export schema parsing fell back to text for %s: %s", companion.get("filename"), exc)
+            for payload in bridge_json.get("decoded_payloads", []) or []:
+                content = payload.get("content") or ""
+                kind = payload.get("kind")
+                if not content:
+                    continue
+                decoded_texts.append(content)
+                try:
+                    if kind == "json":
+                        extra, extra_text, _extra_summary = StructuredEvidenceNormalizer().normalize_json(json.loads(content))
+                        decoded_structured = merge_unique(decoded_structured, extra)
+                        if extra_text:
+                            decoded_texts.append(extra_text)
+                    elif kind == "xml":
+                        extra, extra_text, _extra_summary = StructuredEvidenceNormalizer().normalize_xml(content)
+                        decoded_structured = merge_unique(decoded_structured, extra)
+                        if extra_text:
+                            decoded_texts.append(extra_text)
+                except Exception as exc:
+                    # Keep the raw decoded payload for regex parsing even if schema parsing fails.
+                    log.debug("Decoded native payload schema parsing failed for %s: %s", payload.get("name"), exc)
+
+            text_for_regex = "\n\n".join(part for part in [native_text, structured_text, text] + decoded_texts if part)
+            regex_parsed = extractor.parse(text_for_regex)
+            parsed = finalize_objects(extractor, merge_unique(merge_unique(regex_parsed, structured), decoded_structured))
+            if companion_exports:
+                parsed["companion_exports"] = companion_exports
+                parsed.setdefault("import_warnings", []).append({
+                    "severity": "Info",
+                    "title": "Companion export merged",
+                    "detail": "Native Packet Tracer recovery was enriched with a companion export/config bundle, so verified objects can be separated from native best-effort recovery.",
+                })
+            parsed["native_pkt_profile"] = [native_profile]
+            parsed["binary_signatures"] = native_profile.get("signature_hits", [])
+            parsed["recovered_string_preview"] = [
+                {"index": idx + 1, "text": value}
+                for idx, value in enumerate(native_profile.get("string_preview", []) or [])
+            ]
+            parsed["native_conversion_guidance"] = [
+                {"step": idx + 1, "detail": value}
+                for idx, value in enumerate(native_profile.get("action_plan", []) or [])
+            ]
+            visible = native_profile.get("visible_hints", {}) or {}
+            native_hints = []
+            for hint_type, values in visible.items():
+                if isinstance(values, list):
+                    for value in values[:120]:
+                        native_hints.append({"type": hint_type, "value": value})
+            parsed["native_visible_hints"] = native_hints
+            parsed["printable_segments_preview"] = native_profile.get("printable_segments_preview", []) or []
+            parsed["reconstructed_config_preview"] = [
+                {"index": idx + 1, "line": line}
+                for idx, line in enumerate(native_profile.get("reconstructed_config_preview", []) or [])
+            ]
+            parsed["extraction_fidelity"] = [native_profile.get("extraction_fidelity") or (bridge_json.get("extraction_fidelity") or [{}])[0]]
+            parsed["auto_conversion_pipeline"] = bridge_json.get("conversion_pipeline", [])
+            parsed["decoded_payloads"] = [
+                {k: v for k, v in payload.items() if k != "content"}
+                for payload in (bridge_json.get("decoded_payloads", []) or [])[:80]
+            ]
+            parsed["internal_xml_bridge"] = [{
+                "source": "native_pkt_auto_xml_json_bridge" if source_mode == "pkt_auto_xml_json_bridge" else "native_pkt_visible_evidence",
+                "fidelity": "auto_xml_to_normalized_json" if source_mode == "pkt_auto_xml_json_bridge" else "best_effort_visible_only",
+                "xml_bytes": len(bridge_xml.encode("utf-8")),
+                "normalized_json_bytes": len(normalized_json_preview(bridge_json).encode("utf-8")),
+                "visible_counts": bridge_json.get("counts", {}),
+                "fidelity_tier": (native_profile.get("extraction_fidelity") or {}).get("tier"),
+                "fidelity_score": (native_profile.get("extraction_fidelity") or {}).get("score"),
+                "note": "Generated automatically in the background: native PKT/PKA evidence → internal XML bridge → normalized JSON → object extraction.",
+            }]
+            parsed["converted_xml_preview"] = [{"name": "internal_pkt_bridge.xml", "content": bridge_xml[:36000]}]
+            parsed["normalized_json_preview"] = [{"name": "internal_pkt_bridge.normalized.json", "content": normalized_json_preview(bridge_json, limit=36000)}]
+            parsed.setdefault("import_warnings", []).append({
+                "severity": "High" if native_profile.get("recoverability") == "opaque_native_binary" else "Medium",
+                "title": "Automatic native PKT XML/JSON bridge completed",
+                "detail": (native_profile.get("decision") or "") + " WiGuard ran the conversion chain in the background and exposed the exact XML/JSON evidence it could trust.",
+            })
         else:
             parsed = extractor.parse(text)
 
-        if not parsed.get("devices"):
+        if not parsed.get("devices") and source_mode not in {"pkt_native_inspection", "pkt_binary_recovery", "pkt_auto_xml_json_bridge"}:
             parsed["devices"] = [{"id": "Extracted-Reality", "hostname": "Extracted Wired Reality", "type": "network", "role": "synthetic_context", "evidence": {"source_line": None, "source_text": "Synthetic context because no hostname was found.", "confidence": 0.35}}]
 
+        if companion and source_mode not in {"pkt_native_inspection", "pkt_binary_recovery", "pkt_auto_xml_json_bridge"}:
+            parsed["companion_exports"] = [{k: companion.get(k) for k in ["filename", "stored_filename", "extension", "bytes", "sha256", "mode"]} | {"status": "loaded_not_merged", "purpose": "companion_export_supplied_for_non_native_import"}]
+
+        evidence_registry = build_evidence_registry(parsed)
+        parsed["evidence_registry"] = evidence_registry
         conversion_profile = build_conversion_profile(filename, raw, text, source_mode, parsed)
+        verified_contract = build_verified_extraction_contract(parsed, source_mode, evidence_registry)
+        parsed["verified_extraction_contract"] = [verified_contract]
+        conversion_profile["verified_extraction_contract"] = verified_contract
+        conversion_profile["evidence_registry_summary"] = verified_contract.get("evidence_summary", {})
+        if structured_summary:
+            conversion_profile["structured_summary"] = structured_summary
         parsed["packet_tracer_profile"] = conversion_profile
 
+        structured_status = (structured_summary or {}).get("status")
         pipeline = [
             {"stage": "File Intake", "status": "success", "confidence": 1.0, "items": 1, "detail": f"Accepted {filename} and stored immutable source hash."},
-            {"stage": "Source Decoding", "status": "success" if source_mode != "pkt_binary_recovery" else "partial", "confidence": 0.95 if source_mode not in {"pkt_binary_recovery"} else 0.62, "items": len(text.splitlines()), "detail": f"Source mode: {source_mode}."},
+            {"stage": "Source Decoding", "status": "review" if source_mode in {"pkt_binary_recovery", "pkt_native_inspection", "pkt_auto_xml_json_bridge"} else "success", "confidence": 0.78 if source_mode == "pkt_auto_xml_json_bridge" else (0.58 if source_mode == "pkt_native_inspection" else (0.62 if source_mode == "pkt_binary_recovery" else 0.95)), "items": len(text.splitlines()), "detail": f"Source mode: {source_mode}. Native files are decoded through converter probes, printable segment reconstruction, XML bridge, and normalized JSON before parsing." if source_mode == "pkt_auto_xml_json_bridge" else f"Source mode: {source_mode}."},
+            {"stage": "Structured Schema Normalization", "status": structured_status or "not_needed", "confidence": 0.90 if structured_status == "understood" else 0.55, "items": sum((structured_summary or {}).get("detected_sections", {}).values()) if structured_summary else 0, "detail": "Decoded JSON/XML schema paths, embedded configs, links, VLANs, interfaces, device records, endpoint inventory, and validation findings." if structured_summary else "Text/config parser path used."},
             {"stage": "Packet Tracer Intelligence", "status": conversion_profile.get("readiness", "review"), "confidence": conversion_profile.get("readiness_score", 0.5), "items": conversion_profile.get("objects_total", 0), "detail": conversion_profile.get("analyst_next_step", "Conversion profile built.")},
-            {"stage": "Object Extraction", "status": "success", "confidence": 0.90, "items": sum(len(v) for k, v in parsed.items() if isinstance(v, list)), "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, L2 health, and link hints."},
-            {"stage": "Evidence Mapping", "status": "success", "confidence": 0.88, "items": len(parsed.get("raw_evidence", [])), "detail": "Mapped extracted objects to line-level evidence where possible."}
+            {"stage": "Object Extraction", "status": "success", "confidence": 0.90, "items": sum(len(v) for k, v in parsed.items() if isinstance(v, list)), "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, L2 health, links, structured topology hints, endpoint inventory, and schema validations."},
+            {"stage": "Evidence Mapping", "status": "success", "confidence": 0.90, "items": len(parsed.get("evidence_registry", [])), "detail": "Built an evidence registry that classifies each extracted object as verified, recovered, inferred, or unmapped."}
         ]
 
         confidence = self._confidence_summary(parsed, source_mode)
         confidence["readiness"] = conversion_profile.get("readiness")
         confidence["readiness_score"] = conversion_profile.get("readiness_score")
+        confidence["structured_status"] = structured_status
         return {"filename": filename, "stored_filename": stored_filename, "source_hash": source_hash, "source_mode": source_mode, "text": text, "objects": parsed, "pipeline": pipeline, "imported_at": now_iso(), "missing_evidence": self._missing_evidence(parsed), "confidence_summary": confidence, "conversion_profile": conversion_profile}

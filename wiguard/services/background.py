@@ -7,6 +7,7 @@ not auto-triggered unless the admin starts the worker or runs the next queued jo
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from typing import Callable, Dict, Any, Optional
@@ -58,9 +59,9 @@ class BackgroundJobRunner:
         while not self._stop.is_set():
             try:
                 self.run_next()
-            except Exception:
-                # Individual job errors are persisted by run_next.
-                pass
+            except Exception as exc:
+                # Individual job errors are persisted by run_next; keep a runtime breadcrumb too.
+                log.exception("Background job loop recovered after failure: %s", exc)
             self._stop.wait(self.poll_seconds)
 
     def run_next(self) -> Optional[Dict[str, Any]]:

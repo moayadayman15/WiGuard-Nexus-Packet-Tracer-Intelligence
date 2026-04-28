@@ -1,15 +1,91 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="page-title pt-hero">
-  <span class="pill">Packet Tracer Conversion Lab</span>
-  <h3>Turn Packet Tracer evidence into a verified WiGuard workspace</h3>
-  <p>Upload `.pkt/.pka`, exported configs, XML, JSON, or a ZIP of show-command outputs. WiGuard now grades conversion readiness, relationships, missing commands, and evidence traceability before reports are generated.</p>
-</section>
-
 {% set profile = conversion_profile or {} %}
 {% set meta = profile.metadata or {} %}
 {% set readiness = profile.readiness or 'no_import' %}
 {% set readiness_score = ((profile.readiness_score or 0)*100)|round|int %}
+{% set contract_preview = (objects.verified_extraction_contract or [])[:1] %}
+{% set import_contract = contract_preview[0] if contract_preview else (profile.verified_extraction_contract or {}) %}
+{% set intake_tier = import_contract.tier or 'waiting_for_import' %}
+{% set intake_companion = (profile.companion_exports or [])[:1] %}
+{% set structured_summary = profile.structured_summary or {} %}
+
+<section class="page-title pt-hero">
+  <span class="pill">Packet Tracer Conversion Lab</span>
+  <h3>Turn Packet Tracer evidence into a verified WiGuard workspace</h3>
+  <p>Upload `.pkt/.pka`, exported configs, XML, JSON, or a ZIP of show-command outputs. WiGuard grades conversion readiness, shows the exact auto-conversion path, and labels what is verified vs inferred before any report is published.</p>
+  <div class="hero-stats hero-stats-compact">
+    <article>
+      <span>Current import</span>
+      <b>{{ active.filename or 'No file imported yet' }}</b>
+      <small>{{ active.imported_at or 'Waiting for upload' }}</small>
+    </article>
+    <article>
+      <span>Source mode</span>
+      <b>{{ meta.source_mode or active.source_mode or 'waiting' }}</b>
+      <small>{{ meta.extension or 'No extension detected yet' }}</small>
+    </article>
+    <article>
+      <span>Evidence contract</span>
+      <b>{{ intake_tier.replace('_', ' ') }}</b>
+      <small>{{ 'Full fidelity allowed' if import_contract.can_claim_full_fidelity else 'Claims limited until evidence improves' }}</small>
+    </article>
+    <article>
+      <span>Companion export</span>
+      <b>{{ 'Attached' if intake_companion else 'Optional' }}</b>
+      <small>{{ intake_companion[0].filename if intake_companion else 'Add exported configs/XML/JSON/ZIP for stronger verification' }}</small>
+    </article>
+  </div>
+</section>
+
+{% set diag = diagnostics or {} %}
+<section class="panel diagnostic-panel">
+  <div class="panel-head"><h4>0. Import Diagnostics & Truth Contract</h4><span class="badge {{ 'pass' if diag.can_claim_full_fidelity else 'review' }}">{{ diag.tier.replace('_',' ') if diag.tier else 'no import' }}</span></div>
+  <div class="diagnostic-grid">
+    <article><span>Full Fidelity Claim</span><b>{{ 'Allowed' if diag.can_claim_full_fidelity else 'Blocked' }}</b><small>{{ diag.claim or 'Import a file to calculate the claim.' }}</small></article>
+    <article><span>Readiness</span><b>{{ diag.readiness_score or 0 }}%</b><small>{{ diag.source_mode or 'waiting' }}</small></article>
+    <article><span>Verified Evidence</span><b>{{ ((diag.evidence_summary.verified_ratio or 0) * 100)|round|int }}%</b><small>{{ diag.evidence_summary.verified or 0 }} / {{ diag.evidence_summary.total or 0 }} mapped objects</small></article>
+    <article><span>Blockers</span><b>{{ diag.blockers|length if diag.blockers else 0 }}</b><small>issues preventing a 100% claim</small></article>
+  </div>
+  <div class="two-col compact-gap">
+    <div class="mini-list">
+      <h5>Next Best Actions</h5>
+      {% for a in diag.recommended_actions or [] %}<article><b>{{ a.priority }} — {{ a.action }}</b><small>{{ a.why }}</small></article>{% else %}<p class="muted">No actions yet.</p>{% endfor %}
+    </div>
+    <div class="mini-list">
+      <h5>Accuracy Blockers</h5>
+      {% for b in diag.blockers or [] %}<article class="{{ b.severity|lower }}"><b>{{ b.id }}</b><small>{{ b.detail }}</small></article>{% else %}<p class="muted">No blockers detected.</p>{% endfor %}
+    </div>
+  </div>
+</section>
+
+{% set eqm = evidence_quality_matrix or {} %}
+{% set sign = analyst_signoff or {} %}
+<section class="panel quality-studio-panel">
+  <div class="panel-head"><h4>0.5 Evidence Quality & Analyst Sign-off</h4><span class="badge {{ 'pass' if sign.can_publish_technical else 'review' }}">{{ eqm.grade or 'waiting for evidence' }}</span></div>
+  <div class="contract-grid">
+    <article><span>Evidence Quality Score</span><b>{{ eqm.score or 0 }}/100</b><small>{{ eqm.summary.passed or 0 }} pass · {{ eqm.summary.review or 0 }} review · {{ eqm.summary.missing or 0 }} missing</small></article>
+    <article class="{{ 'pass' if sign.can_publish_executive else 'review' }}"><span>Executive Publish</span><b>{{ 'Ready' if sign.can_publish_executive else 'Blocked' }}</b><small>Blocks high-level claims until evidence supports them.</small></article>
+    <article class="{{ 'pass' if sign.can_publish_technical else 'review' }}"><span>Technical Publish</span><b>{{ 'Ready' if sign.can_publish_technical else 'Needs work' }}</b><small>Technical report can include caveats when partial.</small></article>
+    <article class="{{ 'pass' if sign.can_claim_full_fidelity else 'review' }}"><span>100% Fidelity Claim</span><b>{{ 'Allowed' if sign.can_claim_full_fidelity else 'Forbidden' }}</b><small>Native PKT alone cannot be marketed as full-fidelity.</small></article>
+  </div>
+  <div class="two-col compact-gap">
+    <div class="table-wrap mini-table">
+      <table>
+        <thead><tr><th>Category</th><th>Status</th><th>Claim</th><th>Action</th></tr></thead>
+        <tbody>
+        {% for row in (eqm.rows or [])[:8] %}
+          <tr><td>{{ row.label }}</td><td><span class="badge {{ row.status }}">{{ row.status }}</span></td><td>{{ row.claim_level.replace('_',' ') }}</td><td><small>{{ row.recommended_action }}</small></td></tr>
+        {% else %}<tr><td colspan="4" class="muted">Import evidence to build the quality matrix.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="mini-list">
+      <h5>Sign-off Actions</h5>
+      {% for a in sign.required_actions or [] %}<article><b>{{ a.priority }} — {{ a.action }}</b><small>{{ a.why }}</small></article>{% else %}<p class="muted">No sign-off actions yet.</p>{% endfor %}
+    </div>
+  </div>
+</section>
 
 <section class="conversion-console">
   <div class="panel upload-panel">
@@ -22,7 +98,41 @@
         <small>.pkt .pka .xml .json .txt .cfg .conf .zip</small>
         <strong id="file-name">No file selected</strong>
       </label>
+      <div class="upload-guidance">
+        <article>
+          <b>Native Packet Tracer</b>
+          <small>`.pkt/.pka` files are auto-processed through converter probing, visible string recovery, XML bridging, JSON normalization, and object extraction.</small>
+        </article>
+        <article>
+          <b>Structured imports</b>
+          <small>XML/JSON/TXT/ZIP evidence is parsed directly and validated against WiGuard extraction and traceability rules.</small>
+        </article>
+      </div>
+      <label class="companion-export-box">
+        <span>Optional companion export for true verification</span>
+        <input id="companion-input" type="file" name="companion_file">
+        <small>Use exported running-config/show outputs/XML/JSON/ZIP beside a native .pkt/.pka file. This upgrades evidence from native recovery to verified parse where possible.</small>
+        <strong id="companion-name">No companion export selected</strong>
+      </label>
       <button class="primary-btn full" type="submit">Import → Convert → Validate → Generate Artifacts</button>
+      <div class="upload-status" id="upload-status">Waiting for file. Conversion runs automatically in the background after upload.</div>
+      <div class="upload-meta-grid">
+        <article>
+          <span>Accepted evidence</span>
+          <b>8 formats</b>
+          <small>Packet Tracer binaries, configs, XML, JSON, text exports, and ZIP bundles.</small>
+        </article>
+        <article>
+          <span>Current source hash</span>
+          <b>{{ (active.source_hash or '—')[:12] }}</b>
+          <small>Immutable source fingerprint stored for traceability.</small>
+        </article>
+        <article>
+          <span>Structured sections</span>
+          <b>{{ structured_summary.detected_sections|length if structured_summary.detected_sections else 0 }}</b>
+          <small>{{ structured_summary.status or 'No structured sections detected yet' }}</small>
+        </article>
+      </div>
     </form>
     <form method="post" action="{{ url_for('actions.load_sample') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -30,7 +140,7 @@
     </form>
     <div class="hint-panel">
       <strong>Best accuracy workflow</strong>
-      <span>Native `.pkt/.pka` files are stored and recovered safely, but Packet Tracer is proprietary. For evidence-grade accuracy, export each device config and show outputs into a ZIP.</span>
+      <span>Native `.pkt/.pka` uploads now run through a forced background chain: converter probe → printable segment reconstruction → internal XML bridge → normalized JSON → object extraction. The UI labels what is verified, partial, or opaque so the tool never fakes 100% certainty.</span>
     </div>
   </div>
 
@@ -44,7 +154,45 @@
       <div><span>Printable lines</span><b>{{ meta.printable_lines or 0 }}</b></div>
     </div>
     <p class="muted">{{ profile.analyst_next_step or 'Run an import to see a conversion decision.' }}</p>
+    {% if state.active_extraction.pipeline %}
+    <div class="pipeline-rail">
+      {% for step in state.active_extraction.pipeline[:6] %}
+      <article class="{{ step.status|replace('_', '-') }}">
+        <span class="step-index">{{ loop.index }}</span>
+        <div>
+          <b>{{ step.stage }}</b>
+          <small>{{ (step.confidence * 100)|round|int }}% confidence · {{ step.items }} items</small>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-inline-note">No import has been processed yet. Once you upload a file, WiGuard will show the exact conversion chain here.</div>
+    {% endif %}
   </div>
+</section>
+
+<section class="import-insight-strip">
+  <article class="insight-card">
+    <span>Source authenticity</span>
+    <b>{{ 'Companion-backed' if intake_companion else 'Single-source import' }}</b>
+    <small>{{ intake_companion[0].mode if intake_companion else 'Add a companion export to strengthen trust and line-level proof.' }}</small>
+  </article>
+  <article class="insight-card">
+    <span>Bridge status</span>
+    <b>{{ 'XML → JSON bridge used' if meta.internal_xml_bridge_used else 'Direct parse path' }}</b>
+    <small>{{ 'Background bridge artifacts are available for review.' if meta.internal_xml_bridge_used else 'Structured source decoded without bridge fallback.' }}</small>
+  </article>
+  <article class="insight-card">
+    <span>Evidence tier</span>
+    <b>{{ intake_tier.replace('_', ' ') }}</b>
+    <small>{{ 'Verified evidence supports stronger reporting.' if import_contract.can_publish_technical else 'Evidence still needs analyst review.' }}</small>
+  </article>
+  <article class="insight-card">
+    <span>Object traceability</span>
+    <b>{{ ((profile.evidence_profile.line_mapping_ratio or 0) * 100)|round|int }}%</b>
+    <small>List objects currently mapped to source lines.</small>
+  </article>
 </section>
 
 <section class="panel">
@@ -55,6 +203,292 @@
     {% endfor %}
   </div>
 </section>
+
+<section class="panel verified-extract-panel">
+  <div class="panel-head"><h4>3.1 Verified Extraction Snapshot</h4><span>real objects only, no demo placeholders</span></div>
+  <div class="verified-grid">
+    <article><span>Devices</span><b>{{ objects.devices|length if objects.devices else 0 }}</b><small>{% for d in (objects.devices or [])[:3] %}{{ d.hostname or d.id }}{% if not loop.last %}, {% endif %}{% else %}No device names extracted{% endfor %}</small></article>
+    <article><span>Interfaces</span><b>{{ objects.interfaces|length if objects.interfaces else 0 }}</b><small>{% for i in (objects.interfaces or [])[:3] %}{{ i.name }}{% if not loop.last %}, {% endif %}{% else %}No interfaces extracted{% endfor %}</small></article>
+    <article><span>VLANs</span><b>{{ objects.vlans|length if objects.vlans else 0 }}</b><small>{% for v in (objects.vlans or [])[:4] %}{{ v.id or v.vlan }}{% if not loop.last %}, {% endif %}{% else %}No VLANs extracted{% endfor %}</small></article>
+    <article><span>Links</span><b>{{ (objects.cdp_links|length if objects.cdp_links else 0) + (objects.lldp_links|length if objects.lldp_links else 0) }}</b><small>CDP/LLDP/structured link evidence</small></article>
+  </div>
+</section>
+
+{% set contracts = objects.verified_extraction_contract or [] %}
+{% set contract = contracts[0] if contracts else (profile.verified_extraction_contract or {}) %}
+{% set es = contract.evidence_summary or {} %}
+<section class="panel extraction-contract-panel">
+  <div class="panel-head"><h4>3.2 Verified Extraction Contract</h4><span>{{ contract.tier.replace('_',' ') if contract.tier else 'waiting for import' }}</span></div>
+  <div class="contract-grid">
+    <article class="{{ 'pass' if contract.can_claim_full_fidelity else 'review' }}"><span>Full Fidelity Claim</span><b>{{ 'Allowed' if contract.can_claim_full_fidelity else 'Not yet' }}</b><small>{{ contract.claim or 'Import evidence to generate a fidelity contract.' }}</small></article>
+    <article><span>Verified Objects</span><b>{{ es.verified or 0 }}</b><small>{{ ((es.verified_ratio or 0)*100)|round|int }}% of registry</small></article>
+    <article><span>Recovered Objects</span><b>{{ es.recovered or 0 }}</b><small>native/decoded evidence, not invented</small></article>
+    <article><span>High-Value Verified</span><b>{{ ((es.high_value_verified_ratio or 0)*100)|round|int }}%</b><small>{{ es.high_value_verified or 0 }} / {{ es.high_value_total or 0 }}</small></article>
+  </div>
+  {% if contract.required_next_exports %}
+  <div class="table-wrap mini-table contract-table">
+    <table>
+      <thead><tr><th>Required Export</th><th>Status</th><th>Severity</th><th>Why</th></tr></thead>
+      <tbody>{% for row in contract.required_next_exports %}<tr><td>{{ row.artifact }}</td><td><span class="badge {{ row.status }}">{{ row.status.replace('_',' ') }}</span></td><td>{{ row.severity }}</td><td><small>{{ row.why }}</small></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+
+{% set native_rows = profile.get('native_pkt_profile', []) if profile else [] %}
+{% set native = native_rows[0] if native_rows else {} %}
+{% set fidelity = (profile.extraction_fidelity or [])[0] if profile.extraction_fidelity else {} %}
+{% if native or meta.native_packet_tracer %}
+<section class="panel native-pkt-panel">
+  <div class="panel-head">
+    <h4>3A. Native Packet Tracer `.pkt/.pka` Binary Inspector</h4>
+    <span>{{ native.recoverability or 'native binary' }}</span>
+  </div>
+  <div class="deep-matrix lab-summary-grid">
+    <article><span>Binary Size</span><b>{{ native.bytes or meta.bytes or 0 }}</b><small>immutable uploaded source</small></article>
+    <article><span>Entropy</span><b>{{ native.entropy or '—' }}</b><small>high entropy means opaque/compressed/encrypted-like content</small></article>
+    <article><span>Printable Ratio</span><b>{{ ((native.printable_ratio or 0)*100)|round|int }}%</b><small>visible recoverable text</small></article>
+    <article><span>Visible Strings</span><b>{{ native.visible_string_count or 0 }}</b><small>safe printable recovery</small></article>
+    <article><span>Signatures</span><b>{{ (profile.binary_signatures or [])|length }}</b><small>ZIP/GZip/Zlib/XML/SQLite probes</small></article>
+    <article><span>Config Hints</span><b>{{ native.config_pattern_hits or 0 }}</b><small>visible Cisco-like lines</small></article>
+  </div>
+  <div class="hint-panel">
+    <strong>{{ native.decision or meta.format_note }}</strong>
+    <span>WiGuard has already run the background XML/JSON bridge. If the native binary exposes limited evidence, the preview below proves exactly what was decoded and what still needs exported configs/converter support.</span>
+  </div>
+
+  {% if fidelity %}
+  <div class="fidelity-strip {{ fidelity.status }}">
+    <div>
+      <span>Extraction Fidelity Contract</span>
+      <b>{{ fidelity.tier.replace('_',' ') if fidelity.tier else 'not measured' }}</b>
+      <small>{{ fidelity.detail }}</small>
+    </div>
+    <strong>{{ ((fidelity.score or 0) * 100)|round|int }}%</strong>
+  </div>
+  {% endif %}
+
+  {% set bridge = (profile.internal_xml_bridge or [])[0] if profile.internal_xml_bridge else {} %}
+  {% if bridge %}
+  <div class="panel-subblock pkt-bridge-block">
+    <div class="panel-head compact">
+      <h5>Internal XML → JSON Bridge</h5>
+      <span>{{ bridge.fidelity or 'best effort visible evidence' }}</span>
+    </div>
+    <div class="deep-matrix lab-summary-grid">
+      <article><span>XML Bridge</span><b>{{ bridge.xml_bytes or 0 }}</b><small>bytes generated before normalization</small></article>
+      <article><span>Normalized JSON</span><b>{{ bridge.normalized_json_bytes or 0 }}</b><small>bytes available for artifacts</small></article>
+      {% for key, value in (bridge.visible_counts or {}).items() %}
+      <article><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b><small>visible native evidence</small></article>
+      {% endfor %}
+    </div>
+    <p class="muted">{{ bridge.note }}</p>
+  </div>
+  {% endif %}
+
+  {% if profile.auto_conversion_pipeline %}
+  <div class="panel-subblock pkt-bridge-block">
+    <div class="panel-head compact">
+      <h5>Background Auto-Conversion Pipeline</h5>
+      <span>runs during upload</span>
+    </div>
+    <div class="table-wrap mini-table">
+      <table>
+        <thead><tr><th>Stage</th><th>Status</th><th>Items</th><th>Confidence</th><th>Detail</th></tr></thead>
+        <tbody>
+        {% for stage in profile.auto_conversion_pipeline %}
+          <tr>
+            <td>{{ stage.get('stage') }}</td>
+            <td><span class="badge {{ stage.get('status') }}">{{ stage.get('status') }}</span></td>
+            <td>{{ stage.get('items') }}</td>
+            <td>{{ ((stage.get('confidence') or 0) * 100)|round|int }}%</td>
+            <td><small>{{ stage.get('detail') }}</small></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if profile.decoded_payloads %}
+  <div class="panel-subblock pkt-bridge-block">
+    <div class="panel-head compact">
+      <h5>Decoded Native Payloads</h5>
+      <span>{{ profile.decoded_payloads|length }} payload(s)</span>
+    </div>
+    <div class="table-wrap mini-table">
+      <table>
+        <thead><tr><th>Name</th><th>Kind</th><th>Source</th><th>Hits</th><th>Preview</th></tr></thead>
+        <tbody>
+        {% for payload in profile.decoded_payloads[:12] %}
+          <tr>
+            <td>{{ payload.get('name') }}</td>
+            <td>{{ payload.get('kind') }}</td>
+            <td>{{ payload.get('source') }}</td>
+            <td>{{ payload.get('config_pattern_hits') }}</td>
+            <td><small>{{ payload.get('preview') }}</small></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="structured-deep-grid">
+    <div>
+      <h5>Visible Hints Recovered</h5>
+      <div class="table-wrap mini-table">
+        <table>
+          <thead><tr><th>Type</th><th>Value</th></tr></thead>
+          <tbody>
+          {% for row in (profile.native_visible_hints or [])[:30] %}
+            <tr><td>{{ row.get('type') }}</td><td><small>{{ row.get('value') }}</small></td></tr>
+          {% else %}
+            <tr><td colspan="2" class="muted">No trustworthy visible IP/MAC/interface/config hints recovered from the native binary.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h5>Required Export Plan</h5>
+      <div class="mini-list">
+        {% for row in profile.native_conversion_guidance or [] %}
+        <article><b>Step {{ row.get('step') }}</b><small>{{ row.get('detail') }}</small></article>
+        {% else %}<p class="muted">No native guidance generated yet.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="structured-deep-grid">
+    <div>
+      <h5>Reconstructed IOS Config Lines</h5>
+      <div class="mini-list compact-scroll">
+        {% for row in profile.reconstructed_config_preview or [] %}
+        <article><b>#{{ row.get('index') }}</b><small>{{ row.get('line') }}</small></article>
+        {% else %}<p class="muted">No command-like IOS lines were reconstructed from the native binary.</p>{% endfor %}
+      </div>
+    </div>
+    <div>
+      <h5>Printable Segment Preview</h5>
+      <div class="mini-list compact-scroll">
+        {% for seg in profile.printable_segments_preview or [] %}
+        <article><b>{{ seg.get('hex_offset') }}</b><span>{{ seg.get('bytes') }} bytes</span><small>{{ seg.get('preview') }}</small></article>
+        {% else %}<p class="muted">No long printable segment survived native recovery.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="structured-deep-grid">
+    <div>
+      <h5>Binary Signature Probes</h5>
+      <div class="mini-list">
+        {% for sig in profile.binary_signatures or [] %}
+        <article><b>{{ sig.get('name') }}</b><span>{{ sig.get('hex_offset') }}</span><small>{{ sig.get('description') }}</small></article>
+        {% else %}<p class="muted">No common embedded ZIP/GZip/Zlib/XML/SQLite signatures were found.</p>{% endfor %}
+      </div>
+    </div>
+    <div>
+      <h5>String Preview</h5>
+      <div class="mini-list">
+        {% for row in profile.recovered_string_preview or [] %}
+        <article><b>#{{ row.get('index') }}</b><small>{{ row.get('text') }}</small></article>
+        {% else %}<p class="muted">No useful printable strings recovered.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if profile.converted_xml_preview or profile.normalized_json_preview %}
+<section class="panel bridge-preview-panel">
+  <div class="panel-head">
+    <h4>3C. Converted XML / Normalized JSON Preview</h4>
+    <span>what the importer actually understood</span>
+  </div>
+  <div class="structured-deep-grid">
+    <div>
+      <h5>XML Bridge Preview</h5>
+      {% set xml_preview = (profile.converted_xml_preview or [])[0] if profile.converted_xml_preview else {} %}
+      <pre class="code-preview">{{ xml_preview.content or 'No XML bridge generated.' }}</pre>
+    </div>
+    <div>
+      <h5>Normalized JSON Preview</h5>
+      {% set json_preview = (profile.normalized_json_preview or [])[0] if profile.normalized_json_preview else {} %}
+      <pre class="code-preview">{{ json_preview.content or 'No normalized JSON preview generated.' }}</pre>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% set lab = objects.lab_result_summary[0] if objects.lab_result_summary else {} %}
+{% if objects.access_tests or objects.client_access_matrix %}
+<section class="panel lab-matrix-panel">
+  <div class="panel-head">
+    <h4>3B. Packet Tracer Lab Result Matrix Intelligence</h4>
+    <span>{{ lab.total_tests or 0 }} access tests · {{ lab.clients or 0 }} clients · {{ lab.vlans or 0 }} VLANs</span>
+  </div>
+  <div class="deep-matrix lab-summary-grid">
+    <article><span>Access Tests</span><b>{{ lab.total_tests or objects.access_tests|length }}</b><small>Success/Failed reachability rows</small></article>
+    <article><span>Success</span><b>{{ lab.success or 0 }}</b><small>reachable / permitted observations</small></article>
+    <article><span>Blocked</span><b>{{ lab.failed or 0 }}</b><small>blocked / unavailable observations</small></article>
+    <article><span>Clients</span><b>{{ lab.clients or 0 }}</b><small>observed stations/users</small></article>
+    <article><span>SSIDs</span><b>{{ lab.ssids or 0 }}</b><small>wireless networks</small></article>
+    <article><span>APs</span><b>{{ lab.aps or 0 }}</b><small>associated access points</small></article>
+    <article><span>Services</span><b>{{ lab.services or 0 }}</b><small>tested destinations</small></article>
+    <article><span>Roaming Events</span><b>{{ lab.roaming_events or 0 }}</b><small>client mobility evidence</small></article>
+  </div>
+
+  <div class="structured-deep-grid">
+    <div>
+      <h5>Client Access Summary</h5>
+      <div class="table-wrap mini-table">
+        <table>
+          <thead><tr><th>Client</th><th>SSID / VLAN</th><th>IP / AP</th><th>Allowed</th><th>Blocked</th><th>Services</th></tr></thead>
+          <tbody>
+          {% for row in objects.client_access_matrix or [] %}
+            <tr>
+              <td>{{ row.get('client') }}</td>
+              <td>{{ row.get('ssid') or '—' }} / VLAN {{ row.get('vlan') or '—' }}</td>
+              <td>{{ row.get('ip') or '—' }} / {{ row.get('ap') or '—' }}</td>
+              <td>{{ row.get('allowed_count') or 0 }}</td>
+              <td>{{ row.get('blocked_count') or 0 }}</td>
+              <td><small>Allow: {{ (row.get('services_allowed') or [])|join(', ') or '—' }}<br>Block: {{ (row.get('services_blocked') or [])|join(', ') or '—' }}</small></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="muted">No client matrix rows extracted yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h5>Access Test Evidence</h5>
+      <div class="table-wrap mini-table">
+        <table>
+          <thead><tr><th>Client</th><th>Service</th><th>Target</th><th>SSID/VLAN</th><th>Result</th></tr></thead>
+          <tbody>
+          {% for row in (objects.access_tests or [])[:18] %}
+            <tr>
+              <td>{{ row.get('client') }}</td>
+              <td>{{ row.get('service') or '—' }}</td>
+              <td>{{ row.get('target') or '—' }}</td>
+              <td>{{ row.get('actual_ssid') or '—' }} / {{ row.get('actual_vlan') or '—' }}</td>
+              <td><span class="badge {{ 'pass' if row.get('result') == 'success' else 'review' }}">{{ row.get('result') }}</span></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="muted">No access tests extracted yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">This file is treated as observed Packet Tracer lab evidence. Upload an expected policy matrix later to classify each observation as compliant or non-compliant.</p>
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <section class="two-col">
   <div class="panel">
@@ -265,10 +699,32 @@
     {% endfor %}
   </div>
   <p class="muted">Schema hints: {{ (ss.schema_hints or [])|join(', ') or 'No JSON/XML schema hints extracted yet.' }}</p>
+  {% if profile.schema_map or profile.validation_findings or profile.import_warnings %}
+  <div class="structured-deep-grid">
+    <div>
+      <h5>Schema Path Map</h5>
+      <div class="mini-list">
+        {% for row in profile.schema_map or [] %}
+        <article><b>{{ row.object_type.replace('_',' ') }}</b><span>{{ row.count }} object(s)</span><small>{% for p in row.paths or [] %}{{ p.path }}{% if not loop.last %} · {% endif %}{% endfor %}</small></article>
+        {% else %}<p class="muted">No schema path map yet.</p>{% endfor %}
+      </div>
+    </div>
+    <div>
+      <h5>Validation Findings</h5>
+      <div class="mini-list">
+        {% for f in profile.validation_findings or [] %}
+        <article class="{{ f.severity|lower }}"><b>{{ f.title }}</b><span>{{ f.severity }}</span><small>{{ f.detail }}</small></article>
+        {% else %}<p class="muted">No structured validation findings.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h4>18. Extraction Pipeline</h4><span>{{ state.active_extraction.filename or 'No import yet' }}</span></div>  <div class="pipeline">
+  <div class="panel-head"><h4>18. Extraction Pipeline</h4><span>{{ state.active_extraction.filename or 'No import yet' }}</span></div>
+  <p class="muted section-intro">Every stage below reflects the real backend path used for the current import. This makes the conversion workflow easier to audit and easier to explain to analysts and reviewers.</p>
+  <div class="pipeline">
     {% for step in state.active_extraction.pipeline or [] %}
     <article>
       <div><b>{{ step.stage }}</b><span class="badge {{ step.status|replace('_','-') }}">{{ step.status }}</span></div>

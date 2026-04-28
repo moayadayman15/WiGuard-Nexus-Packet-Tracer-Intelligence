@@ -33,7 +33,7 @@ def db():
 
 def _save_state(state, audit_action=None, target="", detail=""):
     state.setdefault("tenant_id", current_tenant_id())
-    state.setdefault("version", "5.8.2-page-data-hardening")
+    state.setdefault("version", "5.9.3-professional-quality-studio")
     try:
         normalize_wireless_state(state)
     except Exception as exc:
@@ -222,7 +222,7 @@ def logout():
 def reset():
     storage().reset()
     state = storage().load()
-    state["version"] = "5.5.0-packet-tracer-intelligence"
+    state["version"] = "5.9.3-professional-quality-studio"
     state["tenant_id"] = current_tenant_id()
     normalize_wireless_state(state)
     _save_state(state, "state.reset", "seed", "State reset to clean wireless seed")
@@ -234,19 +234,24 @@ def reset():
 @require_role("analyst")
 def import_file():
     uploaded = request.files.get("network_file")
+    companion = request.files.get("companion_file")
     if not uploaded or not uploaded.filename:
         flash("Choose a Packet Tracer/config file first.", "error")
         return redirect(url_for("pages.import_center"))
     service = PacketTracerImportService(current_app.config["UPLOAD_DIR"])
-    job_id = db().create_job("evidence_import", {"filename": uploaded.filename}, current_user() or "system", current_tenant_id()) if db() else "inline"
+    job_meta = {"filename": uploaded.filename}
+    if companion and companion.filename:
+        job_meta["companion_filename"] = companion.filename
+    job_id = db().create_job("evidence_import", job_meta, current_user() or "system", current_tenant_id()) if db() else "inline"
     try:
         if db():
             db().update_job(job_id, "running", 20)
-        result = service.extract(uploaded)
+        result = service.extract(uploaded, companion_file=companion)
         import_record = _persist_import_result(result, "Imported")
         if db():
             db().update_job(job_id, "completed", 100, {"import_id": import_record["id"], "object_count": import_record["object_count"]})
-        flash(f"Import completed. Extracted objects: {import_record['object_count']}.", "success")
+        companion_note = " Companion export merged." if companion and companion.filename else ""
+        flash(f"Import completed. Extracted objects: {import_record['object_count']}.{companion_note}", "success")
     except Exception as exc:
         if db():
             db().update_job(job_id, "failed", 100, error=str(exc))

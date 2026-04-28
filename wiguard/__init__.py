@@ -69,7 +69,7 @@ def create_app():
     storage = Storage(app.config["DATA_FILE"])
     storage.ensure_seed()
     state = storage.load()
-    state.setdefault("version", "5.8.3-packet-tracer-json-xml-intelligence")
+    state.setdefault("version", "5.9.3-professional-quality-studio")
     state.setdefault("tenant_id", app.config["DEFAULT_TENANT_ID"])
     state.setdefault("tenants", [{"id": app.config["DEFAULT_TENANT_ID"], "name": "Main Tenant", "status": "active"}])
     for p in state.get("projects", []):

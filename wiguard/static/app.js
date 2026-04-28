@@ -2,44 +2,97 @@
   const input = document.getElementById('file-input');
   const label = document.getElementById('file-name');
   const drop = document.getElementById('dropzone');
-  if(input && label){
-    input.addEventListener('change', () => {
-      label.textContent = input.files && input.files[0] ? input.files[0].name : 'No file selected';
-    });
-  }
-  if(drop && input){
-    ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
-    ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
-    drop.addEventListener('drop', e => {
-      if(e.dataTransfer.files.length){ input.files = e.dataTransfer.files; label.textContent = input.files[0].name; }
+  const uploadStatus = document.getElementById('upload-status');
+  const companionInput = document.getElementById('companion-input');
+  const companionLabel = document.getElementById('companion-name');
+  const uploadForm = document.querySelector('form.upload-box');
+
+  const formatBytes = (bytes) => {
+    const size = Number(bytes || 0);
+    if (!size) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = size;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit += 1;
+    }
+    return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+  };
+
+  const setUploadStatus = (message, running = false) => {
+    if (!uploadStatus) return;
+    uploadStatus.textContent = message;
+    uploadStatus.classList.toggle('running', !!running);
+  };
+
+  const describePrimaryFile = () => {
+    const file = input?.files?.[0];
+    if (!file) {
+      if (label) label.textContent = 'No file selected';
+      setUploadStatus('Waiting for file. Conversion runs automatically in the background after upload.');
+      return;
+    }
+    if (label) label.textContent = `${file.name} • ${formatBytes(file.size)}`;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const native = ['pkt', 'pka'].includes(ext);
+    const structured = ['xml', 'json', 'txt', 'cfg', 'conf', 'zip'].includes(ext);
+    if (native) {
+      setUploadStatus(`Native Packet Tracer selected (${formatBytes(file.size)}). WiGuard will run converter probe, printable recovery, XML bridge, JSON normalization, object extraction, and evidence grading.`, true);
+    } else if (structured) {
+      setUploadStatus(`Structured evidence selected (${formatBytes(file.size)}). WiGuard will parse directly, validate traceability, and generate reviewer-ready extraction artifacts.`, true);
+    } else {
+      setUploadStatus(`File selected: ${file.name}. WiGuard will attempt import and classify the real conversion path after upload.`, true);
+    }
+  };
+
+  const describeCompanionFile = () => {
+    const file = companionInput?.files?.[0];
+    if (!companionLabel) return;
+    companionLabel.textContent = file ? `${file.name} • ${formatBytes(file.size)}` : 'No companion export selected';
+    if (file) {
+      setUploadStatus(`Companion export attached (${formatBytes(file.size)}). Native PKT recovery will be cross-checked against exported evidence wherever possible.`, true);
+    } else {
+      describePrimaryFile();
+    }
+  };
+
+  if (input) input.addEventListener('change', describePrimaryFile);
+  if (companionInput) companionInput.addEventListener('change', describeCompanionFile);
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', () => {
+      const primary = input?.files?.[0];
+      const companion = companionInput?.files?.[0];
+      const source = primary ? primary.name : 'selected evidence';
+      const companionNote = companion ? ` Companion export ${companion.name} is included for stronger verification.` : '';
+      setUploadStatus(`Processing ${source} now. Conversion, extraction, validation, and artifact generation are running in the backend.${companionNote}`, true);
     });
   }
 
-  document.querySelectorAll('canvas[data-chart]').forEach(canvas => {
-    const ctx = canvas.getContext('2d');
-    const diffs = window.WIGUARD_DIFFS || [];
-    const counts = {Pass:0, Review:0, Fail:0};
-    diffs.forEach(d => { counts[d.status] = (counts[d.status] || 0) + 1; });
-    const values = [counts.Pass, counts.Review, counts.Fail];
-    const labels = ['Pass','Review','Fail'];
-    const colors = ['#22c55e','#f59e0b','#ef4444'];
-    const w = canvas.width = canvas.clientWidth * devicePixelRatio;
-    const h = canvas.height = canvas.clientHeight * devicePixelRatio;
-    ctx.scale(devicePixelRatio, devicePixelRatio);
-    const max = Math.max(...values,1);
-    const barW = (canvas.clientWidth - 60) / values.length;
-    values.forEach((v,i) => {
-      const barH = (canvas.clientHeight - 45) * (v/max);
-      const x = 25 + i*barW;
-      const y = canvas.clientHeight - 28 - barH;
-      ctx.fillStyle = colors[i];
-      ctx.fillRect(x,y,barW*0.55,barH);
-      ctx.fillStyle = '#dbeafe';
-      ctx.font = '12px Inter, Arial';
-      ctx.fillText(labels[i]+' ('+v+')',x,canvas.clientHeight-10);
+  if (drop && input) {
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      drop.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        drop.classList.add('drag');
+      });
     });
-  });
+    ['dragleave', 'drop'].forEach((eventName) => {
+      drop.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        if (eventName !== 'drop') drop.classList.remove('drag');
+      });
+    });
+    drop.addEventListener('drop', (e) => {
+      const files = e.dataTransfer?.files;
+      drop.classList.remove('drag');
+      if (files?.length) {
+        input.files = files;
+        describePrimaryFile();
+      }
+    });
+  }
 })();
+
 
 (function(){
   const graph = document.getElementById('topology-graph');

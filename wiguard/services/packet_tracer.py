@@ -92,7 +92,7 @@ def detect_packet_tracer_metadata(filename: str, raw: bytes, text: str, source_m
     printable = text or ""
     lowered = printable.lower()
     markers = []
-    for token in ["packet tracer", "cisco", "pkt", "pka", "ios", "running-config", "fastethernet", "gigabitethernet", "access-list", "spanning-tree", "port-security", "etherchannel", "ssid", "wlan", "radius", "lldp", "cdp"]:
+    for token in ["packet tracer", "native_packet_tracer", "pkt", "pka", "cisco", "ios", "running-config", "fastethernet", "gigabitethernet", "access-list", "spanning-tree", "port-security", "etherchannel", "ssid", "wlan", "radius", "lldp", "cdp"]:
         if token in lowered:
             markers.append(token)
     return {
@@ -101,12 +101,16 @@ def detect_packet_tracer_metadata(filename: str, raw: bytes, text: str, source_m
         "bytes": len(raw or b""),
         "source_mode": source_mode,
         "native_packet_tracer": ext in {".pkt", ".pka"},
+        "structured_source": source_mode in {"json_structured", "xml_structured", "external_xml_converter", "pkt_auto_xml_json_bridge"},
         "converter_used": source_mode == "external_xml_converter",
+        "native_inspector_used": source_mode in {"pkt_native_inspection", "pkt_auto_xml_json_bridge"},
+        "auto_xml_json_bridge_used": source_mode == "pkt_auto_xml_json_bridge",
         "printable_lines": _line_count(printable),
         "markers": markers[:12],
         "format_note": (
-            "Native Packet Tracer file. Accuracy is highest when PTEXPLORER_PATH is configured or when configs/show outputs are exported as TXT/ZIP."
-            if ext in {".pkt", ".pka"} and source_mode == "pkt_binary_recovery"
+            "Native Packet Tracer binary was processed through the automatic background path: converter probe → internal XML bridge → normalized JSON → object extraction. Exact proprietary fidelity still depends on exported configs or converter output."
+            if ext in {".pkt", ".pka"} and source_mode in {"pkt_binary_recovery", "pkt_native_inspection", "pkt_auto_xml_json_bridge"}
+            else "Structured JSON/XML evidence was normalized into devices/interfaces/VLANs/links before policy analysis." if source_mode in {"json_structured", "xml_structured"}
             else "Text/XML/JSON evidence was decoded directly."
         ),
     }
@@ -218,7 +222,20 @@ def build_command_checklist(objects: Dict[str, Any], source_mode: str) -> List[D
             "severity": "Info" if ok else ("High" if command in {"show running-config", "show access-lists"} else "Medium"),
             "why": why,
         })
-    if source_mode == "pkt_binary_recovery":
+    if _count(objects, "access_tests"):
+        result.insert(0, {
+            "command": "Packet Tracer lab results matrix",
+            "status": "covered",
+            "severity": "Info",
+            "why": f"{_count(objects, 'access_tests')} observed access test(s), {_count(objects, 'client_access_matrix')} client summary row(s), and {_count(objects, 'roaming_events')} roaming event(s) were normalized.",
+        })
+        result.insert(1, {
+            "command": "Expected access-policy baseline",
+            "status": "covered" if any(row.get("expected_result") for row in objects.get("access_tests", []) if isinstance(row, dict)) else "recommended",
+            "severity": "Medium",
+            "why": "Add expected_result / policy_expected to each row to let WiGuard judge observed Success/Failed as compliant or non-compliant, not only observed.",
+        })
+    if source_mode in {"pkt_binary_recovery", "pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
         result.insert(0, {
             "command": "Export Packet Tracer device configs as TXT or ZIP",
             "status": "recommended",
@@ -241,21 +258,69 @@ def build_quality_gates(objects: Dict[str, Any], source_mode: str) -> List[Dict[
         {"name": "Security hardening extraction", "status": "pass" if _count(objects, "security_hardening") else "review", "score": min(1.0, _count(objects, "security_hardening") / 8), "detail": f"{_count(objects, 'security_hardening')} management-plane hardening indicator(s)."},
         {"name": "Policy control mapping", "status": "pass" if _count(objects, "policy_controls") else "review", "score": min(1.0, _count(objects, "policy_controls") / 5), "detail": f"{_count(objects, 'policy_controls')} derived control assertion(s)."},
         {"name": "Runtime validation evidence", "status": "pass" if (_count(objects, "acl_hit_counts") + _count(objects, "interface_counters")) else "review", "score": min(1.0, (_count(objects, "acl_hit_counts") + _count(objects, "interface_counters")) / 8), "detail": f"{_count(objects, 'acl_hit_counts')} ACL counter and {_count(objects, 'interface_counters')} interface counter row(s)."},
+        {"name": "Structured schema understanding", "status": "pass" if _count(objects, "schema_map") else "review", "score": min(1.0, (_count(objects, "schema_map") + _count(objects, "structured_relationships")) / 10), "detail": f"{_count(objects, 'schema_map')} schema path group(s), {_count(objects, 'structured_relationships')} extracted structured relationship(s), {_count(objects, 'validation_findings')} validation finding(s)."},
         {"name": "Cross-layer VLAN consistency", "status": "fail" if (objects.get("vlan_crosscheck", {}) or {}).get("missing_from_trunks") else "pass" if (objects.get("vlan_crosscheck", {}) or {}).get("observed_total") else "review", "score": 0.35 if (objects.get("vlan_crosscheck", {}) or {}).get("missing_from_trunks") else min(1.0, ((objects.get("vlan_crosscheck", {}) or {}).get("observed_total", 0) / 5)), "detail": f"{len((objects.get('vlan_crosscheck', {}) or {}).get('missing_from_trunks', []))} VLAN trunk mismatch candidate(s)."},
         {"name": "Line-level traceability", "status": "pass" if line_ratio >= 0.70 else "review", "score": line_ratio, "detail": f"{_pct(line_ratio)}% of list objects have source-line evidence."},
         {"name": "Native Packet Tracer confidence", "status": "review" if source_mode == "pkt_binary_recovery" else "pass", "score": 0.45 if source_mode == "pkt_binary_recovery" else 0.92, "detail": "Native binary recovery used." if source_mode == "pkt_binary_recovery" else "Structured/text source decoded."},
     ]
+    if _count(objects, "internal_xml_bridge"):
+        bridge = (objects.get("internal_xml_bridge") or [{}])[0] if isinstance(objects.get("internal_xml_bridge"), list) else {}
+        gates.insert(0, {
+            "name": "Internal XML → JSON bridge",
+            "status": "pass" if (bridge.get("visible_counts") or {}) else "review",
+            "score": min(1.0, sum((bridge.get("visible_counts") or {}).values()) / 24) if isinstance(bridge.get("visible_counts"), dict) else 0.45,
+            "detail": f"Bridge generated {bridge.get('xml_bytes', 0)} XML bytes and {bridge.get('normalized_json_bytes', 0)} normalized JSON bytes from visible native evidence.",
+        })
+    if _count(objects, "native_pkt_profile"):
+        native_profile = (objects.get("native_pkt_profile") or [{}])[0] if isinstance(objects.get("native_pkt_profile"), list) else {}
+        gates.insert(0, {
+            "name": "Native PKT binary inspection",
+            "status": "review",
+            "score": float(native_profile.get("confidence", 0.42) or 0.42),
+            "detail": f"{native_profile.get('recoverability', 'native_binary')} · entropy={native_profile.get('entropy', 'n/a')} · visible strings={native_profile.get('visible_string_count', 0)}. Full config accuracy still requires Packet Tracer export.",
+        })
+        gates.insert(1, {
+            "name": "Native PKT export readiness",
+            "status": "fail" if native_profile.get("recoverability") == "opaque_native_binary" else "review",
+            "score": 0.25 if native_profile.get("recoverability") == "opaque_native_binary" else 0.55,
+            "detail": "Upload exported device configs/show outputs or configure PTEXPLORER_PATH to convert native .pkt/.pka into XML/config evidence.",
+        })
+    if _count(objects, "companion_exports"):
+        gates.insert(0, {
+            "name": "Companion export verification",
+            "status": "pass",
+            "score": 0.94,
+            "detail": f"{_count(objects, 'companion_exports')} companion export/config bundle(s) merged with the native Packet Tracer import.",
+        })
+    if _count(objects, "access_tests"):
+        lab_summary = (objects.get("lab_result_summary") or [{}])[0] if isinstance(objects.get("lab_result_summary"), list) else {}
+        gates.insert(0, {
+            "name": "Lab result matrix coverage",
+            "status": "pass",
+            "score": min(1.0, _count(objects, "access_tests") / 10),
+            "detail": f"{_count(objects, 'access_tests')} access test(s), {lab_summary.get('clients', 0)} client(s), {lab_summary.get('services', 0)} service target(s), and {lab_summary.get('roaming_events', 0)} roaming event(s).",
+        })
+        gates.insert(1, {
+            "name": "Client/SSID/VLAN correlation",
+            "status": "pass" if _count(objects, "client_access_matrix") else "review",
+            "score": min(1.0, (_count(objects, "endpoint_inventory") + _count(objects, "wireless_hints") + _count(objects, "vlans")) / 12),
+            "detail": f"{_count(objects, 'client_access_matrix')} client matrix row(s), {_count(objects, 'wireless_hints')} wireless hint(s), {_count(objects, 'vlans')} VLAN(s).",
+        })
     return gates
 
 
 def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: str, objects: Dict[str, Any]) -> Dict[str, Any]:
     metadata = detect_packet_tracer_metadata(filename, raw, text, source_mode)
+    metadata["internal_xml_bridge_used"] = source_mode in {"pkt_native_inspection", "pkt_auto_xml_json_bridge"} and bool(_count(objects, "internal_xml_bridge"))
     relationships = build_relationships(objects)
     checklist = build_command_checklist(objects, source_mode)
     gates = build_quality_gates(objects, source_mode)
     weighted_score = sum(float(g.get("score", 0)) for g in gates) / len(gates) if gates else 0
     # Native binary recovery is useful, but must be honestly discounted.
-    if source_mode == "pkt_binary_recovery":
+    if source_mode in {"pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
+        native_profile = (objects.get("native_pkt_profile") or [{}])[0] if isinstance(objects.get("native_pkt_profile"), list) else {}
+        weighted_score = min(weighted_score, float(native_profile.get("confidence", 0.42) or 0.42))
+    elif source_mode == "pkt_binary_recovery":
         weighted_score = min(weighted_score, 0.68)
     elif source_mode == "external_xml_converter":
         weighted_score = min(0.95, weighted_score + 0.06)
@@ -293,18 +358,59 @@ def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: 
             "stp_root": _count(objects, "stp_root"),
             "protocol_summary": _count(objects, "protocol_summary"),
             "risk_atoms": _count(objects, "risk_atoms"),
+            "schema_map": _count(objects, "schema_map"),
+            "structured_relationships": _count(objects, "structured_relationships"),
+            "validation_findings": _count(objects, "validation_findings"),
+            "endpoint_inventory": _count(objects, "endpoint_inventory"),
+            "access_tests": _count(objects, "access_tests"),
+            "client_access_matrix": _count(objects, "client_access_matrix"),
+            "service_inventory": _count(objects, "service_inventory"),
+            "roaming_events": _count(objects, "roaming_events"),
+            "lab_result_summary": _count(objects, "lab_result_summary"),
+            "native_pkt_profile": _count(objects, "native_pkt_profile"),
+            "binary_signatures": _count(objects, "binary_signatures"),
+            "native_visible_hints": _count(objects, "native_visible_hints"),
+            "internal_xml_bridge": _count(objects, "internal_xml_bridge"),
+            "converted_xml_preview": _count(objects, "converted_xml_preview"),
+            "normalized_json_preview": _count(objects, "normalized_json_preview"),
+            "auto_conversion_pipeline": _count(objects, "auto_conversion_pipeline"),
+            "decoded_payloads": _count(objects, "decoded_payloads"),
+            "companion_exports": _count(objects, "companion_exports"),
+            "evidence_registry": _count(objects, "evidence_registry"),
         },
         "analyst_next_step": _next_step(source_mode, checklist, readiness),
         "coverage_domains": objects.get("coverage_domains", []),
         "vlan_crosscheck": objects.get("vlan_crosscheck", {}),
         "risk_atoms": objects.get("risk_atoms", [])[:80],
         "evidence_profile": objects.get("evidence_profile", {}),
+        "schema_map": objects.get("schema_map", [])[:50],
+        "structured_relationships": objects.get("structured_relationships", [])[:100],
+        "validation_findings": objects.get("validation_findings", [])[:100],
+        "import_warnings": objects.get("import_warnings", [])[:100],
+        "structured_summary": objects.get("structured_summary", {}),
+        "access_tests": objects.get("access_tests", [])[:200],
+        "client_access_matrix": objects.get("client_access_matrix", [])[:80],
+        "service_inventory": objects.get("service_inventory", [])[:80],
+        "roaming_events": objects.get("roaming_events", [])[:80],
+        "lab_result_summary": objects.get("lab_result_summary", [])[:5],
+        "native_pkt_profile": objects.get("native_pkt_profile", [])[:2],
+        "binary_signatures": objects.get("binary_signatures", [])[:80],
+        "recovered_string_preview": objects.get("recovered_string_preview", [])[:80],
+        "native_conversion_guidance": objects.get("native_conversion_guidance", [])[:20],
+        "native_visible_hints": objects.get("native_visible_hints", [])[:160],
+        "internal_xml_bridge": objects.get("internal_xml_bridge", [])[:5],
+        "converted_xml_preview": objects.get("converted_xml_preview", [])[:3],
+        "normalized_json_preview": objects.get("normalized_json_preview", [])[:3],
+        "auto_conversion_pipeline": objects.get("auto_conversion_pipeline", [])[:20],
+        "decoded_payloads": objects.get("decoded_payloads", [])[:80],
+        "extraction_fidelity": objects.get("extraction_fidelity", [])[:3],
+        "companion_exports": objects.get("companion_exports", [])[:20],
     }
 
 
 def _next_step(source_mode: str, checklist: Iterable[Dict[str, Any]], readiness: str) -> str:
-    if source_mode == "pkt_binary_recovery":
-        return "Export configs/show outputs from Packet Tracer and upload them as TXT or ZIP to move from binary recovery to evidence-grade extraction."
+    if source_mode in {"pkt_binary_recovery", "pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
+        return "Native .pkt/.pka was automatically processed in the background: converter probe → internal XML bridge → normalized JSON → object extraction. If the source file exposes little internal evidence, upload exported show outputs or configure PTEXPLORER_PATH for full proprietary fidelity."
     missing = [row.get("command") for row in checklist if row.get("status") == "missing"]
     if missing:
         return "Upload these missing command outputs to increase confidence: " + ", ".join(missing[:4])

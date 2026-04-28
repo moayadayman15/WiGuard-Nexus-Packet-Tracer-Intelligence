@@ -16,6 +16,11 @@
         <label class="checkline"><input type="checkbox" name="sections" value="wireless" checked> Wireless validation matrix</label>
         <label class="checkline"><input type="checkbox" name="sections" value="anomalies" checked> Anomaly summaries</label>
         <label class="checkline"><input type="checkbox" name="sections" value="compliance" checked> Compliance matrix</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="diagnostics" checked> Packet Tracer diagnostics</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="topology" checked> Topology confidence</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="rules" checked> Rule engine readiness</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="quality" checked> Evidence quality matrix</label>
+        <label class="checkline"><input type="checkbox" name="sections" value="signoff" checked> Analyst sign-off</label>
       </div>
       <button class="primary-btn" type="submit">Export Custom HTML Report</button>
     </form>
@@ -29,11 +34,27 @@
   </div>
 </section>
 
+<section class="two-col">
+  <div class="panel quality-studio-panel">
+    <div class="panel-head"><h4>Extraction Quality Gate</h4><span class="badge {{ 'pass' if analyst_signoff.can_publish_technical else 'review' }}">{{ evidence_quality_matrix.grade or 'No evidence' }}</span></div>
+    <div class="contract-grid">
+      <article><span>Quality Score</span><b>{{ evidence_quality_matrix.score or 0 }}/100</b><small>{{ evidence_quality_matrix.summary.critical_missing or 0 }} critical missing</small></article>
+      <article><span>Executive Publish</span><b>{{ 'Ready' if analyst_signoff.can_publish_executive else 'Blocked' }}</b><small>High-level report gate</small></article>
+      <article><span>Technical Publish</span><b>{{ 'Ready' if analyst_signoff.can_publish_technical else 'Needs caveats' }}</b><small>Technical evidence gate</small></article>
+      <article><span>Full Fidelity Claim</span><b>{{ 'Allowed' if analyst_signoff.can_claim_full_fidelity else 'Forbidden' }}</b><small>Prevents fake 100% claims</small></article>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Report Safety Notes</h4><span>{{ analyst_signoff.forbidden_claims|length if analyst_signoff.forbidden_claims else 0 }} forbidden claim(s)</span></div>
+    <ul class="clean-list">{% for claim in analyst_signoff.forbidden_claims or [] %}<li>{{ claim }}</li>{% else %}<li>No forbidden claims generated yet.</li>{% endfor %}</ul>
+  </div>
+</section>
+
 <section class="card-grid two">
   {% for key, title in report_types.items() %}
   <article class="panel report-card">
     <div class="panel-head"><h4>{{ title }}</h4><span class="badge info">{{ key }}</span></div>
-    <p>{% if key == 'executive' %}Board-level health, business impact, top concern, and remediation priority.{% elif key == 'technical' %}Objects, topology, policy diff, extraction confidence, and snapshot comparison.{% elif key == 'compliance' %}Controls matrix with evidence mapping and risk status.{% elif key == 'packet_tracer' %}Conversion readiness, missing commands, extraction confidence, and next steps.{% elif key == 'wireless_risk' %}AP load, anomalies, severity mapping, validation results, and remediation focus.{% elif key == 'audit' %}Evidence manifest, source hashes, line evidence, and integrity context.{% elif key == 'evidence_appendix' %}Artifact inventory and detailed evidence appendix for external review.{% elif key == 'wireless' %}Wireless sessions, AP inventory, event correlation, validation matrix, and anomalies.{% else %}Complete report package with all available sections.{% endif %}</p>
+    <p>{% if key == 'executive' %}Board-level health, business impact, top concern, and remediation priority.{% elif key == 'technical' %}Objects, topology, policy diff, extraction confidence, and snapshot comparison.{% elif key == 'compliance' %}Controls matrix with evidence mapping and risk status.{% elif key == 'packet_tracer' %}Conversion readiness, missing commands, extraction confidence, and next steps.{% elif key == 'wireless_risk' %}AP load, anomalies, severity mapping, validation results, and remediation focus.{% elif key == 'audit' %}Evidence manifest, source hashes, line evidence, and integrity context.{% elif key == 'evidence_appendix' %}Artifact inventory and detailed evidence appendix for external review.{% elif key == 'wireless' %}Wireless sessions, AP inventory, event correlation, validation matrix, and anomalies.{% elif key == 'quality' %}Evidence quality matrix, analyst sign-off, publish readiness, and forbidden/allowed fidelity claims.{% else %}Complete report package with all available sections.{% endif %}</p>
     <div class="button-row"><a class="ghost-btn" href="{{ url_for('actions.report_preview', report_type=key) }}" target="_blank">Preview</a><a class="ghost-btn" href="{{ url_for('actions.download_report_json', report_type=key) }}">JSON</a><a class="ghost-btn" href="{{ url_for('actions.download_report_html', report_type=key) }}">HTML</a><a class="primary-btn" href="{{ url_for('actions.download_report_pdf', report_type=key) }}">PDF</a></div>
   </article>
   {% endfor %}

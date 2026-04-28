@@ -15,6 +15,13 @@
       <option value="{{ key }}" {{ 'selected' if category==key else '' }}>{{ key }}</option>
       {% endfor %}
     </select>
+    <select name="status">
+      <option value="all" {{ 'selected' if status_filter=='all' else '' }}>All evidence states</option>
+      {% for st in ['verified','recovered','inferred','unmapped'] %}
+      <option value="{{ st }}" {{ 'selected' if status_filter==st else '' }}>{{ st }}</option>
+      {% endfor %}
+    </select>
+    <label class="checkline inline"><input type="checkbox" name="high_value" value="1" {{ 'checked' if high_value_only else '' }}> high-value only</label>
     <button class="primary-btn" type="submit">Search</button>
   </form>
 </section>
@@ -28,6 +35,36 @@
   </div>
 </section>
 
+{% set contracts = objects.verified_extraction_contract or [] %}
+{% set contract = contracts[0] if contracts else {} %}
+{% set es = contract.evidence_summary or {} %}
+<section class="panel extraction-contract-panel">
+  <div class="panel-head"><h4>Verified Evidence Registry</h4><span>{{ objects.evidence_registry|length if objects.evidence_registry else 0 }} mapped object(s)</span></div>
+  <div class="contract-grid">
+    <article><span>Tier</span><b>{{ contract.tier.replace('_',' ') if contract.tier else 'No contract yet' }}</b><small>{{ contract.claim or 'Import evidence to build a registry.' }}</small></article>
+    <article><span>Verified</span><b>{{ es.verified or 0 }}</b><small>line/path-backed objects</small></article>
+    <article><span>Recovered</span><b>{{ es.recovered or 0 }}</b><small>decoded/native evidence objects</small></article>
+    <article><span>Inferred / Unmapped</span><b>{{ (es.inferred or 0) + (es.unmapped or 0) }}</b><small>review before reporting as fact</small></article>
+  </div>
+  <div class="table-wrap mini-table evidence-registry-table">
+    <table>
+      <thead><tr><th>Status</th><th>Category</th><th>Name</th><th>Source</th><th>Confidence</th><th>Evidence</th></tr></thead>
+      <tbody>
+      {% for row in (objects.evidence_registry or [])[:120] %}
+        <tr>
+          <td><span class="badge {{ row.status }}">{{ row.status }}</span></td>
+          <td>{{ row.category }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.source_type }}{% if row.source_line %} · line {{ row.source_line }}{% endif %}{% if row.source_path %} · {{ row.source_path }}{% endif %}</td>
+          <td>{{ ((row.confidence or 0) * 100)|round|int }}%</td>
+          <td><small>{{ row.source_text }}</small></td>
+        </tr>
+      {% else %}<tr><td colspan="6" class="muted">No evidence registry yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section class="panel">
   <div class="panel-head"><h4>Object Inventory</h4><span>line evidence + confidence</span></div>
   <div class="object-list upgraded">
@@ -36,8 +73,13 @@
     <article class="object-card">
       <div class="object-top">
         <b>{{ row.category }}</b>
-        <span>Confidence {{ ((obj.evidence.confidence or 0.5)*100)|round|int if obj.evidence else 50 }}%</span>
+        {% set er = row.evidence_row or {} %}
+        <span class="badge {{ er.status or 'unmapped' }}">{{ er.status or 'unmapped' }}</span>
+        <span>Confidence {{ ((er.confidence or obj.evidence.confidence or 0.5)*100)|round|int if obj.evidence or er else 50 }}%</span>
       </div>
+      {% if er %}
+      <div class="evidence-strip"><span>{{ 'High-value' if er.high_value else 'Standard' }}</span><code>{{ er.source_type or 'source' }}{% if er.source_line %} · line {{ er.source_line }}{% endif %}{% if er.source_path %} · {{ er.source_path }}{% endif %}</code></div>
+      {% endif %}
       {% if obj.evidence %}
       <div class="evidence-strip"><span>Line {{ obj.evidence.source_line or 'N/A' }}</span><code>{{ obj.evidence.source_text or 'derived evidence' }}</code></div>
       {% endif %}

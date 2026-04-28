@@ -21,6 +21,7 @@ REPORT_TYPES = {
     "audit": "Audit Evidence & Appendix Report",
     "evidence_appendix": "Evidence Appendix",
     "wireless": "Wireless Event & Policy Report",
+    "quality": "Extraction Quality & Analyst Sign-off Report",
     "full": "Full Evidence Report"
 }
 
@@ -49,6 +50,8 @@ def _report_sections(report_type):
         return ["Artifact Manifest", "Line Evidence", "Source Hashes", "Integrity Notes"]
     if report_type == "wireless":
         return ["Wireless Risk", "SSID/AP Inventory", "Client Sessions", "Event Correlation", "Validation Matrix", "Anomalies"]
+    if report_type == "quality":
+        return ["Evidence Quality Matrix", "Analyst Sign-off", "Import Diagnostics", "Topology Confidence", "Rule Readiness"]
     return ["Executive Summary", "Policy Diff", "Root Cause", "Topology", "Timeline", "Playbooks", "Evidence Appendix"]
 
 
@@ -187,6 +190,35 @@ def report_pdf_bytes(state, report_type):
             story.append(table)
             story.append(Spacer(1, 12))
 
+    if report_type in {"quality", "packet_tracer", "technical", "full"}:
+        eqm = payload.get("evidence_quality_matrix", {})
+        rows = eqm.get("rows", [])
+        if rows:
+            story.append(Paragraph("Evidence Quality Matrix", styles["Heading2"]))
+            story.append(Paragraph(f"Grade: {eqm.get('grade', 'N/A')} | Score: {eqm.get('score', 'N/A')}/100", styles["SmallMuted"]))
+            qrows = [["Category", "Count", "Status", "Verified", "Action"]]
+            for r in rows[:16]:
+                qrows.append([r.get("label", ""), str(r.get("count", 0)), r.get("status", ""), str(r.get("verified", 0)), r.get("recommended_action", "")])
+            table = Table(qrows, repeatRows=1, colWidths=[95, 40, 50, 45, 220])
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            story.append(table)
+            story.append(Spacer(1, 12))
+        signoff = payload.get("analyst_signoff", {})
+        if signoff:
+            story.append(Paragraph("Analyst Sign-off", styles["Heading2"]))
+            story.append(Paragraph(f"Executive publish: {signoff.get('can_publish_executive')} | Technical publish: {signoff.get('can_publish_technical')} | Full fidelity: {signoff.get('can_claim_full_fidelity')}", styles["SmallMuted"]))
+            for item in signoff.get("required_actions", [])[:8]:
+                story.append(Paragraph(f"{item.get('priority')}: {item.get('action')} — {item.get('why')}", styles["Tiny"]))
+            for claim in signoff.get("forbidden_claims", [])[:4]:
+                story.append(Paragraph(f"Forbidden claim: {claim}", styles["Tiny"]))
+            story.append(Spacer(1, 8))
+
     if report_type in {"audit", "evidence_appendix"}:
         story.append(Paragraph("Audit Evidence", styles["Heading2"]))
         story.append(Paragraph(f"Source hash: {payload.get('source_hash', 'N/A')}", styles["Tiny"]))
@@ -221,6 +253,16 @@ def report_html_bytes(state, report_type):
         for c in causes
     )
     missing = "".join(f"<li><b>{html.escape(m.get('severity',''))}</b> — {html.escape(m.get('source',''))}: {html.escape(m.get('why',''))}</li>" for m in summary.get("missing_evidence", []))
+    diagnostics = payload.get("diagnostics", {})
+    topology_insights = payload.get("topology_insights", {})
+    rule_assessment = payload.get("rule_assessment", {})
+    evidence_quality = payload.get("evidence_quality_matrix", {})
+    signoff = payload.get("analyst_signoff", {})
+    blocker_rows = "".join(f"<tr><td>{html.escape(str(b.get('id','')))}</td><td>{html.escape(str(b.get('severity','')))}</td><td>{html.escape(str(b.get('detail','')))}</td></tr>" for b in diagnostics.get("blockers", []))
+    quality_rows = "".join(f"<tr><td>{html.escape(str(r.get('label','')))}</td><td>{html.escape(str(r.get('count',0)))}</td><td>{html.escape(str(r.get('status','')))}</td><td>{html.escape(str(r.get('claim_level','')))}</td><td>{html.escape(str(r.get('verified',0)))}</td><td>{html.escape(str(r.get('recommended_action','')))}</td></tr>" for r in evidence_quality.get("rows", []))
+    signoff_actions = "".join(f"<li><b>{html.escape(str(a.get('priority','')))}</b> — {html.escape(str(a.get('action','')))}: {html.escape(str(a.get('why','')))}</li>" for a in signoff.get("required_actions", []))
+    forbidden_claims = "".join(f"<li>{html.escape(str(c))}</li>" for c in signoff.get("forbidden_claims", []))
+    allowed_claims = "".join(f"<li>{html.escape(str(c))}</li>" for c in signoff.get("allowed_claims", []))
     doc = f"""<!doctype html>
 <html><head><meta charset='utf-8'><title>{html.escape(title)}</title>
 <style>
@@ -234,6 +276,11 @@ table{{width:100%;border-collapse:collapse;font-size:13px}}th,td{{border-bottom:
 <section class='panel kpis'><div class='kpi'><span>Risk Score</span><b>{risk.get('score','N/A')}</b></div><div class='kpi'><span>Grade</span><b>{html.escape(str(risk.get('grade','N/A')))}</b></div><div class='kpi'><span>Failed</span><b>{summary.get('failed',0)}</b></div><div class='kpi'><span>Review</span><b>{summary.get('review',0)}</b></div></section>
 <section class='panel'><h2>Executive Summary</h2><p>{html.escape(payload.get('executive_summary',{}).get('headline',''))}</p><p><b>Primary concern:</b> {html.escape(payload.get('executive_summary',{}).get('primary_concern',''))}</p></section>
 <section class='panel'><h2>Packet Tracer Conversion</h2><p><b>Readiness:</b> {html.escape(str(conversion.get('readiness','N/A')))} · <b>Score:</b> {html.escape(str(conversion.get('readiness_score','N/A')))}</p><p>{html.escape(str(conversion.get('analyst_next_step','')))}</p><table><thead><tr><th>Command</th><th>Status</th><th>Severity</th><th>Why</th></tr></thead><tbody>{command_rows or '<tr><td colspan=4>No conversion profile.</td></tr>'}</tbody></table></section>
+<section class='panel'><h2>Import Diagnostics</h2><p><b>Tier:</b> {html.escape(str(diagnostics.get('tier','N/A')))} · <b>Readiness:</b> {html.escape(str(diagnostics.get('readiness_score','N/A')))}% · <b>Full fidelity:</b> {html.escape(str(diagnostics.get('can_claim_full_fidelity', False)))}</p><table><thead><tr><th>Blocker</th><th>Severity</th><th>Detail</th></tr></thead><tbody>{blocker_rows or '<tr><td colspan=3>No blockers.</td></tr>'}</tbody></table></section>
+<section class='panel'><h2>Topology Confidence</h2><p><b>Nodes:</b> {topology_insights.get('node_count','N/A')} · <b>Edges:</b> {topology_insights.get('edge_count','N/A')} · <b>Average edge confidence:</b> {int((topology_insights.get('edge_confidence_average') or 0)*100)}%</p></section>
+<section class='panel'><h2>Rule Engine Readiness</h2><p><b>Enabled rules:</b> {rule_assessment.get('classic_rules_enabled','N/A')} / {rule_assessment.get('classic_rules_total','N/A')} · <b>Findings:</b> {rule_assessment.get('findings_total','N/A')} · <b>Risk atoms:</b> {rule_assessment.get('risk_atoms','N/A')}</p></section>
+<section class='panel'><h2>Evidence Quality Matrix</h2><p><b>Grade:</b> {html.escape(str(evidence_quality.get('grade','N/A')))} · <b>Score:</b> {html.escape(str(evidence_quality.get('score','N/A')))}/100 · <b>Full fidelity allowed:</b> {html.escape(str(evidence_quality.get('full_fidelity_allowed', False)))}</p><table><thead><tr><th>Category</th><th>Count</th><th>Status</th><th>Claim Level</th><th>Verified</th><th>Recommended Action</th></tr></thead><tbody>{quality_rows or '<tr><td colspan=6>No quality matrix.</td></tr>'}</tbody></table></section>
+<section class='panel'><h2>Analyst Sign-off</h2><p><b>Executive publish:</b> {html.escape(str(signoff.get('can_publish_executive', False)))} · <b>Technical publish:</b> {html.escape(str(signoff.get('can_publish_technical', False)))} · <b>Evidence grade:</b> {html.escape(str(signoff.get('evidence_grade','N/A')))}</p><h3>Required Actions</h3><ul>{signoff_actions or '<li>No required actions.</li>'}</ul><h3>Allowed Claims</h3><ul>{allowed_claims or '<li>No allowed claims yet.</li>'}</ul><h3>Forbidden Claims</h3><ul>{forbidden_claims or '<li>No forbidden claims.</li>'}</ul></section>
 <section class='panel'><h2>Missing Evidence</h2><ul>{missing or '<li>No missing evidence warnings.</li>'}</ul></section>
 <section class='panel'><h2>Wireless Validation Matrix</h2><table><thead><tr><th>Client</th><th>Role</th><th>SSID</th><th>AP</th><th>VLAN Expected/Actual</th><th>Result</th></tr></thead><tbody>{wireless_rows or '<tr><td colspan=6>No wireless rows.</td></tr>'}</tbody></table></section>
 <section class='panel'><h2>Wireless Anomalies</h2>{anomaly_cards or '<p>No wireless anomalies.</p>'}</section>
@@ -275,5 +322,23 @@ def custom_report_html_bytes(state, sections):
     if "compliance" in sections:
         rows = "".join(f"<tr><td>{html.escape(str(c.get('control','')))}</td><td>{html.escape(str(c.get('status','')))}</td><td>{html.escape(str(c.get('risk','')))}</td><td>{html.escape(str(c.get('evidence','')))}</td></tr>" for c in payload.get("compliance", []))
         parts.append(f"<section><h2>Compliance Matrix</h2><table><tr><th>Control</th><th>Status</th><th>Risk</th><th>Evidence</th></tr>{rows}</table></section>")
+    if "diagnostics" in sections:
+        diag = payload.get("diagnostics", {})
+        rows = "".join(f"<tr><td>{html.escape(str(b.get('id','')))}</td><td>{html.escape(str(b.get('severity','')))}</td><td>{html.escape(str(b.get('detail','')))}</td></tr>" for b in diag.get("blockers", []))
+        parts.append(f"<section><h2>Packet Tracer Diagnostics</h2><p>Tier: <b>{html.escape(str(diag.get('tier','N/A')))}</b> | Readiness: <b>{html.escape(str(diag.get('readiness_score','N/A')))}%</b> | Full Fidelity: <b>{html.escape(str(diag.get('can_claim_full_fidelity', False)))}</b></p><table><tr><th>Blocker</th><th>Severity</th><th>Detail</th></tr>{rows or '<tr><td colspan=3>No blockers.</td></tr>'}</table></section>")
+    if "topology" in sections:
+        tins = payload.get("topology_insights", {})
+        parts.append(f"<section><h2>Topology Confidence</h2><p>Nodes: <b>{tins.get('node_count','N/A')}</b> | Edges: <b>{tins.get('edge_count','N/A')}</b> | Confirmed edges: <b>{tins.get('confirmed_edges','N/A')}</b> | Avg confidence: <b>{int((tins.get('edge_confidence_average') or 0)*100)}%</b></p></section>")
+    if "rules" in sections:
+        ra = payload.get("rule_assessment", {})
+        parts.append(f"<section><h2>Rule Engine Readiness</h2><p>Rules: <b>{ra.get('classic_rules_enabled','N/A')} / {ra.get('classic_rules_total','N/A')}</b> | Findings: <b>{ra.get('findings_total','N/A')}</b> | Verified inputs: <b>{int((ra.get('evidence_verified_ratio') or 0)*100)}%</b></p></section>")
+    if "quality" in sections:
+        eqm = payload.get("evidence_quality_matrix", {})
+        rows = "".join(f"<tr><td>{html.escape(str(r.get('label','')))}</td><td>{html.escape(str(r.get('status','')))}</td><td>{html.escape(str(r.get('claim_level','')))}</td><td>{html.escape(str(r.get('recommended_action','')))}</td></tr>" for r in eqm.get("rows", []))
+        parts.append(f"<section><h2>Evidence Quality Matrix</h2><p>Grade: <b>{html.escape(str(eqm.get('grade','N/A')))}</b> | Score: <b>{html.escape(str(eqm.get('score','N/A')))} / 100</b></p><table><tr><th>Category</th><th>Status</th><th>Claim</th><th>Action</th></tr>{rows}</table></section>")
+    if "signoff" in sections:
+        signoff = payload.get("analyst_signoff", {})
+        actions = "".join(f"<li><b>{html.escape(str(a.get('priority','')))}</b> — {html.escape(str(a.get('action','')))}</li>" for a in signoff.get("required_actions", []))
+        parts.append(f"<section><h2>Analyst Sign-off</h2><p>Executive: <b>{html.escape(str(signoff.get('can_publish_executive', False)))}</b> | Technical: <b>{html.escape(str(signoff.get('can_publish_technical', False)))}</b> | Full fidelity: <b>{html.escape(str(signoff.get('can_claim_full_fidelity', False)))}</b></p><ul>{actions or '<li>No required actions.</li>'}</ul></section>")
     parts.append("</body></html>")
     return BytesIO("".join(parts).encode("utf-8"))

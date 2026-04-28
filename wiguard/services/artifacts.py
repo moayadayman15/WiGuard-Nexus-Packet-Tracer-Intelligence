@@ -6,7 +6,7 @@ from .util import write_json, sha256_file, now_iso
 from .intelligence import (
     get_objects, build_policy_diff, build_root_causes, build_topology,
     build_timeline, build_playbooks, risk_score, build_report, object_counts,
-    build_snapshot_diff
+    build_snapshot_diff, build_extraction_diagnostics, build_topology_insights, build_validation_rule_assessment, build_evidence_quality_matrix, build_analyst_signoff, build_topology_dot
 )
 from .reporting import report_html_bytes
 from .wireless import wireless_dashboard
@@ -30,6 +30,16 @@ CATEGORY_MAP = {
     "mac_table.json": ("mac_table", []),
     "arp_table.json": ("arp_table", []),
     "device_facts.json": ("device_facts", []),
+    "internal_xml_bridge.json": ("internal_xml_bridge", []),
+    "auto_conversion_pipeline.json": ("auto_conversion_pipeline", []),
+    "decoded_payloads.json": ("decoded_payloads", []),
+    "extraction_fidelity.json": ("extraction_fidelity", []),
+    "printable_segments_preview.json": ("printable_segments_preview", []),
+    "reconstructed_config_preview.json": ("reconstructed_config_preview", []),
+    "normalized_json_preview.json": ("normalized_json_preview", []),
+    "evidence_registry.json": ("evidence_registry", []),
+    "verified_extraction_contract.json": ("verified_extraction_contract", []),
+    "companion_exports.json": ("companion_exports", []),
 }
 
 
@@ -59,10 +69,28 @@ def generate_artifacts(state, artifact_dir):
         files[filename] = write_json(artifact_dir / filename, objects.get(key, default))
 
     files["packet_tracer_conversion_profile.json"] = write_json(artifact_dir / "packet_tracer_conversion_profile.json", state.get("active_extraction", {}).get("conversion_profile", objects.get("packet_tracer_profile", {})))
+    bridge_xml_rows = objects.get("converted_xml_preview", []) or []
+    if bridge_xml_rows and isinstance(bridge_xml_rows[0], dict) and bridge_xml_rows[0].get("content"):
+        bridge_xml_path = artifact_dir / "internal_pkt_bridge.xml"
+        bridge_xml_path.write_text(bridge_xml_rows[0].get("content", ""), encoding="utf-8")
+        files["internal_pkt_bridge.xml"] = str(bridge_xml_path)
+    normalized_rows = objects.get("normalized_json_preview", []) or []
+    if normalized_rows and isinstance(normalized_rows[0], dict) and normalized_rows[0].get("content"):
+        normalized_path = artifact_dir / "internal_pkt_bridge.normalized.json"
+        normalized_path.write_text(normalized_rows[0].get("content", ""), encoding="utf-8")
+        files["internal_pkt_bridge.normalized.json"] = str(normalized_path)
     files["routing.json"] = write_json(artifact_dir / "routing.json", objects.get("routing", {}))
     files["policy_diff.json"] = write_json(artifact_dir / "policy_diff.json", build_policy_diff(state))
     files["root_causes.json"] = write_json(artifact_dir / "root_causes.json", build_root_causes(state))
     files["topology_map.json"] = write_json(artifact_dir / "topology_map.json", build_topology(state))
+    files["topology_insights.json"] = write_json(artifact_dir / "topology_insights.json", build_topology_insights(state))
+    files["import_diagnostics.json"] = write_json(artifact_dir / "import_diagnostics.json", build_extraction_diagnostics(state))
+    files["rule_assessment.json"] = write_json(artifact_dir / "rule_assessment.json", build_validation_rule_assessment(state))
+    files["evidence_quality_matrix.json"] = write_json(artifact_dir / "evidence_quality_matrix.json", build_evidence_quality_matrix(state))
+    files["analyst_signoff.json"] = write_json(artifact_dir / "analyst_signoff.json", build_analyst_signoff(state))
+    dot_path = artifact_dir / "topology_graph.dot"
+    dot_path.write_text(build_topology_dot(state), encoding="utf-8")
+    files["topology_graph.dot"] = str(dot_path)
     files["risk_model.json"] = write_json(artifact_dir / "risk_model.json", risk_score(state))
     files["risk_timeline.json"] = write_json(artifact_dir / "risk_timeline.json", build_timeline(state))
     files["playbooks.json"] = write_json(artifact_dir / "playbooks.json", build_playbooks(state))

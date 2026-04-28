@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Import Center</span>
+  <h3>Upload, extract, normalize, and generate evidence</h3>
+  <p>Upload Packet Tracer `.pkt/.pka`, XML, JSON, running-config, or show-command outputs. The platform extracts objects and regenerates all report artifacts.</p>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Upload Network Evidence</h4></div>
+    <form class="upload-box" method="post" enctype="multipart/form-data" action="{{ url_for('actions.import_file') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="dropzone" id="dropzone">
+        <input id="file-input" type="file" name="network_file" required>
+        <span>Drop file here or click to choose</span>
+        <small>.pkt .pka .xml .json .txt .cfg .conf</small>
+        <strong id="file-name">No file selected</strong>
+      </label>
+      <button class="primary-btn full" type="submit">Import & Generate Artifacts</button>
+    </form>
+    <form method="post" action="{{ url_for('actions.load_sample') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="ghost-btn full" type="submit">Load Production Sample</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>Current Extraction Summary</h4><a href="{{ url_for('pages.object_explorer') }}">Explore</a></div>
+    <div class="object-grid tight">
+      {% for key, value in counts.items() %}
+      <div><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Extraction Confidence</h4></div>
+    {% set conf = active.confidence_summary or {} %}
+    <div class="summary-lines">
+      <div><span>Overall</span><b>{{ ((conf.overall or 0)*100)|round|int }}%</b></div>
+      <div><span>Source Mode</span><b>{{ conf.mode or active.source_mode or 'N/A' }}</b></div>
+      <div><span>Line Mapping</span><b>{{ ((conf.line_mapping_ratio or 0)*100)|round|int }}%</b></div>
+      <div><span>Applied ACL Rules</span><b>{{ conf.applied_acl_rules or 0 }}</b></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Missing Evidence Detector</h4></div>
+    <ul>
+      {% for m in active.missing_evidence or [] %}
+      <li><b>{{ m.severity }}</b> — {{ m.source }}<br><small class="muted">{{ m.why }}</small></li>
+      {% else %}
+      <li>No missing evidence warnings.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Extraction Pipeline</h4><span>{{ state.active_extraction.filename or 'No import yet' }}</span></div>
+  <div class="pipeline">
+    {% for step in state.active_extraction.pipeline or [] %}
+    <article>
+      <div><b>{{ step.stage }}</b><span class="badge {{ step.status }}">{{ step.status }}</span></div>
+      <p>{{ step.detail }}</p>
+      <small>Items: {{ step.items }} · Confidence: {{ (step.confidence*100)|round|int }}%</small>
+    </article>
+    {% else %}
+    <p class="muted">Run an import to see pipeline details.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Generated Artifacts</h4><a href="{{ url_for('actions.download_evidence_zip') }}">Download ZIP</a></div>
+  <div class="artifact-grid">
+  {% for name, path in artifacts.items() %}
+    <a href="{{ url_for('actions.download_artifact', name=name) }}"><b>{{ name }}</b><span>Download JSON</span></a>
+  {% else %}
+    <p class="muted">No artifacts yet.</p>
+  {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Searchable Object Explorer</span>
+  <h3>Extracted objects with line-level evidence</h3>
+  <p>Search every parsed object and inspect evidence line, confidence, and raw source text where available.</p>
+</section>
+
+<section class="panel">
+  <form class="filter-row" method="get">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search VLAN, interface, ACL, IP, hostname...">
+    <select name="category">
+      <option value="all">All categories</option>
+      {% for key in objects.keys() %}
+      <option value="{{ key }}" {{ 'selected' if category==key else '' }}>{{ key }}</option>
+      {% endfor %}
+    </select>
+    <button class="primary-btn" type="submit">Search</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Object Inventory</h4><span>{{ flat_objects|length }} result(s)</span></div>
+  <div class="object-list">
+    {% for row in flat_objects %}
+    {% set obj = row.object %}
+    <article class="object-card">
+      <div class="object-top"><b>{{ row.category }}</b><span>Confidence {{ ((obj.evidence.confidence or 0.5)*100)|round|int if obj.evidence else 50 }}%</span></div>
+      <pre>{{ obj|tojson(indent=2) }}</pre>
+    </article>
+    {% else %}
+    <p class="muted">No objects found. Import a config first.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

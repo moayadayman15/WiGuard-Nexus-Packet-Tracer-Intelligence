@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Admin Center</span>
+  <h3>Security, RBAC, database, health, migrations, backups, and audit trail</h3>
+  <p>WiGuard now uses rate-limited authentication, password policy, role-aware actions, SQLite migrations, admin backup/restore, and a dedicated health check.</p>
+</section>
+
+<section class="kpi-grid">
+  <article class="kpi"><span>Health</span><strong>{{ 'OK' if db_health.ok else 'Issue' }}</strong><small>{{ db_health.path }}</small></article>
+  <article class="kpi"><span>Migrations</span><strong>{{ db_migrations|length }}</strong><small>Applied schema versions</small></article>
+  <article class="kpi"><span>Users</span><strong>{{ users|length }}</strong><small>Local SQLite accounts</small></article>
+  <article class="kpi"><span>Backups</span><strong>{{ db_backups|length }}</strong><small>Database backup records</small></article>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Product & Wireless Thresholds</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.update_settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Product name<input name="product" value="{{ state.meta.product }}"></label>
+      <label>Tagline<input name="tagline" value="{{ state.meta.tagline }}"></label>
+      <div class="form-grid"><label>Auth failure threshold<input type="number" name="auth_failure_threshold" value="{{ state.policy_settings.wireless.auth_failure_threshold }}"></label><label>Roaming threshold<input type="number" name="roaming_threshold" value="{{ state.policy_settings.wireless.roaming_threshold }}"></label></div>
+      <div class="form-grid"><label>AP load warning %<input type="number" name="ap_load_warning" value="{{ state.policy_settings.wireless.ap_load_warning }}"></label><label>AP load critical %<input type="number" name="ap_load_critical" value="{{ state.policy_settings.wireless.ap_load_critical }}"></label></div>
+      <button class="primary-btn" type="submit">Save Settings</button>
+    </form>
+  </div>
+  <div class="panel" id="backups">
+    <div class="panel-head"><h4>Database Backup / Restore</h4><a class="primary-btn" href="{{ url_for('actions.download_database_backup') }}">Download Backup</a></div>
+    <p class="muted">Restore creates an automatic safety backup first, validates the uploaded SQLite file, then reapplies migrations.</p>
+    <form class="form" method="post" enctype="multipart/form-data" action="{{ url_for('actions.restore_database') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="dropzone"><strong>Upload WiGuard SQLite backup</strong><input type="file" name="database_file" accept=".sqlite,.sqlite3,.db" required></label>
+      <button class="ghost-btn danger" type="submit">Restore Database</button>
+    </form>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>RBAC Users</h4><a href="{{ url_for('pages.register') }}">Register user</a></div>
+    <div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Access Meaning</th><th>Created</th><th>Last login</th></tr></thead><tbody>{% for u in users %}<tr><td>{{ u.username }}</td><td><span class="badge info">{{ u.role }}</span></td><td>{% if u.role=='admin' %}Full admin{% elif u.role=='engineer' %}Policy and inventory changes{% elif u.role=='analyst' %}Import/analyze/report{% elif u.role=='auditor' %}Read and export{% else %}Read-only{% endif %}</td><td>{{ u.created_at }}</td><td>{{ u.last_login or 'Never' }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No SQLite users yet. Fallback admin login is still available.</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Applied Migrations</h4><span class="muted">Database schema history</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Version</th><th>Applied At</th></tr></thead><tbody>{% for m in db_migrations %}<tr><td>{{ m.version }}</td><td>{{ m.applied_at }}</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Backup History</h4><span class="muted">Latest manual/automatic DB backups</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Created By</th><th>Path</th><th>Note</th></tr></thead><tbody>{% for b in db_backups %}<tr><td>{{ b.created_at }}</td><td>{{ b.created_by }}</td><td><code>{{ b.backup_path }}</code></td><td>{{ b.note }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No backups recorded yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Audit Trail</h4><span class="muted">Last 20 SQLite audit records</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead><tbody>{% for a in audit_tail %}<tr><td>{{ a.created_at }}</td><td>{{ a.actor }}</td><td>{{ a.action }}</td><td>{{ a.target }}</td><td>{{ a.detail }}</td></tr>{% else %}<tr><td colspan="5" class="muted">No audit records yet.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+{% endblock %}

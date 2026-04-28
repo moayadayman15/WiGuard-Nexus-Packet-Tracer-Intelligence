@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ code }} · WiGuard Nexus</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body class="login-body">
+  <main class="login-card auth-card-wide error-card">
+    <div class="brand-logo big">WG</div>
+    <span class="pill">{{ code }}</span>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <div class="button-row"><a class="primary-btn" href="{{ url_for('pages.overview') }}">Back to workspace</a><a class="ghost-btn" href="{{ url_for('pages.settings') }}">Open settings</a></div>
+  </main>
+</body></html>

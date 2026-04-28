@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Simulation Engine</span>
+  <h3>Access Simulation Lab</h3>
+  <p>Run guest/student/staff scenarios and record them as reportable evidence.</p>
+</section>
+
+<section class="two-col">
+<div class="panel">
+<form class="form" method="post" action="{{ url_for('actions.simulate') }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label>Client<select name="client">{% for c in state.clients %}<option value="{{ c.name }} - {{ c.role }}">{{ c.name }} - {{ c.role }}</option>{% endfor %}</select></label>
+<label>Action<select name="action"><option>Access Internal Network</option><option>Access Internet</option><option>Access ERP</option><option>Roam to another AP</option></select></label>
+<button class="primary-btn full" type="submit">Run Simulation</button>
+</form>
+</div>
+<div class="panel"><h4>Purpose</h4><p class="callout">Simulation results are stored as events and can be included in security and full reports.</p></div>
+</section>
+<section class="panel"><div class="table-wrap"><table><thead><tr><th>ID</th><th>Client</th><th>Action</th><th>Status</th><th>Severity</th><th>Detail</th></tr></thead><tbody>{% for s in state.simulations %}<tr><td>{{ s.id }}</td><td>{{ s.client }}</td><td>{{ s.action }}</td><td>{{ s.status }}</td><td>{{ s.severity }}</td><td>{{ s.detail }}</td></tr>{% else %}<tr><td colspan="6">No simulations yet.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Config Snapshot Comparison</span>
+  <h3>Before/after configuration review</h3>
+  <p>Compare current extracted evidence with the previous import. Counts now show object-level delta and the report exports include snapshot_diff.json.</p>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Baseline</h4></div>
+    <p><b>{{ snapshot_diff.baseline or 'No previous import yet' }}</b></p>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Current</h4></div>
+    <p><b>{{ snapshot_diff.current or 'No current import yet' }}</b></p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Object Delta</h4></div>
+  <div class="table-wrap">
+    <table><thead><tr><th>Object Type</th><th>Before</th><th>After</th><th>Delta</th></tr></thead><tbody>
+    {% for row in snapshot_diff.changes %}
+      <tr><td>{{ row.object_type }}</td><td>{{ row.before }}</td><td>{{ row.after }}</td><td>{{ '+' if row.delta > 0 else '' }}{{ row.delta }}</td></tr>
+    {% else %}
+      <tr><td colspan="4">No snapshots yet.</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+</section>
+
+<section class="panel"><div class="panel-head"><h4>Import History</h4></div><div class="table-wrap"><table><thead><tr><th>Import</th><th>Filename</th><th>Source Mode</th><th>Objects</th><th>Source Hash</th></tr></thead><tbody>{% for i in state.imports %}<tr><td>{{ i.id }}</td><td>{{ i.filename }}</td><td>{{ i.source_mode }}</td><td>{{ i.object_count }}</td><td><code>{{ i.source_hash or 'N/A' }}</code></td></tr>{% else %}<tr><td colspan="5">No snapshots yet.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

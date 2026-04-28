@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title compact-hero">
+  <div><span class="pill">Wireless Events</span><h3>Filtered timeline for client, AP, SSID, and policy events</h3><p>Use filters to investigate association, roaming, authentication failures, role changes, DHCP updates, imports, connector runs, and policy violations.</p></div>
+  <a class="primary-btn" href="{{ url_for('pages.wireless_manager') }}#events">Open Event Simulator</a>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Timeline Filters</h4><span class="muted">{{ filtered_events|length }} matching events</span></div>
+  <form class="filter-row" method="get" action="{{ url_for('pages.events') }}">
+    <select name="type"><option value="">Any type</option>{% for t in state.events|map(attribute='type')|unique %}<option value="{{ t }}" {{ 'selected' if event_type_filter==t else '' }}>{{ t }}</option>{% endfor %}</select>
+    <select name="severity"><option value="">Any severity</option>{% for sev in ['Info','Medium','High','Critical'] %}<option value="{{ sev }}" {{ 'selected' if severity_filter==sev else '' }}>{{ sev }}</option>{% endfor %}</select>
+    <input name="client" value="{{ client_filter }}" placeholder="Client contains...">
+    <button class="primary-btn" type="submit">Apply Filters</button>
+    <a class="ghost-btn" href="{{ url_for('pages.events') }}">Clear</a>
+  </form>
+</section>
+
+<section class="panel"><div class="table-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Severity</th><th>Client</th><th>SSID/AP/VLAN</th><th>Detail</th></tr></thead><tbody>{% for e in filtered_events %}<tr><td>{{ e.created_at }}</td><td>{{ e.type }}</td><td><span class="badge {{ 'fail' if e.severity in ['Critical','High'] else 'review' if e.severity=='Medium' else 'info' }}">{{ e.severity }}</span></td><td>{{ e.client }}</td><td>{{ e.ssid or '' }}<br><small>{{ e.ap or e.to_ap or '' }} {{ e.vlan or '' }}</small></td><td>{{ e.detail }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No events match the selected filters.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Root Cause Analyzer</span>
+  <h3>Likely cause and verification commands</h3>
+  <p>Each failed/review diff becomes a root-cause card with confidence, owner, and commands.</p>
+</section>
+
+<section class="card-grid three">
+  {% for c in causes %}
+  <article class="panel cause-card">
+    <div class="panel-head"><h4>{{ c.finding_id }}</h4><span class="badge {{ c.severity|lower }}">{{ c.severity }}</span></div>
+    <p>Confidence {{ (c.confidence*100)|round|int }}% · Evidence line {{ c.evidence_line or 'N/A' }}</p>
+    <b>Likely causes</b>
+    <ul>{% for h in c.hypotheses %}<li>{{ h }}</li>{% endfor %}</ul>
+    <b>Verification</b>
+    <ul class="cmd-list">{% for cmd in c.verification_commands %}<li><code>{{ cmd }}</code></li>{% endfor %}</ul>
+    <div class="owner">Owner: {{ c.owner }}</div>
+  </article>
+  {% else %}
+  <div class="panel"><p class="muted">No root causes yet.</p></div>
+  {% endfor %}
+</section>
+{% endblock %}

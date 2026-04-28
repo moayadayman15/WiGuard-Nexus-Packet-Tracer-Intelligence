@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Project Workspaces</span>
+  <h3>Manage analysis workspaces</h3>
+  <p>Create separate WiGuard workspaces for different campuses, customers, or lab scenarios. The selected project is embedded into every generated report.</p>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Create Project</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.create_project') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Project Name<input name="name" placeholder="Branch Campus Validation" required></label>
+      <label>Environment<input name="environment" placeholder="Wireless/Wired segmentation review"></label>
+      <label>Owner<input name="owner" placeholder="Network Security Team"></label>
+      <button class="primary-btn full" type="submit">Create & Select</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Current Project</h4></div>
+    <div class="summary-lines">
+      <div><span>Name</span><b>{{ current_project.name }}</b></div>
+      <div><span>Owner</span><b>{{ current_project.owner }}</b></div>
+      <div><span>Environment</span><b>{{ current_project.environment }}</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>All Projects</h4></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Environment</th><th>Owner</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      {% for p in state.projects %}
+        <tr>
+          <td><b>{{ p.name }}</b><br><small class="muted">{{ p.id }}</small></td>
+          <td>{{ p.environment }}</td>
+          <td>{{ p.owner }}</td>
+          <td>{{ 'Selected' if p.id == state.current_project else p.status }}</td>
+          <td>
+            <div class="button-row">
+              <form method="post" action="{{ url_for('actions.switch_project', project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Switch</button></form>
+              <form method="post" action="{{ url_for('actions.delete_project', project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

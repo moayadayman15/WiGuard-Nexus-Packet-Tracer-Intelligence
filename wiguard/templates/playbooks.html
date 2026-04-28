@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Remediation Playbooks</span>
+  <h3>Fix plans by finding category</h3>
+  <p>Each failed check gets a practical owner, commands, and remediation steps.</p>
+</section>
+
+<section class="card-grid two">
+{% for p in playbooks %}
+<article class="panel"><div class="panel-head"><h4>{{ p.finding_id }}</h4><span>{{ p.owner }}</span></div><ol>{% for step in p.steps %}<li>{{ step }}</li>{% endfor %}</ol><b>Commands</b><ul class="cmd-list">{% for cmd in p.commands %}<li><code>{{ cmd }}</code></li>{% endfor %}</ul></article>
+{% else %}<div class="panel"><p>No playbooks yet. Run import and review diffs.</p></div>{% endfor %}
+</section>
+{% endblock %}

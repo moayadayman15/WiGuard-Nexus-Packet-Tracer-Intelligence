@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Interactive Topology Graph</span>
+  <h3>Topology and VLAN path view</h3>
+  <p>Graph generated from extracted devices and CDP/link hints. It is evidence-based and updates after each import.</p>
+</section>
+
+<section class="two-col">
+  <div class="panel topology-panel">
+    <div class="topology-canvas">
+      {% for node in topology.nodes %}
+      <div class="topo-node type-{{ node.type|default('device') }}" style="left: {{ 8 + (loop.index0 % 4)*22 }}%; top: {{ 18 + (loop.index0 // 4)*28 }}%;">
+        <b>{{ node.label }}</b><small>{{ node.type }} · {{ (node.confidence*100)|round|int }}%</small>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Graph Summary</h4></div>
+    <div class="summary-lines">
+      <div><span>Nodes</span><b>{{ topology.nodes|length }}</b></div>
+      <div><span>Edges</span><b>{{ topology.edges|length }}</b></div>
+      <div><span>Purpose</span><b>Wireless → wired evidence path</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Links / Edges</h4></div>
+  <div class="table-wrap">
+    <table><thead><tr><th>From</th><th>To</th><th>Type</th><th>Status</th><th>Confidence</th></tr></thead><tbody>
+    {% for e in topology.edges %}
+    <tr><td>{{ e['from'] }}</td><td>{{ e['to'] }}</td><td>{{ e.type }}</td><td>{{ e.status }}</td><td>{{ (e.confidence*100)|round|int }}%</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+</section>
+{% endblock %}

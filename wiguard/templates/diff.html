@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Policy Diff Engine</span>
+  <h3>Expected policy vs extracted reality</h3>
+  <p>Compares wireless SSID/VLAN/DHCP/isolation intent with imported wired evidence.</p>
+</section>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Category</th><th>Asset</th><th>Expected</th><th>Actual</th><th>Status</th><th>Severity</th><th>Evidence Line</th></tr></thead>
+      <tbody>
+      {% for d in diffs %}
+      <tr>
+        <td>{{ d.id }}</td><td>{{ d.category }}</td><td>{{ d.asset }}</td><td>{{ d.expected }}</td><td>{{ d.actual }}</td>
+        <td><span class="badge {{ d.status|lower }}">{{ d.status }}</span></td><td>{{ d.severity }}</td><td>{{ d.evidence_line or 'N/A' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

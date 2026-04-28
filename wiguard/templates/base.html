@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ state.meta.product }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">WG</div>
+      <div>
+        <h1>WiGuard Nexus</h1>
+        <p>Production Core</p>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a class="{{ 'active' if page=='overview' else '' }}" href="{{ url_for('pages.overview') }}">Overview</a>
+      <a class="{{ 'active' if page=='projects' else '' }}" href="{{ url_for('pages.projects') }}">Projects</a>
+      <a class="{{ 'active' if page=='wireless' else '' }}" href="{{ url_for('pages.wireless_manager') }}">Wireless Manager</a>
+      <a class="{{ 'active' if page=='import' else '' }}" href="{{ url_for('pages.import_center') }}">Import Center</a>
+      <a class="{{ 'active' if page=='objects' else '' }}" href="{{ url_for('pages.object_explorer') }}">Object Explorer</a>
+      <a class="{{ 'active' if page=='topology' else '' }}" href="{{ url_for('pages.topology') }}">Topology</a>
+      <a class="{{ 'active' if page=='diff' else '' }}" href="{{ url_for('pages.diff') }}">Policy Diff</a>
+      <a class="{{ 'active' if page=='root' else '' }}" href="{{ url_for('pages.root_cause') }}">Root Cause</a>
+      <a class="{{ 'active' if page=='reports' else '' }}" href="{{ url_for('pages.reports') }}">Report Center</a>
+      <a class="{{ 'active' if page=='verifier' else '' }}" href="{{ url_for('pages.verifier') }}">Verifier</a>
+      <a class="{{ 'active' if page=='rules' else '' }}" href="{{ url_for('pages.rules') }}">Rules</a>
+      <a class="{{ 'active' if page=='simulation' else '' }}" href="{{ url_for('pages.simulation') }}">Simulation Lab</a>
+      <a class="{{ 'active' if page=='playbooks' else '' }}" href="{{ url_for('pages.playbooks') }}">Playbooks</a>
+      <a class="{{ 'active' if page=='history' else '' }}" href="{{ url_for('pages.history') }}">Import History</a>
+      <a class="{{ 'active' if page=='timeline' else '' }}" href="{{ url_for('pages.timeline') }}">Risk Timeline</a>
+      <a class="{{ 'active' if page=='snapshot' else '' }}" href="{{ url_for('pages.snapshot') }}">Snapshot Compare</a>
+      <a class="{{ 'active' if page=='events' else '' }}" href="{{ url_for('pages.events') }}">Events</a>
+      <a class="{{ 'active' if page=='settings' else '' }}" href="{{ url_for('pages.settings') }}">Settings</a>
+    </nav>
+
+    <div class="sidebar-card">
+      <span>Current Project</span>
+      <strong>{{ current_project.name }}</strong>
+      <small>Last import: {{ state.active_extraction.imported_at or 'Not yet run' }}</small>
+    </div>
+    <form method="post" action="{{ url_for('actions.reset') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="ghost-btn full" type="submit">Reset Seed</button>
+    </form>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h2>{{ state.meta.product }}</h2>
+        <p>{{ state.meta.tagline }}</p>
+      </div>
+      <div class="top-actions">
+        <span class="user-pill">{{ current_user or 'analyst' }} · {{ current_role }}</span>
+        <a class="ghost-btn" href="{{ url_for('actions.logout') }}">Logout</a>
+        <a class="ghost-btn" href="{{ url_for('actions.download_evidence_zip') }}">Evidence ZIP</a>
+        <a class="primary-btn" href="{{ url_for('actions.download_report_pdf', report_type='full') }}">Full PDF</a>
+      </div>
+    </header>
+
+    <section class="workflow">
+      {% for step in state.meta.workflow %}
+      <span class="{{ 'done' if loop.index <= 2 or state.active_extraction else '' }}">{{ loop.index }}. {{ step }}</span>
+      {% endfor %}
+    </section>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <section class="flash-area">
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </section>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+window.WIGUARD_COUNTS = {{ counts|tojson }};
+window.WIGUARD_DIFFS = {{ diffs|tojson }};
+window.WIGUARD_TIMELINE = {{ timeline|tojson }};
+window.WIGUARD_WIRELESS = {{ wireless|tojson }};
+</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

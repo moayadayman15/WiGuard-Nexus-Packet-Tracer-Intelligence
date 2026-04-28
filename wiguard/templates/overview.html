@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero compact-hero">
+  <div>
+    <span class="pill">Production Core v5</span>
+    <h3>Real workflow, cleaner UI, evidence-driven reports</h3>
+    <p>This build focuses on working data: import evidence, extract objects, validate policies, explain causes, generate different report types, and verify package integrity.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="primary-btn" href="{{ url_for('pages.import_center') }}">Start Import</a>
+    <a class="ghost-btn" href="{{ url_for('pages.reports') }}">Open Reports</a>
+  </div>
+</section>
+
+<section class="kpi-grid">
+  <article class="kpi"><span>Risk Score</span><strong>{{ risk.score }}</strong><small>{{ risk.grade }} · {{ risk.risk_level }}</small></article>
+  <article class="kpi"><span>Extracted Objects</span><strong>{{ counts.values()|sum }}</strong><small>Evidence-backed object inventory</small></article>
+  <article class="kpi"><span>Failed Diffs</span><strong>{{ diffs|selectattr('status','equalto','Fail')|list|length }}</strong><small>Expected vs extracted reality</small></article>
+  <article class="kpi"><span>Verifier</span><strong>{{ verifier.valid }}/{{ verifier.valid + verifier.invalid + verifier.missing }}</strong><small>{{ verifier.status|upper }}</small></article>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Operating Workflow</h4><a href="{{ url_for('pages.import_center') }}">Import now</a></div>
+    <div class="workflow-list">
+      <div><b>1</b><span>Upload Packet Tracer export/config</span></div>
+      <div><b>2</b><span>Extract line-mapped objects</span></div>
+      <div><b>3</b><span>Compare expected policy vs evidence</span></div>
+      <div><b>4</b><span>Generate reports by audience</span></div>
+      <div><b>5</b><span>Verify evidence package integrity</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>Policy Health Snapshot</h4><a href="{{ url_for('pages.diff') }}">View matrix</a></div>
+    <div class="mini-bars">
+      <div><span>Passed</span><b>{{ diffs|selectattr('status','equalto','Pass')|list|length }}</b></div>
+      <div><span>Review</span><b>{{ diffs|selectattr('status','equalto','Review')|list|length }}</b></div>
+      <div><span>Failed</span><b>{{ diffs|selectattr('status','equalto','Fail')|list|length }}</b></div>
+    </div>
+    <canvas class="chart" data-chart="diffs"></canvas>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Critical Policy Diff Preview</h4><a href="{{ url_for('pages.root_cause') }}">Root cause</a></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Asset</th><th>Expected</th><th>Actual</th><th>Status</th><th>Severity</th></tr></thead>
+      <tbody>
+      {% for d in diffs[:8] %}
+        <tr><td>{{ d.asset }}</td><td>{{ d.expected }}</td><td>{{ d.actual }}</td><td><span class="badge {{ d.status|lower }}">{{ d.status }}</span></td><td>{{ d.severity }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

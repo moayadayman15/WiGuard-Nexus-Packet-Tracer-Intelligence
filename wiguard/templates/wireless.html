@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero wireless-hero">
+  <span class="pill">Wireless Policy Manager</span>
+  <h3>SSID, VLAN, AP, session, and wired-policy validation in one cockpit.</h3>
+  <p>Manage SSID-to-VLAN policy, AP inventory, simulated client sessions, role changes, roaming events, AP load, anomaly intelligence, and event-to-wired correlation.</p>
+  <div class="hero-actions">
+    <a class="primary-btn" href="#demo">Run Role Change Demo</a>
+    <a class="ghost-btn" href="{{ url_for('actions.download_report_html', report_type='wireless') }}">Wireless HTML Report</a>
+    <a class="ghost-btn" href="{{ url_for('actions.download_report_pdf', report_type='wireless') }}">Wireless PDF</a>
+  </div>
+</section>
+
+<section class="kpi-grid wireless-kpis">
+  <article class="kpi"><span>Wireless Risk</span><strong>{{ wireless.risk.score }}</strong><small>{{ wireless.risk.grade }} · {{ wireless.risk.risk_level }}</small></article>
+  <article class="kpi"><span>APs Online</span><strong>{{ state.ap_inventory|selectattr('status','equalto','online')|list|length }}</strong><small>{{ state.ap_inventory|length }} inventory records</small></article>
+  <article class="kpi"><span>Active Clients</span><strong>{{ state.clients|rejectattr('status','equalto','disassociated')|list|length }}</strong><small>{{ state.client_sessions|length }} session records</small></article>
+  <article class="kpi"><span>Anomalies</span><strong>{{ wireless.anomalies|length }}</strong><small>{{ wireless.risk.critical }} critical · {{ wireless.risk.high }} high</small></article>
+  <article class="kpi"><span>Evidence Confidence</span><strong>{{ wireless.confidence.score }}%</strong><small>{{ wireless.confidence.level }} · {{ wireless.confidence.reasons|join(', ') }}</small></article>
+</section>
+
+<section class="tabs-panel">
+  <a href="#ssid">SSID Profiles</a>
+  <a href="#ap">AP Inventory</a>
+  <a href="#sessions">Client Sessions</a>
+  <a href="#events">Event Simulator</a>
+  <a href="#demo">Role Change Demo</a>
+  <a href="#matrix">Validation Matrix</a>
+  <a href="#correlation">Event Correlation</a>
+  <a href="#scenarios">Scenarios</a>
+  <a href="#connectors">Vendor Connectors</a>
+  <a href="#playbooks">Playbooks</a>
+</section>
+
+<section class="two-col" id="ssid">
+  <div class="panel">
+    <div class="panel-head"><h4>SSID Profiles</h4><span class="badge info">{{ state.wireless_policy.ssids|length }} profiles</span></div>
+    <div class="table-wrap"><table><thead><tr><th>SSID</th><th>Role</th><th>VLAN</th><th>DHCP Scope</th><th>Access</th><th>Services</th><th>Action</th></tr></thead><tbody>
+      {% for s in state.wireless_policy.ssids %}
+      <tr><td><b>{{ s.ssid }}</b><br><small class="muted">{{ s.security }}</small></td><td>{{ s.role }}</td><td>{{ s.expected_vlan }}</td><td>{{ s.expected_subnet }}<br><small>{{ s.dhcp_scope }}</small></td><td>{{ s.internal_access }}<br><small>Isolation: {{ s.client_isolation }}</small></td><td>{{ s.allowed_services|join(', ') }}</td><td><form method="post" action="{{ url_for('actions.wireless_ssid_delete', name=s.ssid) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form></td></tr>
+      {% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Add / Update SSID</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.wireless_ssid_save') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input name="ssid" placeholder="SSID e.g. StaffWiFi" required>
+      <div class="form-grid"><input name="role" placeholder="Role e.g. Staff" required><input name="expected_vlan" placeholder="VLAN e.g. 10" required></div>
+      <input name="expected_subnet" placeholder="Expected subnet e.g. 10.10.10.0/24" required>
+      <input name="dhcp_scope" placeholder="DHCP range e.g. 10.10.10.10 - 10.10.10.200">
+      <div class="form-grid"><input name="security" placeholder="Security e.g. WPA2-Enterprise"><select name="internal_access"><option value="true">Internal allowed</option><option value="limited">Internal limited</option><option value="false">Internal denied</option></select></div>
+      <input name="allowed_services" placeholder="Allowed services comma-separated">
+      <input name="business_purpose" placeholder="Business purpose">
+      <label class="checkline"><input type="checkbox" name="client_isolation"> Client isolation enabled</label>
+      <button class="primary-btn" type="submit">Save SSID Policy</button>
+    </form>
+  </div>
+</section>
+
+<section class="two-col" id="ap">
+  <div class="panel">
+    <div class="panel-head"><h4>AP Load Analytics</h4><span class="badge {{ 'fail' if wireless.risk.high else 'pass' }}">Live from client sessions</span></div>
+    <div class="ap-load-grid">
+      {% for ap in wireless.analytics.aps %}
+      <article class="ap-card">
+        <div><b>{{ ap.name }}</b><span class="badge {{ 'fail' if ap.health=='Critical' else 'review' if ap.health=='Warning' else 'pass' }}">{{ ap.health }}</span></div>
+        <p>{{ ap.location }} · {{ ap.switch }} {{ ap.uplink_interface }}</p>
+        <div class="meter"><i style="width: {{ ap.load_percent }}%"></i></div>
+        <small>{{ ap.current_clients }}/{{ ap.max_clients }} clients · VLANs {{ ap.supported_vlans|join(', ') }}</small>
+        <form method="post" action="{{ url_for('actions.wireless_ap_delete', name=ap.name) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete AP</button></form>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Add / Update AP</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.wireless_ap_save') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input name="name" placeholder="AP name e.g. AP-04" required>
+      <div class="form-grid"><input name="location" placeholder="Location"><input name="switch" placeholder="Switch e.g. SW1"></div>
+      <input name="uplink_interface" placeholder="Uplink interface e.g. Gi0/4">
+      <div class="form-grid"><input name="supported_vlans" placeholder="Supported VLANs e.g. 10,20,30"><input name="max_clients" type="number" min="1" value="25"></div>
+      <select name="status"><option>online</option><option>degraded</option><option>offline</option></select>
+      <button class="primary-btn" type="submit">Save AP</button>
+    </form>
+  </div>
+</section>
+
+<section class="two-col" id="sessions">
+  <div class="panel">
+    <div class="panel-head"><h4>Client Sessions</h4><span class="muted">CRUD lifecycle: associate, disconnect, role-change, DHCP, roam</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Client</th><th>Role</th><th>SSID</th><th>AP</th><th>VLAN</th><th>IP</th><th>Status</th><th>Action</th></tr></thead><tbody>
+      {% for c in state.clients %}
+      <tr><td><b>{{ c.name }}</b><br><small>{{ c.mac }}</small></td><td>{{ c.role }}</td><td>{{ c.ssid }}</td><td>{{ c.ap }}</td><td>{{ c.vlan }}</td><td>{{ c.ip }}</td><td><span class="badge {{ 'pass' if c.status!='disassociated' else 'review' }}">{{ c.status }}</span><br><small>{{ c.last_seen }}</small></td><td><form method="post" action="{{ url_for('actions.wireless_client_delete', name=c.name) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form></td></tr>
+      {% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Add / Update Client Session</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.wireless_client_save') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input name="name" placeholder="Client name" required>
+      <div class="form-grid"><input name="mac" placeholder="MAC address"><select name="role"><option>Staff</option><option>Student</option><option>Guest</option></select></div>
+      <div class="form-grid"><select name="ssid">{% for ssid in state.wireless_policy.ssids %}<option>{{ ssid.ssid }}</option>{% endfor %}</select><select name="ap">{% for ap in state.ap_inventory %}<option>{{ ap.name }}</option>{% endfor %}</select></div>
+      <div class="form-grid"><input name="vlan" placeholder="Actual VLAN"><input name="ip" placeholder="IP address"></div>
+      <select name="status"><option>associated</option><option>disassociated</option><option>reauthenticated</option><option>quarantined</option></select>
+      <button class="primary-btn" type="submit">Save Client Session</button>
+    </form>
+  </div>
+</section>
+
+<section class="two-col" id="events">
+  <div class="panel">
+    <div class="panel-head"><h4>Event Simulator</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.wireless_event') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid"><input name="client" placeholder="Client name" required><select name="event_type"><option>association</option><option>disassociation</option><option>authentication_failure</option><option>roaming</option><option>dhcp_assignment</option><option>policy_violation</option></select></div>
+      <div class="form-grid"><select name="ssid"><option value="">SSID</option>{% for s in state.wireless_policy.ssids %}<option>{{ s.ssid }}</option>{% endfor %}</select><select name="to_ap"><option value="">Target AP</option>{% for ap in state.ap_inventory %}<option>{{ ap.name }}</option>{% endfor %}</select></div>
+      <div class="form-grid"><input name="from_ap" placeholder="From AP"><input name="vlan" placeholder="Actual VLAN"></div>
+      <input name="ip" placeholder="Assigned IP">
+      <input name="detail" placeholder="Optional policy violation detail">
+      <button class="primary-btn" type="submit">Record Event</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>CSV/JSON Event Import</h4></div>
+    <p class="muted">Columns supported: timestamp,event_type,client,ssid,from_ap,to_ap,vlan,ip,result,detail</p>
+    <form class="form" method="post" action="{{ url_for('actions.wireless_import_events') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="dropzone"><strong>Upload wireless events CSV/JSON</strong><input type="file" name="event_file" accept=".csv,.json" required></label>
+      <button class="ghost-btn" type="submit">Import Events</button>
+    </form>
+  </div>
+</section>
+
+<section class="two-col" id="demo">
+  <div class="panel premium-panel">
+    <div class="panel-head"><h4>Role Change Demo</h4><span class="pill">Student → Staff</span></div>
+    <p>Change one user from Student to Staff, then verify expected VLAN, DHCP scope, access rights, AP support, and wired policy underneath.</p>
+    <form class="form" method="post" action="{{ url_for('actions.wireless_role_change') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-grid"><select name="client">{% for c in state.clients %}<option>{{ c.name }}</option>{% endfor %}</select><select name="new_role"><option>Staff</option><option>Student</option><option>Guest</option></select></div>
+      <button class="primary-btn" type="submit">Apply Role Change + Revalidate</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Anomaly Summary</h4><span class="badge {{ 'pass' if not wireless.anomalies else 'fail' }}">{{ wireless.anomalies|length }} findings</span></div>
+    <div class="anomaly-list">
+      {% for a in wireless.anomalies[:8] %}<article><b>{{ a.id }}</b><span class="badge {{ 'fail' if a.severity in ['Critical','High'] else 'review' }}">{{ a.severity }}</span><p>{{ a.detail }}</p><small>{{ a.recommendation }}</small></article>{% else %}<p class="muted">No wireless anomalies detected in the current evidence set.</p>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel" id="matrix">
+  <div class="panel-head"><h4>Wireless Validation Matrix</h4><span class="muted">SSID/AP database + client sessions + policy engine</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Client</th><th>Role</th><th>SSID</th><th>Expected VLAN</th><th>Actual VLAN</th><th>DHCP</th><th>AP Trunk</th><th>Confidence</th><th>Result</th></tr></thead><tbody>
+    {% for r in wireless.matrix %}
+    <tr><td>{{ r.client }}</td><td>{{ r.role }}</td><td>{{ r.ssid }}<br><small>{{ r.ap }}</small></td><td>{{ r.expected_vlan }}</td><td>{{ r.actual_vlan }} <span class="badge {{ 'pass' if r.vlan_status=='Pass' else 'fail' }}">{{ r.vlan_status }}</span></td><td>{{ r.ip }}<br><span class="badge {{ 'pass' if r.dhcp_status=='Pass' else 'review' }}">{{ r.dhcp_status }}</span></td><td><span class="badge {{ 'pass' if r.ap_trunk_status=='Pass' else 'fail' }}">{{ r.ap_trunk_status }}</span></td><td>{{ r.confidence }}%<br><small>{{ r.confidence_reason }}</small></td><td><span class="badge {{ 'pass' if r.result=='Pass' else 'fail' if r.result=='Fail' else 'review' }}">{{ r.result }}</span></td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="panel" id="correlation">
+  <div class="panel-head"><h4>Event-to-Wired Correlation</h4><span class="muted">Wireless event → AP uplink → VLAN policy</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Client</th><th>Expected VLAN</th><th>Wired Path</th><th>Status</th><th>Reason</th></tr></thead><tbody>
+    {% for c in wireless.correlations[:20] %}
+    <tr><td>{{ c.time }}</td><td>{{ c.event_type }}</td><td>{{ c.client }}</td><td>{{ c.expected_vlan }}</td><td>{{ c.wired_path }}</td><td><span class="badge {{ 'pass' if c.status=='Pass' else 'review' if c.status=='Review' else 'fail' }}">{{ c.status }}</span></td><td>{{ c.reason }}</td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+
+<section class="panel" id="scenarios">
+  <div class="panel-head"><h4>Scenario Builder</h4><span class="muted">One-click demo cases for your presentation</span></div>
+  <div class="scenario-grid">
+    {% for sid, title, desc in [
+      ('student-to-staff','Student promoted to Staff','Updates SSID, VLAN, DHCP scope, access rights, and session log.'),
+      ('guest-internal','Guest tries internal access','Creates a policy violation and checks guest isolation evidence.'),
+      ('roaming-burst','Roaming instability burst','Generates multiple roaming events to trigger anomaly logic.'),
+      ('auth-failures','Authentication failure spike','Generates repeated auth failures for risk analytics.')
+    ] %}
+    <article>
+      <h5>{{ title }}</h5><p>{{ desc }}</p>
+      <form method="post" action="{{ url_for('actions.scenario_builder', scenario_id=sid) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn" type="submit">Run Scenario</button></form>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="two-col" id="connectors">
+  <div class="panel">
+    <div class="panel-head"><h4>Vendor Connector Import Layer</h4><span class="muted">CSV/JSON adapters for WLC/AP/RADIUS/DHCP/Syslog</span></div>
+    <form class="form" method="post" action="{{ url_for('actions.connector_import') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <select name="connector_type">{% for key, label in connector_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+      <label class="dropzone"><strong>Upload connector CSV/JSON</strong><input type="file" name="connector_file" accept=".csv,.json" required></label>
+      <button class="primary-btn" type="submit">Import Connector Data</button>
+    </form>
+    <p class="muted">This is a production-ready adapter scaffold: map real Cisco/Aruba/UniFi/Meraki/RADIUS/DHCP exports into WiGuard's normalized wireless model.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Recent Connector Runs</h4></div>
+    <div class="table-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Records</th><th>Status</th></tr></thead><tbody>{% for run in connector_runs %}<tr><td>{{ run.created_at }}</td><td>{{ run.connector_type }}</td><td>{{ run.imported_records }}</td><td>{{ run.status }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No connector imports yet.</td></tr>{% endfor %}</tbody></table></div>
+  </div>
+</section>
+
+<section class="panel" id="playbooks">
+  <div class="panel-head"><h4>Remediation Playbooks</h4><span class="muted">Generated from current anomaly categories</span></div>
+  <div class="playbook-grid">{% for p in wireless.playbooks[:12] %}<article class="playbook-card"><h5>{{ p.title }}</h5><p>{{ p.why }}</p><b>Fix</b><p>{{ p.fix }}</p><b>Verify</b><ul>{% for cmd in p.verify %}<li><code>{{ cmd }}</code></li>{% endfor %}</ul><small>Rollback: {{ p.rollback }}</small></article>{% else %}<p class="muted">No playbooks because there are no current anomalies.</p>{% endfor %}</div>
+</section>
+
+{% endblock %}

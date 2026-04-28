@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Policy Studio</span>
+  <h3>Configurable wireless policy rules, owners, severity, SLA, and remediation logic</h3>
+  <p>Define the policy expectations that turn wireless sessions and wired evidence into actionable anomalies.</p>
+</section>
+
+<section class="two-col" id="studio">
+  <div class="panel">
+    <div class="panel-head"><h4>Policy Studio Rules</h4><span class="badge info">{{ wireless.policy_rules|length }} active/custom rules</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Rule</th><th>Condition</th><th>Severity</th><th>Owner</th><th>Enabled</th><th>Actions</th></tr></thead><tbody>
+      {% for r in wireless.policy_rules %}<tr><td><b>{{ r.id }}</b><br><small>{{ r.name }}</small></td><td>{{ r.condition }}<br><small>{{ r.scope }}</small></td><td><span class="badge {{ 'fail' if r.severity in ['Critical','High'] else 'review' }}">{{ r.severity }}</span></td><td>{{ r.owner }}</td><td>{{ r.enabled }}</td><td><form method="post" action="{{ url_for('actions.policy_studio_rule_delete', rule_id=r.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-btn danger" type="submit">Delete</button></form></td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Add / Update Rule</h4></div>
+    <form class="form" method="post" action="{{ url_for('actions.policy_studio_rule_save') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input name="id" placeholder="Rule ID e.g. PS-CUSTOM-001">
+      <input name="name" placeholder="Rule name" required>
+      <div class="form-grid"><select name="condition"><option value="role_ssid_match">role_ssid_match</option><option value="ap_vlan_support">ap_vlan_support</option><option value="guest_internal_blocked">guest_internal_blocked</option><option value="dhcp_scope_match">dhcp_scope_match</option></select><select name="severity"><option>Critical</option><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+      <div class="form-grid"><input name="scope" placeholder="Scope e.g. Guest / All"><input name="owner" placeholder="Owner"></div>
+      <textarea name="remediation" placeholder="Remediation guidance and verification commands"></textarea>
+      <label class="checkline"><input type="checkbox" name="enabled" checked> Enabled</label>
+      <button class="primary-btn" type="submit">Save Policy Rule</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel"><div class="panel-head"><h4>Classic Validation Rules</h4><span class="muted">Static rules used in academic/audit outputs</span></div><div class="table-wrap"><table>
+<thead><tr><th>Rule ID</th><th>Title</th><th>Severity</th><th>Owner</th><th>SLA</th></tr></thead><tbody>
+{% for r in state.rules %}<tr><td>{{ r.id }}</td><td>{{ r.title }}</td><td><span class="badge {{ r.severity|lower }}">{{ r.severity }}</span></td><td>{{ r.owner }}</td><td>{{ r.sla }}</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% endblock %}

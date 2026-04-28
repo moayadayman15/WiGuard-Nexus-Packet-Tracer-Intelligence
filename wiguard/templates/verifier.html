@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Evidence Package Verifier</span>
+  <h3>Verify SHA256 integrity of generated artifacts</h3>
+  <p>Detects modified or missing files after export generation.</p>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <form method="post" action="{{ url_for('actions.verify') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="primary-btn full" type="submit">Run Verification</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="summary-lines">
+      <div><span>Status</span><b>{{ verifier.status|upper }}</b></div>
+      <div><span>Valid</span><b>{{ verifier.valid }}</b></div>
+      <div><span>Invalid</span><b>{{ verifier.invalid }}</b></div>
+      <div><span>Missing</span><b>{{ verifier.missing }}</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Verification Details</h4></div>
+  <ul>{% for d in verifier.details %}<li>{{ d }}</li>{% else %}<li>No issues reported.</li>{% endfor %}</ul>
+</section>
+{% endblock %}

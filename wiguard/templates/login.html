@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login | WiGuard Nexus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+  <main class="login-card auth-card-wide">
+    <div class="brand-logo big">WG</div>
+    <h1>WiGuard Nexus</h1>
+    <p>Secure analyst access is required before opening evidence, reports, uploads, or wireless policy data.</p>
+
+    {% if user_count == 0 and registration_enabled %}
+      <div class="setup-panel">
+        <strong>First run setup</strong>
+        <span>No SQLite users exist yet. Create the first local account; it will become <b>admin</b>.</span>
+        <a class="primary-btn full setup-link" href="{{ url_for('pages.register', next=next_url) }}">Create first admin account</a>
+      </div>
+    {% endif %}
+
+    {% if demo_fallback_enabled and environment != 'production' %}
+      <div class="hint-panel">
+        <strong>Local demo fallback</strong>
+        <span>Username: <code>{{ admin_username }}</code> · Password: <code>admin123</code> unless you changed WIGUARD_ADMIN_PASSWORD.</span>
+      </div>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form class="form" method="post" action="{{ url_for('actions.login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <label>Username
+        <input name="username" autocomplete="username" placeholder="admin or your SQLite user" required autofocus>
+      </label>
+      <label>Password
+        <input name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+      </label>
+      <button class="primary-btn full" type="submit">Sign in</button>
+    </form>
+
+    <div class="auth-links"><a href="{{ url_for('pages.register', next=next_url) }}">Create local SQLite account</a></div>
+    <small class="muted">Production tip: create a SQLite admin, set WIGUARD_DISABLE_DEMO_FALLBACK=1, and use a strong WIGUARD_SECRET_KEY.</small>
+  </main>
+</body>
+</html>

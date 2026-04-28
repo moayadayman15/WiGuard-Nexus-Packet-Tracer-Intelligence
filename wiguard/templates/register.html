@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register | WiGuard Nexus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+  <main class="login-card auth-card-wide">
+    <div class="brand-logo big">WG</div>
+    <h1>{% if user_count == 0 %}Create first admin account{% else %}Create analyst account{% endif %}</h1>
+    <p>Accounts are stored in the local SQLite database. {% if user_count == 0 %}This first user will become <b>admin</b>.{% else %}New users become analysts by default. Passwords must be 10+ chars with uppercase, lowercase, number, and symbol.{% endif %}</p>
+
+    {% if not registration_enabled %}
+      <div class="flash error">Registration is disabled by configuration.</div>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <form class="form" method="post" action="{{ url_for('actions.register') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      <label>Username
+        <input name="username" autocomplete="username" minlength="3" placeholder="e.g. admin" required autofocus>
+      </label>
+      <label>Password
+        <input name="password" type="password" autocomplete="new-password" minlength="10" placeholder="10+ chars: upper, lower, number, symbol" required>
+      </label>
+      <label>Confirm password
+        <input name="confirm_password" type="password" autocomplete="new-password" minlength="10" required>
+      </label>
+      <button class="primary-btn full" type="submit" {% if not registration_enabled %}disabled{% endif %}>Create account</button>
+    </form>
+    <small class="muted">Already have an account? <a href="{{ url_for('pages.login', next=next_url) }}">Sign in</a></small>
+  </main>
+</body>
+</html>

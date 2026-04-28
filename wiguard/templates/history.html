@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Extraction History</span>
+  <h3>Past imports and object counts</h3>
+  <p>Every import is recorded with source mode, time, and object count.</p>
+</section>
+
+<section class="panel"><div class="table-wrap"><table><thead><tr><th>ID</th><th>File</th><th>Mode</th><th>Imported At</th><th>Objects</th></tr></thead><tbody>{% for i in state.imports %}<tr><td>{{ i.id }}</td><td>{{ i.filename }}</td><td>{{ i.source_mode }}</td><td>{{ i.imported_at }}</td><td>{{ i.object_count }}</td></tr>{% else %}<tr><td colspan="5">No imports yet.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

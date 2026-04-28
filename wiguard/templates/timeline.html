@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="page-title">
+  <span class="pill">Risk Timeline</span>
+  <h3>Risk and evidence over time</h3>
+  <p>Import events, policy diffs, and simulations appear in one timeline.</p>
+</section>
+
+<section class="panel"><div class="timeline">{% for t in timeline %}<article><span>{{ t.time }}</span><b>{{ t.type }} · {{ t.severity }}</b><p>{{ t.detail }}</p></article>{% endfor %}</div></section>
+{% endblock %}

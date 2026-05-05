@@ -1,9 +1,23 @@
-MIT License
+# WiGuard Nexus Test Results
 
-Copyright (c) 2026 WiGuard Nexus contributors
+Date: 2026-05-03
+Version: 5.16.1 Professional Hardening / Final Release Audit
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, subject to the following conditions:
+## Commands Run
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+```bash
+python -m pip install -r requirements.txt
+python -m pytest -q
+python main.py
+python -m wiguard.internal_tools.preflight_check
+```
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+## Results
+
+- `python -m pytest -q`: PASS, 93 tests passed.
+- `python main.py`: PASS, backend launched on `http://127.0.0.1:5000` and `/healthz` returned HTTP 200.
+- `python -m wiguard.internal_tools.preflight_check`: PASS, no blockers.
+
+## Notes
+
+The pytest configuration disables unrelated globally installed pytest plugins so the project command remains deterministic on shared developer machines and CI images. This does not change the application runtime.

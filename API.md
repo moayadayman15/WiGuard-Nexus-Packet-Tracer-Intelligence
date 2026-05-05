@@ -1,4 +1,4 @@
-# WiGuard Nexus v5.5 API Notes
+# WiGuard Nexus v5.12.4 API Notes
 
 ## Authentication
 

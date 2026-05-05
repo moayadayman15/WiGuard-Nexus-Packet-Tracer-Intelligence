@@ -40,6 +40,14 @@ CATEGORY_MAP = {
     "evidence_registry.json": ("evidence_registry", []),
     "verified_extraction_contract.json": ("verified_extraction_contract", []),
     "companion_exports.json": ("companion_exports", []),
+    "source_conversion_manifest.json": ("source_conversion_manifest", []),
+    "source_payload_tree.json": ("source_payload_tree", []),
+    "source_key_value_index.json": ("source_key_value_index", []),
+    "universal_network_facts.json": ("universal_network_facts", []),
+    "payload_tables.json": ("payload_tables", []),
+    "universal_xml_preview.json": ("universal_xml_preview", []),
+    "universal_json_preview.json": ("universal_json_preview", []),
+    "external_converter_outputs.json": ("external_converter_outputs", []),
 }
 
 
@@ -79,6 +87,25 @@ def generate_artifacts(state, artifact_dir):
         normalized_path = artifact_dir / "internal_pkt_bridge.normalized.json"
         normalized_path.write_text(normalized_rows[0].get("content", ""), encoding="utf-8")
         files["internal_pkt_bridge.normalized.json"] = str(normalized_path)
+    for idx, row in enumerate(objects.get("converted_xml_preview", []) or [], start=1):
+        if idx == 1 or not isinstance(row, dict) or not row.get("content"):
+            continue
+        name = str(row.get("name") or f"external_converter_{idx}.xml").replace("/", "_").replace("\\", "_")
+        if not name.lower().endswith(".xml"):
+            name += ".xml"
+        external_path = artifact_dir / f"external_{idx}_{Path(name).name}"
+        external_path.write_text(row.get("content", ""), encoding="utf-8")
+        files[external_path.name] = str(external_path)
+    universal_xml_rows = objects.get("universal_xml_preview", []) or []
+    if universal_xml_rows and isinstance(universal_xml_rows[0], dict) and universal_xml_rows[0].get("content"):
+        universal_xml_path = artifact_dir / "universal_payload_bridge.xml"
+        universal_xml_path.write_text(universal_xml_rows[0].get("content", ""), encoding="utf-8")
+        files["universal_payload_bridge.xml"] = str(universal_xml_path)
+    universal_json_rows = objects.get("universal_json_preview", []) or []
+    if universal_json_rows and isinstance(universal_json_rows[0], dict) and universal_json_rows[0].get("content"):
+        universal_json_path = artifact_dir / "universal_payload.normalized.json"
+        universal_json_path.write_text(universal_json_rows[0].get("content", ""), encoding="utf-8")
+        files["universal_payload.normalized.json"] = str(universal_json_path)
     files["routing.json"] = write_json(artifact_dir / "routing.json", objects.get("routing", {}))
     files["policy_diff.json"] = write_json(artifact_dir / "policy_diff.json", build_policy_diff(state))
     files["root_causes.json"] = write_json(artifact_dir / "root_causes.json", build_root_causes(state))

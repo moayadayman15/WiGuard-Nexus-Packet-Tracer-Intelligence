@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set wm = workspace_model or {} %}
+{% set truth = wm.truth or import_truth or {} %}
+<section class="page-title workspace-title">
+  <span class="pill">Unified Analyst Workspace</span>
+  <h3>Topology, objects, evidence, and timeline in one place</h3>
+  <p>This page replaces scattered topology/object/evidence pages with one guided review surface.</p>
+</section>
+
+<section class="workspace-status-grid">
+  <article><span>File</span><b>{{ truth.filename }}</b><small>{{ truth.source_mode }}</small></article>
+  <article><span>Readiness</span><b>{{ truth.readiness_score or 0 }}%</b><small>{{ truth.tier }}</small></article>
+  <article><span>Real Objects</span><b>{{ wm.count_breakdown.real_object_count or wm.objects_total or 0 }}</b><small>topology/policy objects only</small></article>
+  <article><span>Evidence Rows</span><b>{{ wm.count_breakdown.evidence_entry_count or 0 }}</b><small>native, payload, and support evidence</small></article>
+  <article class="{{ 'pass' if truth.can_claim_full_fidelity else 'review' }}"><span>Full Fidelity Claim</span><b>{{ 'Allowed' if truth.can_claim_full_fidelity else 'Blocked' }}</b><small>truth gate</small></article>
+</section>
+
+{% set deep_manifest = (objects.source_conversion_manifest or [])[:1] %}
+{% set deep_facts = (objects.universal_network_facts or [])[:10] %}
+{% set deep_tables = (objects.payload_tables or [])[:4] %}
+<section class="panel workspace-deep-data">
+  <div class="panel-head"><h4>Deep Data Extraction Layer</h4><span class="badge {{ 'pass' if deep_manifest else 'review' }}">{{ 'active' if deep_manifest else 'waiting' }}</span></div>
+  <div class="payload-metrics-grid">
+    <article><span>Tree rows</span><b>{{ objects.source_payload_tree|length if objects.source_payload_tree else 0 }}</b><small>recursive payload structure</small></article>
+    <article><span>Key/value rows</span><b>{{ objects.source_key_value_index|length if objects.source_key_value_index else 0 }}</b><small>every visible JSON/XML value</small></article>
+    <article><span>Network facts</span><b>{{ objects.universal_network_facts|length if objects.universal_network_facts else 0 }}</b><small>auto-classified candidates</small></article>
+    <article><span>XML/JSON previews</span><b>{{ (objects.universal_xml_preview|length if objects.universal_xml_preview else 0) + (objects.universal_json_preview|length if objects.universal_json_preview else 0) }}</b><small>bridge artifacts</small></article>
+  </div>
+  <div class="two-col compact-gap">
+    <div class="mini-list">
+      <h5>Strongest recovered facts</h5>
+      {% for f in deep_facts %}
+        <article><b>{{ f.fact_type.replace('_',' ') }} · {{ f.value }}</b><small>{{ f.path }}</small></article>
+      {% else %}<p class="muted">Import JSON/XML/PKT evidence to populate the universal fact layer.</p>{% endfor %}
+    </div>
+    <div class="mini-list">
+      <h5>Detected data tables</h5>
+      {% for t in deep_tables %}
+        <article><b>{{ t.path }}</b><small>{{ t.rows }} row(s) · {% for c in t.columns[:6] %}{{ c.name }}{% if not loop.last %}, {% endif %}{% endfor %}</small></article>
+      {% else %}<p class="muted">No table-like arrays detected yet.</p>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="workspace-layout">
+  <div class="panel workspace-map-panel">
+    <div class="panel-head"><h4>Interactive Topology Workspace</h4><a href="{{ url_for('pages.topology') }}">Advanced graph</a></div>
+    <div class="workspace-map" id="workspace-map">
+      {% for node in wm.topology.nodes[:24] %}
+      <button class="workspace-node" data-node="{{ node|tojson|forceescape }}" style="left: {{ 8 + (loop.index0 % 4) * 22 }}%; top: {{ 12 + (loop.index0 // 4) * 18 }}%;">
+        <b>{{ node.label }}</b><small>{{ node.type }} · {{ (node.confidence*100)|round|int if node.confidence is defined else 50 }}%</small>
+      </button>
+      {% else %}
+      <div class="empty-workspace-map">
+        <b>No topology objects yet</b>
+        <span>Upload companion config/show outputs or load the production sample.</span>
+        <a class="primary-btn" href="{{ url_for('pages.import_center') }}">Go to Import</a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="node-detail-panel" id="node-detail-panel">
+      <b>Click a node to inspect it</b>
+      <span>Side detail will show type, confidence, and source fields.</span>
+    </div>
+  </div>
+
+  <aside class="panel object-tree-panel">
+    <div class="panel-head"><h4>Searchable Object Explorer</h4><span>{{ wm.count_breakdown.real_object_count or wm.objects_total or 0 }} objects · {{ wm.count_breakdown.evidence_entry_count or 0 }} evidence</span></div>
+    <input class="workspace-search" id="workspace-object-search" placeholder="Search devices, VLANs, ACLs, native evidence...">
+    <div class="object-tree" id="workspace-object-tree">
+      {% for section in wm.tree_sections %}
+      <details class="object-section" open>
+        <summary><b>{{ section.label }}</b><span>{{ section.count }}</span></summary>
+        {% for row in section.rows[:12] %}
+        <article class="object-row" data-search="{{ row|tojson|lower|forceescape }}">
+          <b>{{ row.hostname or row.name or row.id or row.interface or row.vlan or row.command or section.label }}</b>
+          <small>{{ row.summary or row.mode or row.ip or row.status or row.source_mode or row.preview or 'Evidence row' }}</small>
+        </article>
+        {% else %}<p class="muted tiny-pad">No {{ section.label|lower }} yet.</p>{% endfor %}
+      </details>
+      {% endfor %}
+    </div>
+  </aside>
+</section>
+
+<section class="two-col">
+  <div class="panel evidence-panel">
+    <div class="panel-head"><h4>Line-Level Evidence Mapping</h4><span>{{ wm.evidence_rows|length }}</span></div>
+    <div class="table-wrap tall-table">
+      <table><thead><tr><th>Category</th><th>Name</th><th>Status</th><th>Confidence</th><th>Evidence</th></tr></thead><tbody>
+        {% for e in wm.evidence_rows[:45] %}
+        <tr><td>{{ e.category }}</td><td>{{ e.name }}</td><td><span class="badge {{ e.status or 'review' }}">{{ e.status or 'review' }}</span></td><td>{{ ((e.confidence or 0)*100)|round|int if e.confidence is number else e.confidence }}</td><td><small>{{ e.source or e.evidence or e.line or 'Mapped evidence row' }}</small></td></tr>
+        {% else %}<tr><td colspan="5" class="muted">No evidence mapping yet. Import a config, XML, JSON, or companion export.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>What is missing and why?</h4><span>{{ truth.critical_missing|length if truth.critical_missing else 0 }} gaps</span></div>
+    <div class="mini-list">
+      {% for m in truth.critical_missing %}<article class="review"><b>{{ m.label }}</b><small>{{ m.why }}</small></article>{% else %}<article class="pass"><b>Core sections present</b><small>Review confidence before exporting a final report.</small></article>{% endfor %}
+    </div>
+    <div class="hint-panel"><strong>Reason</strong><span>{{ truth.why|join(' ') }}</span></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Workspace Timeline</h4><a href="{{ url_for('pages.timeline') }}">Full timeline</a></div>
+  <div class="timeline-list compact-timeline">
+    {% for item in wm.timeline[:10] %}<article><b>{{ item.title or item.type or item.id }}</b><small>{{ item.created_at or item.time or item.detail }}</small></article>{% else %}<p class="muted">No timeline events yet.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

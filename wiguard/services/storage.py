@@ -5,6 +5,7 @@ import tempfile
 import threading
 from pathlib import Path
 from .seed import seed_state
+from .state_schema import ensure_state_shape
 
 
 class Storage:
@@ -31,11 +32,17 @@ class Storage:
         self.ensure_seed()
         with self._lock:
             try:
-                return json.loads(self.path.read_text(encoding="utf-8"))
+                payload = json.loads(self.path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 if self.backup_path.exists():
-                    return json.loads(self.backup_path.read_text(encoding="utf-8"))
-                raise
+                    payload = json.loads(self.backup_path.read_text(encoding="utf-8"))
+                else:
+                    payload = seed_state()
+                    self.save(payload)
+            if not isinstance(payload, dict):
+                payload = seed_state()
+                self.save(payload)
+            return ensure_state_shape(payload)
 
     def save(self, payload):
         self.path.parent.mkdir(parents=True, exist_ok=True)

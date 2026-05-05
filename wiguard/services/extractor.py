@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import re
-import subprocess
 import zipfile
 import hashlib
 import uuid
@@ -17,10 +16,13 @@ except Exception:  # pragma: no cover - fallback for minimal test environments
 from .util import now_iso, network_cidr, safe_int
 from .packet_tracer import build_conversion_profile, normalize_interface_name
 from .pkt_native import inspect_native_pkt, build_internal_pkt_xml_bridge, normalized_json_preview, run_native_pkt_auto_pipeline
+from .pkt_converter import run_external_pkt_converters
 from .structured_import import (
     StructuredEvidenceNormalizer, canonical_from_payload, finalize_objects,
     has_canonical_objects, merge_unique, blank_objects,
 )
+from .universal_import import merge_universal_objects
+from .pkt_xml_profile import extract_packet_tracer_xml_objects
 from .evidence import build_evidence_registry, build_verified_extraction_contract
 
 log = logging.getLogger(__name__)
@@ -28,9 +30,18 @@ log = logging.getLogger(__name__)
 
 ALLOWED_UPLOAD_EXTENSIONS = {".pkt", ".pka", ".xml", ".json", ".txt", ".cfg", ".conf", ".log", ".zip"}
 ALLOWED_ZIP_MEMBER_EXTENSIONS = {".txt", ".cfg", ".conf", ".log", ".xml", ".json"}
+MAX_UPLOAD_BYTES = int(os.environ.get("WIGUARD_MAX_UPLOAD_BYTES", str(32 * 1024 * 1024)))
 MAX_ZIP_MEMBERS = 100
 MAX_ZIP_TOTAL_BYTES = 8 * 1024 * 1024
 MAX_ZIP_MEMBER_BYTES = 2 * 1024 * 1024
+
+
+def _is_relative_to(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except Exception:
+        return False
 
 
 def printable_recovery(raw: bytes) -> str:
@@ -107,17 +118,203 @@ class ConfigExtractor:
             "protocol_summary": self.parse_protocol_summary(),
             "command_blocks": self.parse_command_blocks(),
             "deep_evidence_index": self.deep_evidence_index(),
-            "raw_evidence": self.raw_evidence()
+            "raw_evidence": self.raw_evidence(),
+            # v5.9.8 deep fidelity indexes: these preserve details that do not always
+            # fit the classic device/interface/VLAN model but still matter for audit,
+            # policy review, and Packet Tracer grading.
+            "all_config_commands": self.parse_all_config_commands(),
+            "interface_features": self.parse_interface_features(),
+            "management_services": self.parse_management_services(),
+            "gateway_redundancy": self.parse_gateway_redundancy(),
+            "routing_protocol_details": self.parse_routing_protocol_details(),
         }
         self.bind_acls_to_interfaces(objects)
+        self.derive_inventory_from_interfaces(objects)
+        self.derive_inventory_from_tables_and_vlans(objects)
         objects["dhcp_gateway_matches"] = self.match_dhcp_gateways(objects)
         objects["subnet_inventory"] = self.derive_subnet_inventory(objects)
         objects["vlan_crosscheck"] = self.derive_vlan_crosscheck(objects)
         objects["policy_controls"] = self.derive_policy_controls(objects)
         objects["risk_atoms"] = self.derive_risk_atoms(objects)
         objects["coverage_domains"] = self.coverage_domains(objects)
+        objects["extraction_completeness"] = self.derive_extraction_completeness(objects)
         objects["evidence_profile"] = self.evidence_profile(objects)
         return objects
+
+    def derive_inventory_from_interfaces(self, objects):
+        """Fill ip_inventory/endpoint_inventory from interface IP assignments."""
+        objects.setdefault("ip_inventory", [])
+        objects.setdefault("endpoint_inventory", [])
+        seen_ip = {
+            (str(row.get("device") or ""), str(row.get("interface") or row.get("name") or ""), str(row.get("ip_address") or row.get("ip") or ""))
+            for row in objects.get("ip_inventory", []) if isinstance(row, dict)
+        }
+        seen_endpoint = {
+            (str(row.get("device") or ""), str(row.get("interface") or ""), str(row.get("ip_address") or ""))
+            for row in objects.get("endpoint_inventory", []) if isinstance(row, dict)
+        }
+        for iface in list(objects.get("interfaces", []) or []):
+            if not isinstance(iface, dict):
+                continue
+            ip = iface.get("ip_address") or iface.get("ip")
+            name = iface.get("name") or iface.get("interface") or iface.get("normalized_name")
+            if not ip or not name:
+                continue
+            device = iface.get("device") or iface.get("hostname")
+            ev = iface.get("evidence") if isinstance(iface.get("evidence"), dict) else {"source_line": None, "source_text": "Derived from interface IP assignment.", "confidence": 0.72}
+            marker = (str(device or ""), str(name or ""), str(ip or ""))
+            if marker not in seen_ip:
+                objects["ip_inventory"].append({
+                    "device": device,
+                    "interface": name,
+                    "name": name,
+                    "ip": ip,
+                    "ip_address": ip,
+                    "status": iface.get("status") or "configured",
+                    "source": "derived_from_interface_block",
+                    "evidence": ev,
+                })
+                seen_ip.add(marker)
+            if marker not in seen_endpoint:
+                objects["endpoint_inventory"].append({
+                    "device": device,
+                    "interface": name,
+                    "ip_address": ip,
+                    "mac": iface.get("mac"),
+                    "source": "derived_from_interface_block",
+                    "evidence": ev,
+                })
+                seen_endpoint.add(marker)
+
+    def derive_inventory_from_tables_and_vlans(self, objects):
+        """Promote operational show-output rows into searchable interface/IP objects.
+
+        Packet Tracer exports often contain `show ip interface brief`, `show vlan
+        brief`, or `show interfaces status` output instead of full running-config
+        blocks. This method links those tables into the main object model so the
+        UI no longer shows empty interface/IP inventories when the evidence is
+        operational rather than configuration-based.
+        """
+        objects.setdefault("interfaces", [])
+        objects.setdefault("ip_inventory", [])
+        objects.setdefault("endpoint_inventory", [])
+        iface_by_norm = {
+            normalize_interface_name(i.get("name") or i.get("interface")): i
+            for i in objects.get("interfaces", []) if isinstance(i, dict)
+        }
+
+        def add_or_enrich_interface(name, evidence, **fields):
+            norm = normalize_interface_name(name)
+            if not norm:
+                return None
+            row = iface_by_norm.get(norm)
+            if not row:
+                row = {
+                    "name": name,
+                    "normalized_name": norm,
+                    "description": fields.get("description") or "derived from operational evidence",
+                    "ip_address": None,
+                    "subnet_mask": None,
+                    "cidr": None,
+                    "mode": "operational",
+                    "access_vlan": None,
+                    "trunk_allowed_vlans": [],
+                    "native_vlan": None,
+                    "dot1q_vlan": None,
+                    "acl_in": None,
+                    "acl_out": None,
+                    "nat_role": None,
+                    "port_security_enabled": False,
+                    "shutdown": False,
+                    "evidence": evidence,
+                    "line_map": [{"line": evidence.get("source_line"), "text": evidence.get("source_text")}],
+                    "source": "derived_operational_table",
+                }
+                objects["interfaces"].append(row)
+                iface_by_norm[norm] = row
+            for key, value in fields.items():
+                if value not in (None, "", [], {}) and row.get(key) in (None, "", [], {}, "unknown", "operational"):
+                    row[key] = value
+            return row
+
+        existing_ip = {
+            (str(x.get("interface") or x.get("name") or ""), str(x.get("ip_address") or x.get("ip") or ""))
+            for x in objects.get("ip_inventory", []) if isinstance(x, dict)
+        }
+        existing_endpoint = {
+            (str(x.get("interface") or ""), str(x.get("ip_address") or ""))
+            for x in objects.get("endpoint_inventory", []) if isinstance(x, dict)
+        }
+
+        for row in objects.get("interface_status", []) or []:
+            if not isinstance(row, dict):
+                continue
+            iface_name = row.get("interface")
+            if not iface_name:
+                continue
+            ev = row.get("evidence") if isinstance(row.get("evidence"), dict) else evidence_obj(None, "derived from interface status", 0.62)
+            vlan = row.get("vlan")
+            ip = row.get("ip_address")
+            status = row.get("status")
+            mode = "routed" if ip else "access" if str(vlan or "").isdigit() else "operational"
+            iface = add_or_enrich_interface(iface_name, ev, access_vlan=str(vlan) if str(vlan or "").isdigit() else None, ip_address=ip, status=status, protocol=row.get("protocol"), mode=mode)
+            if ip:
+                marker = (str(iface_name), str(ip))
+                if marker not in existing_ip:
+                    objects["ip_inventory"].append({
+                        "interface": iface_name,
+                        "name": iface_name,
+                        "ip": ip,
+                        "ip_address": ip,
+                        "status": status or "observed",
+                        "protocol": row.get("protocol"),
+                        "source": "show_ip_interface_brief",
+                        "evidence": ev,
+                    })
+                    existing_ip.add(marker)
+                if marker not in existing_endpoint:
+                    objects["endpoint_inventory"].append({
+                        "interface": iface_name,
+                        "ip_address": ip,
+                        "source": "show_ip_interface_brief",
+                        "evidence": ev,
+                    })
+                    existing_endpoint.add(marker)
+
+        for vlan in objects.get("vlan_brief", []) or []:
+            if not isinstance(vlan, dict):
+                continue
+            vlan_id = vlan.get("vlan")
+            ev = vlan.get("evidence") if isinstance(vlan.get("evidence"), dict) else evidence_obj(None, "derived from vlan brief", 0.60)
+            for port in vlan.get("ports", []) or []:
+                if not port:
+                    continue
+                add_or_enrich_interface(port, ev, access_vlan=str(vlan_id), mode="access", vlan_name=vlan.get("name"), status=vlan.get("status"))
+
+        # MAC/ARP tables create endpoint inventory rows even when no IP brief exists.
+        mac_by_iface = {}
+        for mac in objects.get("mac_table", []) or []:
+            if isinstance(mac, dict) and mac.get("interface"):
+                mac_by_iface.setdefault(normalize_interface_name(mac.get("interface")), []).append(mac)
+                ev = mac.get("evidence") if isinstance(mac.get("evidence"), dict) else evidence_obj(None, "derived from mac table", 0.58)
+                add_or_enrich_interface(mac.get("interface"), ev, access_vlan=mac.get("vlan"), mode="access")
+        for arp in objects.get("arp_table", []) or []:
+            if not isinstance(arp, dict):
+                continue
+            iface = arp.get("interface")
+            ip = arp.get("ip_address")
+            if not ip:
+                continue
+            marker = (str(iface or ""), str(ip))
+            if marker not in existing_endpoint:
+                objects["endpoint_inventory"].append({
+                    "interface": iface,
+                    "ip_address": ip,
+                    "mac": arp.get("mac"),
+                    "source": "arp_table",
+                    "evidence": arp.get("evidence"),
+                })
+                existing_endpoint.add(marker)
 
     def raw_evidence(self):
         interesting = []
@@ -127,7 +324,10 @@ class ConfigExtractor:
             "router bgp", "ip nat", "Device ID", "Port ID", "Platform", "Local Intf",
             "Port Security", "spanning-tree", "etherchannel", "mac address-table", "Internet",
             "service password-encryption", "aaa new-model", "username", "enable secret", "snmp-server",
-            "transport input", "radius-server", "ssid", "wlan", "show interfaces status"
+            "transport input", "radius-server", "ssid", "wlan", "show interfaces status",
+            "ip helper-address", "switchport voice", "storm-control", "channel-group",
+            "standby", "vrrp", "glbp", "ip default-gateway", "ip name-server",
+            "ip domain-name", "logging host", "ntp server", "show version", "show inventory"
         ]
         for no, line in self.lines:
             if any(p.lower() in line.lower() for p in patterns):
@@ -232,6 +432,8 @@ class ConfigExtractor:
             if not m:
                 continue
             name = m.group(1)
+            if name.lower() in {"ip-address", "name"} or re.search(r"OK\?\s+Method\s+Status\s+Protocol", block.get("header", ""), flags=re.I):
+                continue
             item = {
                 "name": name,
                 "normalized_name": normalize_interface_name(name),
@@ -578,7 +780,30 @@ class ConfigExtractor:
                 current["platform"] = pm.group(1).strip()
         if current:
             links.append(current)
-        return links
+
+        # show cdp neighbors table style:
+        # Device ID        Local Intrfce     Holdtme    Capability  Platform  Port ID
+        # SW2              Fas 0/1           153        S I         2960      Fas 0/2
+        for no, line in self.lines:
+            if re.search(r"Device\s+ID\s+Local\s+Intrfce", line, flags=re.I):
+                continue
+            tm = re.match(r"^\s*(\S+)\s+((?:Fas|Fa|Gig|Gi|Ten|Te|Eth|Se|Ser|Po|Port)\s*\S+)\s+\d+\s+(.+?)\s+(\S+)\s+((?:Fas|Fa|Gig|Gi|Ten|Te|Eth|Se|Ser|Po|Port)\s*\S+)\s*$", line, flags=re.I)
+            if tm:
+                neighbor, local, capabilities, platform, remote = tm.groups()
+                links.append({
+                    "neighbor": neighbor,
+                    "local_interface": re.sub(r"\s+", "", local),
+                    "remote_interface": re.sub(r"\s+", "", remote),
+                    "platform": platform,
+                    "capabilities": capabilities.strip(),
+                    "source": "show_cdp_neighbors_table",
+                    "evidence": evidence_obj(no, line, 0.78),
+                })
+        dedup = {}
+        for link in links:
+            key = (str(link.get("neighbor")), normalize_interface_name(link.get("local_interface")), normalize_interface_name(link.get("remote_interface")))
+            dedup[key] = {**dedup.get(key, {}), **link}
+        return list(dedup.values())
 
 
     def parse_lldp(self):
@@ -1102,6 +1327,278 @@ class ConfigExtractor:
         return result
 
 
+
+    def parse_all_config_commands(self):
+        """Build a searchable line-by-line IOS command index.
+
+        Classic parsers intentionally normalize only the fields they understand.
+        This index keeps every meaningful config/show command with its context so
+        Packet Tracer uploads do not look like they "lost" details in the UI.
+        """
+        rows = []
+        context = "global"
+        command_patterns = [
+            ("identity", r"^\s*hostname\s+\S+"),
+            ("interface", r"^\s*interface\s+\S+"),
+            ("vlan", r"^\s*vlan\s+\d+"),
+            ("dhcp", r"^\s*(ip dhcp|network\s+\d+\.|default-router|dns-server)\b"),
+            ("acl", r"^\s*(access-list|ip access-list|permit|deny)\b"),
+            ("routing", r"^\s*(router\s+|network\s+\d+\.|passive-interface|redistribute|ip route|default-information|neighbor\s+\d+\.)\b"),
+            ("nat", r"^\s*ip nat\b"),
+            ("l2", r"^\s*(switchport|spanning-tree|channel-group|storm-control|duplex|speed|mtu)\b"),
+            ("security", r"^\s*(aaa|username|enable secret|enable password|service password-encryption|line\s+|transport input|login|snmp-server|crypto key|ip http)\b"),
+            ("management", r"^\s*(ip default-gateway|ip name-server|ip domain-name|no ip domain-lookup|logging host|ntp server|clock timezone)\b"),
+            ("wireless", r"^\s*(ssid|wlan|authentication|encryption|radius-server|dot11)\b"),
+            ("gateway_redundancy", r"^\s*(standby|vrrp|glbp)\b"),
+            ("operational", r"^\s*(show\s+|Device ID:|Local Intf|Internet\s+\d+|VLAN\s+Name|Port\s+Name|Gateway of last resort)\b"),
+        ]
+        for no, line in self.lines:
+            raw = line.rstrip()
+            stripped = raw.strip()
+            if not stripped or stripped in {"!", "end"}:
+                continue
+            header = re.match(r"^\s*(interface\s+\S+|router\s+\S+(?:\s+\S+)?|ip dhcp pool\s+\S+|ip access-list\s+\S+\s+\S+|line\s+\S+(?:\s+\S+)?|vlan\s+\d+)\b", stripped, flags=re.I)
+            if header:
+                context = header.group(1)
+            category = None
+            for name, pattern in command_patterns:
+                if re.match(pattern, stripped, flags=re.I):
+                    category = name
+                    break
+            if not category:
+                # Keep indented child commands under known network contexts.
+                if context != "global" and re.match(r"^\s+[A-Za-z0-9_-]", raw):
+                    category = "context_child"
+                else:
+                    continue
+            display = self._redact_sensitive_command(stripped)
+            rows.append({
+                "line": no,
+                "context": context,
+                "category": category,
+                "command": display,
+                "raw_length": len(stripped),
+                "evidence": evidence_obj(no, display, 0.82 if category != "context_child" else 0.68),
+            })
+        return rows[:4000]
+
+    def _redact_sensitive_command(self, command):
+        """Mask secrets while preserving enough structure for evidence review."""
+        value = str(command or "")
+        replacements = [
+            (r"(?i)(enable\s+(?:secret|password)\s+)(.+)", r"\1<redacted>"),
+            (r"(?i)(username\s+\S+\s+(?:privilege\s+\d+\s+)?(?:secret|password)\s+)(.+)", r"\1<redacted>"),
+            (r"(?i)(snmp-server\s+community\s+)(\S+)(.*)", r"\1<redacted>\3"),
+            (r"(?i)(radius-server\s+key\s+)(.+)", r"\1<redacted>"),
+            (r"(?i)(wpa-psk\s+ascii\s+)(.+)", r"\1<redacted>"),
+            (r"(?i)(password\s+)(\S+)", r"\1<redacted>"),
+        ]
+        for pattern, repl in replacements:
+            value = re.sub(pattern, repl, value)
+        return value
+
+    def parse_interface_features(self):
+        """Extract every interface-level policy/control hint that affects behavior."""
+        features = []
+        for block in self.get_blocks(r"^\s*interface\s+\S+"):
+            m = re.match(r"^\s*interface\s+(\S+)", block["header"], flags=re.I)
+            if not m:
+                continue
+            iface = m.group(1)
+            norm = normalize_interface_name(iface)
+            for no, line in block["body"]:
+                stripped = line.strip()
+                checks = [
+                    ("voice_vlan", r"^switchport\s+voice\s+vlan\s+(\S+)", "vlan"),
+                    ("nonegotiate", r"^switchport\s+nonegotiate\b", "enabled"),
+                    ("portfast", r"^spanning-tree\s+portfast\b", "enabled"),
+                    ("bpduguard", r"^spanning-tree\s+bpduguard\s+(enable|disable)", "state"),
+                    ("root_guard", r"^spanning-tree\s+guard\s+root\b", "enabled"),
+                    ("storm_control", r"^storm-control\s+(\S+)\s+level\s+(.+)", "level"),
+                    ("channel_group", r"^channel-group\s+(\d+)(?:\s+mode\s+(\S+))?", "group"),
+                    ("speed", r"^speed\s+(\S+)", "value"),
+                    ("duplex", r"^duplex\s+(\S+)", "value"),
+                    ("mtu", r"^mtu\s+(\d+)", "bytes"),
+                    ("ip_helper", r"^ip\s+helper-address\s+(\S+)", "address"),
+                    ("no_shutdown", r"^no\s+shutdown\b", "enabled"),
+                    ("switchport_protected", r"^switchport\s+protected\b", "enabled"),
+                    ("switchport_private_vlan", r"^switchport\s+private-vlan\s+(.+)", "value"),
+                    ("switchport_allowed_vlan_add", r"^switchport\s+trunk\s+allowed\s+vlan\s+add\s+(.+)", "vlans"),
+                ]
+                for feature, pattern, value_name in checks:
+                    cm = re.match(pattern, stripped, flags=re.I)
+                    if not cm:
+                        continue
+                    value = " ".join(g for g in cm.groups() if g not in (None, ""))
+                    row = {
+                        "interface": iface,
+                        "normalized_interface": norm,
+                        "feature": feature,
+                        value_name: value or True,
+                        "value": value or True,
+                        "evidence": evidence_obj(no, self._redact_sensitive_command(line), 0.84),
+                    }
+                    if feature in {"voice_vlan", "switchport_allowed_vlan_add"}:
+                        row["vlans"] = self.expand_vlan_list(value) if value else []
+                    features.append(row)
+        return features[:1500]
+
+    def parse_management_services(self):
+        """Parse global management/security services without leaking secrets."""
+        rows = []
+        line_context = None
+        for no, line in self.lines:
+            stripped = line.strip()
+            if re.match(r"^line\s+(vty|console|aux)\b", stripped, flags=re.I):
+                line_context = stripped
+                rows.append({"service": "line_context", "context": line_context, "value": line_context, "evidence": evidence_obj(no, stripped, 0.78)})
+                continue
+            patterns = [
+                ("default_gateway", r"^ip\s+default-gateway\s+(\S+)", "network_management"),
+                ("name_server", r"^ip\s+name-server\s+(.+)", "network_management"),
+                ("domain_name", r"^ip\s+domain-name\s+(.+)", "network_management"),
+                ("domain_lookup_disabled", r"^no\s+ip\s+domain-lookup\b", "network_management"),
+                ("ntp_server", r"^ntp\s+server\s+(\S+)", "time"),
+                ("logging_host", r"^logging\s+host\s+(\S+)", "logging"),
+                ("syslog_trap", r"^logging\s+trap\s+(\S+)", "logging"),
+                ("snmp_community", r"^snmp-server\s+community\s+(\S+)(.*)", "snmp"),
+                ("snmp_host", r"^snmp-server\s+host\s+(\S+)(.*)", "snmp"),
+                ("aaa_method", r"^aaa\s+(.+)", "aaa"),
+                ("radius_host", r"^radius-server\s+host\s+(\S+)(.*)", "aaa"),
+                ("tacacs_host", r"^tacacs-server\s+host\s+(\S+)(.*)", "aaa"),
+                ("http_server", r"^ip\s+http\s+server\b", "http"),
+                ("https_server", r"^ip\s+http\s+secure-server\b", "http"),
+                ("ssh_version", r"^ip\s+ssh\s+version\s+(\S+)", "ssh"),
+                ("transport_input", r"^transport\s+input\s+(.+)", "line_access"),
+                ("login_local", r"^login\s+local\b", "line_access"),
+                ("exec_timeout", r"^exec-timeout\s+(.+)", "line_access"),
+                ("banner", r"^banner\s+(\S+)\s+(.+)", "legal_notice"),
+            ]
+            for service, pattern, family in patterns:
+                m = re.match(pattern, stripped, flags=re.I)
+                if not m:
+                    continue
+                redacted = self._redact_sensitive_command(stripped)
+                value = " ".join(g for g in m.groups() if g not in (None, ""))
+                if service == "snmp_community":
+                    value = "<redacted>" + (m.group(2) or "")
+                rows.append({
+                    "service": service,
+                    "family": family,
+                    "context": line_context if family == "line_access" else "global",
+                    "value": value or True,
+                    "command": redacted,
+                    "risk": "weak" if service in {"http_server"} or (service == "transport_input" and "telnet" in value.lower()) else "control",
+                    "evidence": evidence_obj(no, redacted, 0.82),
+                })
+        return rows[:1200]
+
+    def parse_gateway_redundancy(self):
+        """Extract HSRP/VRRP/GLBP details from interface blocks."""
+        rows = []
+        for block in self.get_blocks(r"^\s*interface\s+\S+"):
+            m = re.match(r"^\s*interface\s+(\S+)", block["header"], flags=re.I)
+            if not m:
+                continue
+            iface = m.group(1)
+            for no, line in block["body"]:
+                stripped = line.strip()
+                hm = re.match(r"^standby\s+(\d+)\s+(ip|priority|preempt|track)\s*(.*)", stripped, flags=re.I)
+                vm = re.match(r"^vrrp\s+(\d+)\s+(ip|priority|preempt|track)\s*(.*)", stripped, flags=re.I)
+                gm = re.match(r"^glbp\s+(\d+)\s+(ip|priority|preempt|weighting)\s*(.*)", stripped, flags=re.I)
+                match = hm or vm or gm
+                if not match:
+                    continue
+                proto = "hsrp" if hm else "vrrp" if vm else "glbp"
+                group, action, value = match.groups()
+                rows.append({
+                    "protocol": proto,
+                    "interface": iface,
+                    "normalized_interface": normalize_interface_name(iface),
+                    "group": group,
+                    "action": action.lower(),
+                    "value": value.strip() or True,
+                    "evidence": evidence_obj(no, stripped, 0.84),
+                })
+        return rows[:800]
+
+    def parse_routing_protocol_details(self):
+        """Preserve routing process children: networks, redistribution, passive interfaces."""
+        details = []
+        for block in self.get_blocks(r"^\s*router\s+(ospf|eigrp|rip|bgp)\b"):
+            m = re.match(r"^\s*router\s+(ospf|eigrp|rip|bgp)\s*(.*)", block["header"], flags=re.I)
+            if not m:
+                continue
+            protocol, process = m.groups()
+            details.append({
+                "protocol": protocol.lower(),
+                "process": process.strip() or None,
+                "command": block["header"].strip(),
+                "type": "process",
+                "evidence": evidence_obj(block["header_line"], block["header"], 0.88),
+            })
+            for no, line in block["body"]:
+                stripped = line.strip()
+                if not stripped or stripped == "!":
+                    continue
+                kind = "other"
+                if re.match(r"^network\s+", stripped, flags=re.I):
+                    kind = "network"
+                elif re.match(r"^passive-interface\s+", stripped, flags=re.I):
+                    kind = "passive_interface"
+                elif re.match(r"^redistribute\s+", stripped, flags=re.I):
+                    kind = "redistribution"
+                elif re.match(r"^neighbor\s+", stripped, flags=re.I):
+                    kind = "neighbor"
+                elif re.match(r"^default-information\s+", stripped, flags=re.I):
+                    kind = "default_origination"
+                details.append({
+                    "protocol": protocol.lower(),
+                    "process": process.strip() or None,
+                    "type": kind,
+                    "command": stripped,
+                    "evidence": evidence_obj(no, stripped, 0.80 if kind != "other" else 0.62),
+                })
+        return details[:1200]
+
+    def derive_extraction_completeness(self, objects):
+        """Score coverage per evidence family so the UI can show what is strong vs missing."""
+        families = [
+            ("identity", ["devices", "device_facts", "device_inventory"], "hostnames/model/version"),
+            ("l3_addressing", ["interfaces", "ip_inventory", "subnet_inventory"], "interfaces, IPs, subnets"),
+            ("l2_switching", ["vlans", "vlan_brief", "trunk_operational", "spanning_tree", "mac_table"], "VLANs, trunks, STP, MAC"),
+            ("security_policy", ["acl_rules", "policy_controls", "security_hardening", "management_services"], "ACLs and hardening controls"),
+            ("routing", ["routing_protocol_details", "route_table"], "static/dynamic routing"),
+            ("topology", ["cdp_links", "lldp_links", "structured_relationships"], "CDP/LLDP/structured links"),
+            ("native_recovery", ["decoded_payloads", "reconstructed_config_preview", "native_visible_hints", "all_config_commands"], "native/decoded evidence"),
+        ]
+        rows = []
+        for family, keys, label in families:
+            count = 0
+            line_mapped = 0
+            for key in keys:
+                value = objects.get(key)
+                if isinstance(value, dict):
+                    value = [value]
+                if not isinstance(value, list):
+                    continue
+                count += len(value)
+                for item in value:
+                    ev = item.get("evidence") if isinstance(item, dict) else {}
+                    if isinstance(ev, dict) and (ev.get("source_line") is not None or ev.get("source_path")):
+                        line_mapped += 1
+            score = 0 if count == 0 else min(100, 45 + min(count, 25) * 2 + min(line_mapped, 20))
+            rows.append({
+                "family": family,
+                "label": label,
+                "objects": count,
+                "line_mapped": line_mapped,
+                "score": int(score),
+                "status": "strong" if score >= 80 else "partial" if score >= 50 else "missing",
+                "evidence": {"source_line": None, "source_text": f"{family}: {count} objects / {line_mapped} line-mapped", "confidence": min(0.95, score / 100 if score else 0.35)},
+            })
+        return rows
+
     def parse_ip_inventory(self):
         entries = []
         for no, line in self.lines:
@@ -1310,13 +1807,28 @@ class PacketTracerImportService:
     def read_upload(self, uploaded_file):
         original_filename = uploaded_file.filename or "uploaded"
         safe_original, stored_name = self._stored_filename(original_filename)
+        # Flask/Werkzeug FileStorage streams can be inspected by middleware or browser
+        # tooling before the importer reads them. Always rewind defensively so the
+        # backend never persists an empty upload just because the stream cursor moved.
+        try:
+            stream = getattr(uploaded_file, "stream", None)
+            if stream and hasattr(stream, "seek"):
+                stream.seek(0)
+            elif hasattr(uploaded_file, "seek"):
+                uploaded_file.seek(0)
+        except Exception as exc:
+            log.debug("Could not rewind upload stream for %s: %s", original_filename, exc)
         raw = uploaded_file.read()
+        if isinstance(raw, str):
+            raw = raw.encode("utf-8", errors="replace")
         if not raw:
-            raise ValueError("Uploaded file is empty.")
+            raise ValueError("Uploaded file is empty. Re-select the file and upload again; the backend received 0 bytes.")
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise ValueError(f"Uploaded file is too large ({len(raw)} bytes). Limit is {MAX_UPLOAD_BYTES} bytes; split evidence or upload a ZIP/config export.")
         source_hash = hashlib.sha256(raw).hexdigest()
         upload_path = (self.upload_dir / stored_name).resolve()
         upload_root = self.upload_dir.resolve()
-        if not upload_path.is_relative_to(upload_root):
+        if not _is_relative_to(upload_path, upload_root):
             raise ValueError("Unsafe upload path rejected.")
         upload_path.write_bytes(raw)
         ext = Path(safe_original).suffix.lower()
@@ -1350,13 +1862,25 @@ class PacketTracerImportService:
         ext = Path(safe_original).suffix.lower()
         if ext in {".pkt", ".pka"}:
             raise ValueError("Companion export must be XML, JSON, TXT/CFG/CONF/LOG, or ZIP — not another native .pkt/.pka file.")
+        try:
+            stream = getattr(companion_file, "stream", None)
+            if stream and hasattr(stream, "seek"):
+                stream.seek(0)
+            elif hasattr(companion_file, "seek"):
+                companion_file.seek(0)
+        except Exception as exc:
+            log.debug("Could not rewind companion upload stream for %s: %s", companion_file.filename, exc)
         raw = companion_file.read()
+        if isinstance(raw, str):
+            raw = raw.encode("utf-8", errors="replace")
         if not raw:
             return None
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise ValueError(f"Companion export is too large ({len(raw)} bytes). Limit is {MAX_UPLOAD_BYTES} bytes.")
         source_hash = hashlib.sha256(raw).hexdigest()
         upload_path = (self.upload_dir / stored_name).resolve()
         upload_root = self.upload_dir.resolve()
-        if not upload_path.is_relative_to(upload_root):
+        if not _is_relative_to(upload_path, upload_root):
             raise ValueError("Unsafe companion upload path rejected.")
         upload_path.write_bytes(raw)
         if ext == ".json":
@@ -1413,6 +1937,8 @@ class PacketTracerImportService:
             "pkt_native_inspection": 0.50,
             "pkt_auto_xml_json_bridge": 0.66,
         }.get(source_mode, 0.70)
+        if source_mode == "pkt_auto_xml_json_bridge" and objects.get("external_converter_outputs"):
+            source_confidence = 0.96
         evidence_profile = objects.get("evidence_profile", {})
         ratio = evidence_profile.get("line_mapping_ratio", 0)
         applied_acls = sum(1 for r in objects.get("acl_rules", []) if r.get("is_applied"))
@@ -1441,40 +1967,64 @@ class PacketTracerImportService:
                 text_for_regex = "\n\n".join(part for part in [structured_text, text] if part)
                 regex_parsed = extractor.parse(text_for_regex)
                 parsed = finalize_objects(extractor, merge_unique(merge_unique(regex_parsed, canonical), structured))
+                parsed = merge_universal_objects(parsed, payload, filename, "json")
                 source_mode = "json_structured" if structured_summary.get("status") == "understood" or has_canonical_objects(payload) else "json"
             except Exception as exc:
                 parsed = extractor.parse(text)
                 parsed["structured_summary"] = {"format": "json", "status": "json_parse_failed", "error": str(exc)}
+                parsed.setdefault("import_warnings", []).append({
+                    "severity": "High",
+                    "title": "JSON parse failed",
+                    "detail": str(exc)[:500],
+                })
         elif source_mode == "xml":
             structured, structured_text, structured_summary = StructuredEvidenceNormalizer().normalize_xml(text)
-            text_for_regex = "\n\n".join(part for part in [structured_text, text] if part)
+            profile_objects, profile_text, profile_summary = extract_packet_tracer_xml_objects(text, filename)
+            if profile_summary.get("status") == "understood":
+                structured_summary.setdefault("packet_tracer_xml_profile", profile_summary)
+            structured = merge_unique(structured, profile_objects)
+            text_for_regex = "\n\n".join(part for part in [profile_text, structured_text, text] if part)
             regex_parsed = extractor.parse(text_for_regex)
             parsed = finalize_objects(extractor, merge_unique(regex_parsed, structured))
+            try:
+                parsed = merge_universal_objects(parsed, {"xml_text": text, "structured_summary": structured_summary}, filename, "xml")
+            except Exception as exc:
+                parsed.setdefault("import_warnings", []).append({"severity": "Low", "title": "Universal XML visibility fallback skipped", "detail": str(exc)[:300]})
             parsed["xml_detected"] = True
             source_mode = "xml_structured" if structured_summary.get("status") == "understood" else "xml"
         elif source_mode in {"pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
             converter_attempts = []
+            external_payloads = []
             external_xml = None
             if source_mode == "pkt_auto_xml_json_bridge":
-                converter = os.environ.get("PTEXPLORER_PATH")
-                if converter:
-                    try:
-                        upload_path = (self.upload_dir / stored_filename).resolve()
-                        out_xml = self.upload_dir / f"{Path(stored_filename).stem}_converted.xml"
-                        result = subprocess.run([converter, str(upload_path), str(out_xml)], capture_output=True, text=True, timeout=45)
-                        converter_attempts.append({
-                            "tool": "external_converter",
-                            "path": converter,
-                            "status": "success" if result.returncode == 0 and out_xml.exists() else "failed",
-                            "returncode": result.returncode,
-                            "stderr": (result.stderr or "")[:800],
-                        })
-                        if result.returncode == 0 and out_xml.exists():
-                            external_xml = out_xml.read_text(encoding="utf-8", errors="replace")
-                    except Exception as exc:
-                        converter_attempts.append({"tool": "external_converter", "status": "failed", "error": str(exc)[:800]})
+                upload_path = (self.upload_dir / stored_filename).resolve()
+                converter_attempts, external_payloads = run_external_pkt_converters(upload_path, self.upload_dir)
+                # Feed the strongest converter XML into the native bridge.  The full
+                # payload list is still preserved separately as external_converter_outputs.
+                xml_payloads = [p for p in external_payloads if p.get("kind") == "xml" and p.get("content")]
+                if xml_payloads:
+                    xml_payloads.sort(key=lambda p: int(p.get("bytes") or 0), reverse=True)
+                    external_xml = xml_payloads[0].get("content")
 
                 native_profile, native_text, bridge_xml, bridge_json = run_native_pkt_auto_pipeline(raw, filename, external_xml=external_xml, attempts=converter_attempts)
+                # Preserve every converter payload as decoded evidence; the bridge
+                # already uses the strongest XML, but JSON/stdout outputs also help
+                # the universal walker and analyst review.
+                if external_payloads:
+                    existing = bridge_json.setdefault("decoded_payloads", [])
+                    by_hash = {p.get("sha256"): p for p in existing if isinstance(p, dict) and p.get("sha256")}
+                    for payload in external_payloads:
+                        digest = payload.get("sha256")
+                        if digest and digest in by_hash:
+                            # Replace the truncated bridge payload with the full converter
+                            # output so large XML files can actually be normalized.
+                            by_hash[digest].update(payload)
+                        else:
+                            existing.insert(0, payload)
+                            if digest:
+                                by_hash[digest] = payload
+                    native_profile["external_converter_outputs"] = len(external_payloads)
+                    native_profile["external_converter_status"] = "success"
             else:
                 native_profile, native_text = inspect_native_pkt(raw, filename)
                 bridge_xml, bridge_json = build_internal_pkt_xml_bridge(raw, filename, native_profile, native_text)
@@ -1500,9 +2050,15 @@ class PacketTracerImportService:
                             decoded_texts.append(extra_text)
                     elif companion.get("mode") == "xml":
                         extra, extra_text, _extra_summary = StructuredEvidenceNormalizer().normalize_xml(companion_text)
+                        profile_extra, profile_text, profile_summary = extract_packet_tracer_xml_objects(companion_text, companion.get("filename") or "companion_xml")
+                        extra = merge_unique(extra, profile_extra)
                         decoded_structured = merge_unique(decoded_structured, extra)
                         if extra_text:
                             decoded_texts.append(extra_text)
+                        if profile_text:
+                            decoded_texts.append(profile_text)
+                        if profile_summary.get("status") == "understood":
+                            companion_exports[-1]["packet_tracer_xml_profile"] = profile_summary
                 except Exception as exc:
                     companion_exports[-1]["status"] = "parsed_as_text"
                     companion_exports[-1]["schema_error"] = str(exc)[:500]
@@ -1521,14 +2077,25 @@ class PacketTracerImportService:
                             decoded_texts.append(extra_text)
                     elif kind == "xml":
                         extra, extra_text, _extra_summary = StructuredEvidenceNormalizer().normalize_xml(content)
+                        profile_extra, profile_text, profile_summary = extract_packet_tracer_xml_objects(content, payload.get("name") or "decoded_converter_xml")
+                        extra = merge_unique(extra, profile_extra)
                         decoded_structured = merge_unique(decoded_structured, extra)
                         if extra_text:
                             decoded_texts.append(extra_text)
+                        if profile_text:
+                            decoded_texts.append(profile_text)
+                        if profile_summary.get("status") == "understood":
+                            payload["packet_tracer_xml_profile"] = profile_summary
                 except Exception as exc:
                     # Keep the raw decoded payload for regex parsing even if schema parsing fails.
                     log.debug("Decoded native payload schema parsing failed for %s: %s", payload.get("name"), exc)
 
             text_for_regex = "\n\n".join(part for part in [native_text, structured_text, text] + decoded_texts if part)
+            # Native .pkt/.pka intake starts as binary, so the original text field is
+            # intentionally empty.  Promote the verified/recovered conversion text to
+            # the result preview so the UI does not look blank after a successful
+            # upload and artifacts have a real reviewer-readable trail.
+            text = text_for_regex
             regex_parsed = extractor.parse(text_for_regex)
             parsed = finalize_objects(extractor, merge_unique(merge_unique(regex_parsed, structured), decoded_structured))
             if companion_exports:
@@ -1566,6 +2133,16 @@ class PacketTracerImportService:
                 {k: v for k, v in payload.items() if k != "content"}
                 for payload in (bridge_json.get("decoded_payloads", []) or [])[:80]
             ]
+            parsed["external_converter_outputs"] = [
+                {k: v for k, v in payload.items() if k != "content"}
+                for payload in (external_payloads or [])[:20]
+            ]
+            if external_payloads:
+                parsed.setdefault("import_warnings", []).append({
+                    "severity": "Info",
+                    "title": "External Packet Tracer converter output merged",
+                    "detail": f"{len(external_payloads)} converter XML/JSON output(s) were parsed and merged before WiGuard built the normalized JSON/object layer.",
+                })
             parsed["internal_xml_bridge"] = [{
                 "source": "native_pkt_auto_xml_json_bridge" if source_mode == "pkt_auto_xml_json_bridge" else "native_pkt_visible_evidence",
                 "fidelity": "auto_xml_to_normalized_json" if source_mode == "pkt_auto_xml_json_bridge" else "best_effort_visible_only",
@@ -1574,10 +2151,59 @@ class PacketTracerImportService:
                 "visible_counts": bridge_json.get("counts", {}),
                 "fidelity_tier": (native_profile.get("extraction_fidelity") or {}).get("tier"),
                 "fidelity_score": (native_profile.get("extraction_fidelity") or {}).get("score"),
-                "note": "Generated automatically in the background: native PKT/PKA evidence → internal XML bridge → normalized JSON → object extraction.",
+                "note": "Generated automatically in the background: native PKT/PKA evidence → converter probe → internal XML bridge → normalized JSON → object extraction.",
+                "external_converter_outputs": len(external_payloads or []),
+                "external_converter_status": "success" if external_payloads else "not_used_or_no_output",
             }]
             parsed["converted_xml_preview"] = [{"name": "internal_pkt_bridge.xml", "content": bridge_xml[:36000]}]
+            for idx, payload in enumerate((external_payloads or [])[:2], start=1):
+                if payload.get("kind") == "xml" and payload.get("content"):
+                    parsed["converted_xml_preview"].append({"name": payload.get("name") or f"external_converter_{idx}.xml", "content": payload.get("content", "")[:36000]})
             parsed["normalized_json_preview"] = [{"name": "internal_pkt_bridge.normalized.json", "content": normalized_json_preview(bridge_json, limit=36000)}]
+            # Run the bridge JSON itself through the universal payload walker so the
+            # UI can display every recovered Packet Tracer detail as a tree,
+            # key/value index, table summary, XML bridge, and fact list.
+            parsed = merge_universal_objects(parsed, bridge_json, filename, "pkt_internal_bridge_json")
+            parsed["native_source_manifest"] = [{
+                "filename": filename,
+                "stored_filename": stored_filename,
+                "extension": Path(filename or "").suffix.lower() or ".pkt",
+                "source_mode": source_mode,
+                "sha256": source_hash,
+                "bytes": len(raw or b""),
+                "status": "accepted_and_inspected",
+                "recoverability": native_profile.get("recoverability"),
+                "confidence": native_profile.get("confidence"),
+                "xml_bridge_bytes": len(bridge_xml.encode("utf-8", errors="replace")),
+                "normalized_json_bytes": len(normalized_json_preview(bridge_json).encode("utf-8", errors="replace")),
+                "decoded_payload_count": int(native_profile.get("decoded_payload_count") or len(bridge_json.get("decoded_payloads", []) or [])),
+                "visible_string_count": int(native_profile.get("visible_string_count") or 0),
+                "printable_segment_count": int(native_profile.get("printable_segment_count") or 0),
+                "reconstructed_config_count": int(native_profile.get("reconstructed_config_count") or 0),
+                "external_converter_status": "success" if external_payloads else "not_configured_or_no_output",
+                "external_converter_outputs": len(external_payloads or []),
+                "converter_attempts": converter_attempts[:8],
+                "decision": native_profile.get("decision"),
+                "evidence": {
+                    "source_line": 1,
+                    "confidence": float(native_profile.get("confidence", 0.42) or 0.42),
+                    "source_text": "Native Packet Tracer binary was accepted, hashed, inspected, bridged to XML, and normalized to JSON.",
+                },
+            }]
+            parsed["binary_evidence_summary"] = [{
+                "name": "native-pkt-intake",
+                "status": native_profile.get("recoverability") or "review",
+                "summary": native_profile.get("decision") or "Native Packet Tracer binary processed through the automatic inspection path.",
+                "source_hash": source_hash,
+                "source_mode": source_mode,
+                "counts": bridge_json.get("counts", {}),
+                "next_action": "If topology objects are still low, configure WIGUARD_PKT_CONVERTER_PATH/PTEXPLORER_PATH or upload exported show-command/config/XML/JSON ZIP.",
+                "evidence": {
+                    "source_line": 1,
+                    "confidence": float(native_profile.get("confidence", 0.42) or 0.42),
+                    "source_text": f"{filename} accepted as native Packet Tracer evidence; no silent failure.",
+                },
+            }]
             parsed.setdefault("import_warnings", []).append({
                 "severity": "High" if native_profile.get("recoverability") == "opaque_native_binary" else "Medium",
                 "title": "Automatic native PKT XML/JSON bridge completed",
@@ -1587,10 +2213,16 @@ class PacketTracerImportService:
             parsed = extractor.parse(text)
 
         if not parsed.get("devices") and source_mode not in {"pkt_native_inspection", "pkt_binary_recovery", "pkt_auto_xml_json_bridge"}:
-            parsed["devices"] = [{"id": "Extracted-Reality", "hostname": "Extracted Wired Reality", "type": "network", "role": "synthetic_context", "evidence": {"source_line": None, "source_text": "Synthetic context because no hostname was found.", "confidence": 0.35}}]
+            parsed.setdefault("import_warnings", []).append({
+                "severity": "Medium",
+                "title": "No concrete device identity found",
+                "detail": "The importer found evidence, but it did not create a fake/synthetic device. Upload running-config, show version, XML/JSON node export, or converter XML with node names to prove device identity.",
+            })
 
         if companion and source_mode not in {"pkt_native_inspection", "pkt_binary_recovery", "pkt_auto_xml_json_bridge"}:
-            parsed["companion_exports"] = [{k: companion.get(k) for k in ["filename", "stored_filename", "extension", "bytes", "sha256", "mode"]} | {"status": "loaded_not_merged", "purpose": "companion_export_supplied_for_non_native_import"}]
+            companion_export_row = {k: companion.get(k) for k in ["filename", "stored_filename", "extension", "bytes", "sha256", "mode"]}
+            companion_export_row.update({"status": "loaded_not_merged", "purpose": "companion_export_supplied_for_non_native_import"})
+            parsed["companion_exports"] = [companion_export_row]
 
         evidence_registry = build_evidence_registry(parsed)
         parsed["evidence_registry"] = evidence_registry
@@ -1603,18 +2235,43 @@ class PacketTracerImportService:
             conversion_profile["structured_summary"] = structured_summary
         parsed["packet_tracer_profile"] = conversion_profile
 
+        # v5.16 professional layer: attach a stable normalized schema for UI tables,
+        # evidence-backed findings, report exports, and future parser extensions.
+        # This is additive and does not replace the existing Packet Tracer/import
+        # intelligence objects.
+        try:
+            from .professional_pipeline import attach_professional_layer
+
+            parsed = attach_professional_layer(parsed, {
+                "filename": filename,
+                "source_mode": source_mode,
+                "source_hash": source_hash,
+            })
+        except Exception as exc:
+            parsed.setdefault("import_warnings", []).append({
+                "severity": "Low",
+                "title": "Professional normalization layer skipped",
+                "detail": str(exc)[:400],
+            })
+
         structured_status = (structured_summary or {}).get("status")
+        professional_summary = {}
+        try:
+            professional_summary = ((parsed.get("professional_analysis_result") or [{}])[0] or {}).get("summary", {})
+        except Exception:
+            professional_summary = {}
         pipeline = [
             {"stage": "File Intake", "status": "success", "confidence": 1.0, "items": 1, "detail": f"Accepted {filename} and stored immutable source hash."},
             {"stage": "Source Decoding", "status": "review" if source_mode in {"pkt_binary_recovery", "pkt_native_inspection", "pkt_auto_xml_json_bridge"} else "success", "confidence": 0.78 if source_mode == "pkt_auto_xml_json_bridge" else (0.58 if source_mode == "pkt_native_inspection" else (0.62 if source_mode == "pkt_binary_recovery" else 0.95)), "items": len(text.splitlines()), "detail": f"Source mode: {source_mode}. Native files are decoded through converter probes, printable segment reconstruction, XML bridge, and normalized JSON before parsing." if source_mode == "pkt_auto_xml_json_bridge" else f"Source mode: {source_mode}."},
             {"stage": "Structured Schema Normalization", "status": structured_status or "not_needed", "confidence": 0.90 if structured_status == "understood" else 0.55, "items": sum((structured_summary or {}).get("detected_sections", {}).values()) if structured_summary else 0, "detail": "Decoded JSON/XML schema paths, embedded configs, links, VLANs, interfaces, device records, endpoint inventory, and validation findings." if structured_summary else "Text/config parser path used."},
             {"stage": "Packet Tracer Intelligence", "status": conversion_profile.get("readiness", "review"), "confidence": conversion_profile.get("readiness_score", 0.5), "items": conversion_profile.get("objects_total", 0), "detail": conversion_profile.get("analyst_next_step", "Conversion profile built.")},
             {"stage": "Object Extraction", "status": "success", "confidence": 0.90, "items": sum(len(v) for k, v in parsed.items() if isinstance(v, list)), "detail": "Parsed devices, interfaces, VLANs, DHCP, ACL, routing, NAT, L2 health, links, structured topology hints, endpoint inventory, and schema validations."},
-            {"stage": "Evidence Mapping", "status": "success", "confidence": 0.90, "items": len(parsed.get("evidence_registry", [])), "detail": "Built an evidence registry that classifies each extracted object as verified, recovered, inferred, or unmapped."}
+            {"stage": "Evidence Mapping", "status": "success", "confidence": 0.90, "items": len(parsed.get("evidence_registry", [])), "detail": "Built an evidence registry that classifies each extracted object as verified, recovered, inferred, or unmapped."},
+            {"stage": "Professional Normalization", "status": "success" if parsed.get("professional_analysis_result") else "review", "confidence": float(professional_summary.get("confidence_avg", 0.72) or 0.72), "items": int(professional_summary.get("entity_count", 0) or 0), "detail": "Built normalized devices, interfaces, IPs, VLANs, routes, wireless rows, security findings, evidence view, and report-ready schema."}
         ]
 
         confidence = self._confidence_summary(parsed, source_mode)
         confidence["readiness"] = conversion_profile.get("readiness")
         confidence["readiness_score"] = conversion_profile.get("readiness_score")
         confidence["structured_status"] = structured_status
-        return {"filename": filename, "stored_filename": stored_filename, "source_hash": source_hash, "source_mode": source_mode, "text": text, "objects": parsed, "pipeline": pipeline, "imported_at": now_iso(), "missing_evidence": self._missing_evidence(parsed), "confidence_summary": confidence, "conversion_profile": conversion_profile}
+        return {"filename": filename, "stored_filename": stored_filename, "source_hash": source_hash, "source_mode": source_mode, "source_size": len(raw or b""), "text": text, "objects": parsed, "pipeline": pipeline, "imported_at": now_iso(), "missing_evidence": self._missing_evidence(parsed), "confidence_summary": confidence, "conversion_profile": conversion_profile}

@@ -30,9 +30,9 @@ from xml.etree import ElementTree as ET
 
 MAX_STRING_PREVIEW = 220
 MAX_STRINGS = 250
-MAX_DECOMPRESSED_CHUNKS = 8
+MAX_DECOMPRESSED_CHUNKS = 16
 MAX_DECOMPRESSED_BYTES = 256_000
-MAX_DECODED_PAYLOADS = 24
+MAX_DECODED_PAYLOADS = 40
 MAX_PAYLOAD_TEXT = 220_000
 
 COMMON_SIGNATURES: List[Tuple[str, bytes, str]] = [
@@ -70,8 +70,8 @@ CONFIG_COMMAND_STARTERS = (
     "router eigrp", "router rip", "router bgp", "access-list", "ip access-list",
     "ip nat", "spanning-tree", "line vty", "service password-encryption",
     "enable secret", "username", "snmp-server", "radius-server", "aaa new-model",
-    "description", "shutdown", "no shutdown", "channel-group", "switchport port-security",
-    "ssid", "wlan", "crypto", "network", "default-router", "dns-server",
+    "description", "shutdown", "no shutdown", "channel-group", "switchport port-security", "switchport voice vlan", "spanning-tree portfast", "standby", "vrrp", "glbp",
+    "ssid", "wlan", "crypto", "network", "default-router", "dns-server", "ip helper-address", "ip default-gateway", "ip name-server",
 )
 
 CONFIG_RECONSTRUCTION_PATTERNS = [
@@ -105,6 +105,16 @@ CONFIG_RECONSTRUCTION_PATTERNS = [
     r"aaa\s+new-model",
     r"ssid\s+[^\r\n]{1,80}",
     r"wlan\s+[^\r\n]{1,100}",
+    r"ip\s+helper-address\s+\d+\.\d+\.\d+\.\d+",
+    r"ip\s+default-gateway\s+\d+\.\d+\.\d+\.\d+",
+    r"ip\s+name-server\s+(?:\d+\.\d+\.\d+\.\d+\s*)+",
+    r"switchport\s+voice\s+vlan\s+\d+",
+    r"spanning-tree\s+portfast\b",
+    r"storm-control\s+\S+\s+level\s+[^\r\n]{1,40}",
+    r"channel-group\s+\d+(?:\s+mode\s+\S+)?",
+    r"standby\s+\d+\s+(?:ip|priority|preempt|track)\b[^\r\n]{0,100}",
+    r"vrrp\s+\d+\s+(?:ip|priority|preempt|track)\b[^\r\n]{0,100}",
+    r"glbp\s+\d+\s+(?:ip|priority|preempt|weighting)\b[^\r\n]{0,100}",
 ]
 
 
@@ -144,6 +154,52 @@ def recover_printable_strings(raw: bytes, min_len: int = 5) -> List[str]:
         seen.add(compact)
         cleaned.append(compact[:MAX_STRING_PREVIEW])
     return cleaned[:MAX_STRINGS]
+
+
+def recover_unicode_strings(raw: bytes, min_len: int = 5) -> List[str]:
+    """Recover UTF-16LE/UTF-16BE strings stored inside native Packet Tracer files."""
+    results: List[str] = []
+    for encoding in ("utf-16le", "utf-16be"):
+        try:
+            decoded = raw.decode(encoding, errors="ignore")
+        except Exception:
+            continue
+        buf: List[str] = []
+        for ch in decoded:
+            if ch in "\t\n\r" or 32 <= ord(ch) <= 126:
+                buf.append(ch)
+            else:
+                if len(buf) >= min_len:
+                    results.append("".join(buf).strip())
+                buf = []
+        if len(buf) >= min_len:
+            results.append("".join(buf).strip())
+    seen = set()
+    cleaned: List[str] = []
+    for item in results:
+        compact = re.sub(r"\s+", " ", item).strip()
+        if len(compact) < min_len or compact in seen:
+            continue
+        alpha_ratio = sum(1 for c in compact if c.isalnum() or c in "._:-/ ") / max(len(compact), 1)
+        if alpha_ratio < 0.55:
+            continue
+        seen.add(compact)
+        cleaned.append(compact[:MAX_STRING_PREVIEW])
+    return cleaned[:MAX_STRINGS]
+
+
+def _dedupe_strings(values: Iterable[str], limit: int = MAX_STRINGS) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for value in values:
+        compact = re.sub(r"\s+", " ", str(value or "")).strip()
+        if not compact or compact in seen:
+            continue
+        seen.add(compact)
+        out.append(compact[:MAX_STRING_PREVIEW])
+        if len(out) >= limit:
+            break
+    return out
 
 
 
@@ -260,6 +316,16 @@ def _trim_reconstructed_command(line: str) -> str:
         r"^(aaa\s+new-model)",
         r"^(ssid\s+\S+(?:\s+\S+){0,4})",
         r"^(wlan\s+\S+(?:\s+\S+){0,4})",
+        r"^(ip\s+helper-address\s+\d+\.\d+\.\d+\.\d+)",
+        r"^(ip\s+default-gateway\s+\d+\.\d+\.\d+\.\d+)",
+        r"^(ip\s+name-server\s+(?:\d+\.\d+\.\d+\.\d+\s*)+)",
+        r"^(switchport\s+voice\s+vlan\s+\d+)",
+        r"^(spanning-tree\s+portfast\b(?:\s+\S+)?)",
+        r"^(storm-control\s+\S+\s+level\s+\S+(?:\s+\S+)?)",
+        r"^(channel-group\s+\d+(?:\s+mode\s+\S+)?)",
+        r"^(standby\s+\d+\s+(?:ip|priority|preempt|track)\b(?:\s+\S+){0,5})",
+        r"^(vrrp\s+\d+\s+(?:ip|priority|preempt|track)\b(?:\s+\S+){0,5})",
+        r"^(glbp\s+\d+\s+(?:ip|priority|preempt|weighting)\b(?:\s+\S+){0,5})",
     ]
     for pat in command_trimmers:
         m = re.match(pat, line, flags=re.I)
@@ -306,19 +372,21 @@ def _signature_hits(raw: bytes) -> List[Dict[str, Any]]:
     return sorted(hits, key=lambda x: x["offset"])[:80]
 
 
+def _valid_zlib_header(raw: bytes, idx: int) -> bool:
+    if idx + 1 >= len(raw) or raw[idx] != 0x78:
+        return False
+    cmf, flg = raw[idx], raw[idx + 1]
+    return ((cmf << 8) + flg) % 31 == 0
+
+
 def _try_zlib_chunks(raw: bytes) -> Tuple[List[Dict[str, Any]], List[str]]:
     chunks: List[Dict[str, Any]] = []
     recovered_texts: List[str] = []
     offsets: List[int] = []
-    for marker in (b"\x78\x01", b"\x78\x9c", b"\x78\xda"):
-        start = 0
-        while True:
-            idx = raw.find(marker, start)
-            if idx == -1:
-                break
+    for idx, b in enumerate(raw[:-2]):
+        if b == 0x78 and _valid_zlib_header(raw, idx):
             offsets.append(idx)
-            start = idx + 1
-    for idx in sorted(set(offsets))[:80]:
+    for idx in sorted(set(offsets))[:180]:
         if len(chunks) >= MAX_DECOMPRESSED_CHUNKS:
             break
         try:
@@ -335,7 +403,7 @@ def _try_zlib_chunks(raw: bytes) -> Tuple[List[Dict[str, Any]], List[str]]:
                 "bytes": len(data),
                 "printable_ratio": pr,
                 "config_pattern_hits": config_hits,
-                "preview": re.sub(r"\s+", " ", text[:600]).strip(),
+                "preview": re.sub(r"\s+", " ", text[:900]).strip(),
             })
             if pr >= 0.35 or config_hits:
                 recovered_texts.append(f"\n--- PKT ZLIB CHUNK @ {hex(idx)} ---\n{text[:MAX_DECOMPRESSED_BYTES]}")
@@ -354,6 +422,18 @@ def _visible_hints(strings: Iterable[str]) -> Dict[str, Any]:
     ssids = []
     for m in re.finditer(r"\b(?:ssid|wlan|wireless)\b[^\n\r]{0,80}", blob, flags=re.I):
         ssids.append(m.group(0).strip())
+    device_candidates = set()
+    for pat in [
+        r"(?im)^\s*hostname\s+([^\s!]+)",
+        r"(?i)Device ID:\s*([^\r\n]+)",
+        r"(?i)System Name:\s*([^\r\n]+)",
+        r"(?i)node(?:Name|Label)?[=: ]+([A-Za-z][A-Za-z0-9_.-]{1,80})",
+        r"(?i)device(?:Name|Label)?[=: ]+([A-Za-z][A-Za-z0-9_.-]{1,80})",
+    ]:
+        for m in re.finditer(pat, blob):
+            candidate = re.sub(r"[^A-Za-z0-9_.:-].*$", "", m.group(1).strip())
+            if candidate and candidate.lower() not in {"id", "name", "router", "switch", "device", "node", "interface"}:
+                device_candidates.add(candidate[:80])
     config_lines = []
     for line in blob.splitlines():
         if any(re.search(pat, line, re.I) for pat in CISCO_CONFIG_PATTERNS):
@@ -364,7 +444,8 @@ def _visible_hints(strings: Iterable[str]) -> Dict[str, Any]:
         "interface_candidates": interfaces,
         "vlan_candidates": vlan_candidates,
         "wireless_candidates": ssids[:60],
-        "config_like_lines": config_lines[:220],
+        "device_candidates": sorted(device_candidates)[:120],
+        "config_like_lines": config_lines[:260],
     }
 
 
@@ -373,7 +454,7 @@ def inspect_native_pkt(raw: bytes, filename: str = "uploaded.pkt") -> Tuple[Dict
     sha256 = hashlib.sha256(raw).hexdigest()
     entropy = shannon_entropy(raw)
     ratio = printable_ratio(raw)
-    strings = recover_printable_strings(raw)
+    strings = _dedupe_strings(recover_printable_strings(raw) + recover_unicode_strings(raw), limit=MAX_STRINGS)
     segments = recover_printable_segments(raw)
     signatures = _signature_hits(raw)
     zlib_chunks, zlib_texts = _try_zlib_chunks(raw)
@@ -385,7 +466,18 @@ def inspect_native_pkt(raw: bytes, filename: str = "uploaded.pkt") -> Tuple[Dict
 
     if config_pattern_hits >= 4 or zlib_texts:
         recoverability = "partial_config_recovery"
-        confidence = 0.64
+        # Confidence now scales with real recovered evidence instead of staying
+        # fixed at 0.64. This keeps native PKT claims honest, but prevents
+        # strong visible IOS exports embedded in a .pkt/.pka from being scored
+        # as weak after the backend has already reconstructed meaningful data.
+        if len(reconstructed_lines) >= 30 or len(zlib_texts) >= 3:
+            confidence = 0.82
+        elif len(reconstructed_lines) >= 12 or len(zlib_texts) >= 2:
+            confidence = 0.74
+        elif len(reconstructed_lines) >= 6 or zlib_texts:
+            confidence = 0.68
+        else:
+            confidence = 0.60
         decision = "Recovered visible/decompressed network evidence; the automatic XML/JSON bridge will parse it in the background."
     elif entropy >= 7.2 and ratio < 0.45:
         recoverability = "opaque_native_binary"
@@ -492,6 +584,75 @@ def _add_payload(payloads: List[Dict[str, Any]], name: str, source: str, text: s
     })
 
 
+
+def _extract_embedded_zip_payloads(raw: bytes) -> List[Dict[str, Any]]:
+    """Recover ZIP members even when a ZIP starts at a non-zero binary offset."""
+    payloads: List[Dict[str, Any]] = []
+    offsets: List[int] = []
+    start = 0
+    while True:
+        idx = raw.find(b"PK\x03\x04", start)
+        if idx == -1:
+            break
+        offsets.append(idx)
+        start = idx + 1
+    for offset in offsets[:12]:
+        if len(payloads) >= MAX_DECODED_PAYLOADS:
+            break
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw[offset:])) as zf:
+                for info in zf.infolist()[:80]:
+                    if info.is_dir() or info.file_size > 2_500_000:
+                        continue
+                    suffix = Path(info.filename).suffix.lower()
+                    if suffix not in {".xml", ".json", ".txt", ".cfg", ".conf", ".log"}:
+                        continue
+                    data = zf.read(info.filename)
+                    _add_payload(payloads, f"embedded@{hex(offset)}/{info.filename}", "embedded_zip_at_offset", data.decode("utf-8", errors="replace"), offset)
+                    if len(payloads) >= MAX_DECODED_PAYLOADS:
+                        break
+        except Exception:
+            continue
+    return payloads[:MAX_DECODED_PAYLOADS]
+
+
+def _extract_embedded_wrapped_stream_payloads(raw: bytes) -> List[Dict[str, Any]]:
+    payloads: List[Dict[str, Any]] = []
+    signatures = [(b"\x1f\x8b", "embedded_gzip_stream", gzip.decompress), (b"BZh", "embedded_bzip2_stream", bz2.decompress), (b"\xfd7zXZ\x00", "embedded_xz_stream", lzma.decompress)]
+    for marker, source, decoder in signatures:
+        start = 0
+        while True:
+            idx = raw.find(marker, start)
+            if idx == -1 or len(payloads) >= MAX_DECODED_PAYLOADS:
+                break
+            try:
+                decoded = decoder(raw[idx:idx + MAX_DECOMPRESSED_BYTES * 6])
+                if decoded and printable_ratio(decoded) >= 0.25:
+                    _add_payload(payloads, f"{source}_{hex(idx)}.txt", source, decoded[:MAX_PAYLOAD_TEXT].decode("utf-8", errors="replace"), idx)
+            except Exception:
+                pass
+            start = idx + 1
+    return payloads[:MAX_DECODED_PAYLOADS]
+
+
+def _extract_zlib_payloads(raw: bytes) -> List[Dict[str, Any]]:
+    payloads: List[Dict[str, Any]] = []
+    offsets = [idx for idx, b in enumerate(raw[:-2]) if b == 0x78 and _valid_zlib_header(raw, idx)]
+    for idx in sorted(set(offsets))[:120]:
+        if len(payloads) >= MAX_DECODED_PAYLOADS:
+            break
+        try:
+            data = zlib.decompressobj().decompress(raw[idx:], MAX_DECOMPRESSED_BYTES)
+            if not data or len(data) < 32 or printable_ratio(data) < 0.22:
+                continue
+            text = data.decode("utf-8", errors="replace")
+            reconstructed = reconstruct_cisco_config_text(text)
+            _add_payload(payloads, f"zlib_payload_{hex(idx)}.cfg" if reconstructed else f"zlib_payload_{hex(idx)}.txt", "zlib_payload_recovery", reconstructed or text, idx)
+        except Exception:
+            continue
+    return payloads[:MAX_DECODED_PAYLOADS]
+
+
 def _extract_zip_payloads(raw: bytes) -> List[Dict[str, Any]]:
     payloads: List[Dict[str, Any]] = []
     if not zipfile.is_zipfile(io.BytesIO(raw)):
@@ -587,6 +748,35 @@ def _extract_embedded_xml_json_from_text(text: str) -> List[Dict[str, Any]]:
 
 
 
+
+def _extract_utf16_text_payloads(raw: bytes) -> List[Dict[str, Any]]:
+    """Promote UTF-16 Packet Tracer evidence into parseable text payloads.
+
+    Some PT builds and third-party converters store labels/config fragments as
+    UTF-16. Earlier versions only used these strings as hints; v5.9.8 also feeds
+    reconstructed UTF-16 configs into the normal object parser.
+    """
+    payloads: List[Dict[str, Any]] = []
+    for encoding in ("utf-16le", "utf-16be"):
+        try:
+            decoded = raw.decode(encoding, errors="ignore")
+        except Exception:
+            continue
+        if not decoded or printable_ratio(decoded.encode("utf-8", errors="replace")) < 0.18:
+            continue
+        reconstructed = reconstruct_cisco_config_text(decoded)
+        hits = sum(1 for pat in CISCO_CONFIG_PATTERNS if re.search(pat, decoded, re.I))
+        if reconstructed:
+            _add_payload(payloads, f"native_{encoding}_reconstructed_config.cfg", f"{encoding}_reconstruction", reconstructed)
+        elif hits:
+            _add_payload(payloads, f"native_{encoding}_visible_text.txt", f"{encoding}_visible_text", decoded[:MAX_PAYLOAD_TEXT])
+        for item in _extract_embedded_xml_json_from_text(decoded[:MAX_PAYLOAD_TEXT]):
+            _add_payload(payloads, item.get("name", f"{encoding}_embedded_payload"), f"{encoding}_{item.get('source', 'embedded')}", item.get("content", ""), item.get("offset"))
+        if len(payloads) >= MAX_DECODED_PAYLOADS:
+            break
+    return payloads[:MAX_DECODED_PAYLOADS]
+
+
 def _extract_printable_segment_payloads(raw: bytes) -> List[Dict[str, Any]]:
     payloads: List[Dict[str, Any]] = []
     for idx, seg in enumerate(recover_printable_segments(raw, min_len=48, max_segments=80), start=1):
@@ -666,6 +856,13 @@ def build_internal_pkt_xml_bridge(raw: bytes, filename: str, profile: Dict[str, 
         elem = ET.SubElement(zlib_chunks, "zlibChunk", {k: _xml_safe_text(chunk.get(k), 240) for k in ["offset", "hex_offset", "bytes", "printable_ratio", "config_pattern_hits"] if chunk.get(k) is not None})
         _add_text(elem, "preview", chunk.get("preview", ""))
 
+    devices_elem = ET.SubElement(root, "devices")
+    for dev in visible.get("device_candidates", []) or []:
+        node = ET.SubElement(devices_elem, "device")
+        _add_text(node, "hostname", dev)
+        _add_text(node, "type", "device")
+        _add_text(node, "source", "native_visible_device_candidate")
+
     endpoints = ET.SubElement(root, "endpointInventory")
     for ip in visible.get("ip_candidates", []) or []:
         node = ET.SubElement(endpoints, "endpoint")
@@ -731,6 +928,7 @@ def build_internal_pkt_xml_bridge(raw: bytes, filename: str, profile: Dict[str, 
         },
         "metadata": {k: profile.get(k) for k in ["filename", "extension", "bytes", "sha256", "entropy", "printable_ratio", "recoverability", "confidence", "decision", "decoded_payload_count", "printable_segment_count", "reconstructed_config_count"]},
         "counts": {
+            "device_candidates": len(visible.get("device_candidates", []) or []),
             "ip_candidates": len(visible.get("ip_candidates", []) or []),
             "mac_candidates": len(visible.get("mac_candidates", []) or []),
             "interface_candidates": len(visible.get("interface_candidates", []) or []),
@@ -762,7 +960,7 @@ def run_native_pkt_auto_pipeline(raw: bytes, filename: str = "uploaded.pkt", ext
 
     if external_xml:
         _add_payload(payloads, f"{Path(filename).stem}_external_converter.xml", "external_converter", external_xml)
-    for source_payloads in (_extract_zip_payloads(raw), _extract_wrapped_stream_payloads(raw), _extract_printable_segment_payloads(raw)):
+    for source_payloads in (_extract_zip_payloads(raw), _extract_embedded_zip_payloads(raw), _extract_wrapped_stream_payloads(raw), _extract_embedded_wrapped_stream_payloads(raw), _extract_zlib_payloads(raw), _extract_utf16_text_payloads(raw), _extract_printable_segment_payloads(raw)):
         for item in source_payloads:
             _add_payload(payloads, item.get("name", "payload"), item.get("source", "decoded"), item.get("content", ""), item.get("offset"))
     for chunk in profile.get("zlib_chunks", []) or []:

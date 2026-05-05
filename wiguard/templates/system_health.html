@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set h = professional_health or {} %}
+{% set pa = professional_analysis or {} %}
+{% set summary = pa.summary or {} %}
+{% set risk = pa.risk_score or {} %}
+<section class="page-title health-hero">
+  <span class="pill">System Health</span>
+  <h3>Backend, parser, dependency, and normalized-data readiness</h3>
+  <p>This page checks the real local stack and shows whether WiGuard is ready for import, analysis, reporting, and a live demo.</p>
+</section>
+
+<section class="product-snapshot-grid">
+  <article><span>Pipeline</span><b>{{ 'OK' if h.ok else 'Review' }}</b><small>Python {{ h.python or 'unknown' }}</small></article>
+  <article><span>Normalized Entities</span><b>{{ summary.entity_count or 0 }}</b><small>{{ summary.source_file or 'No active import' }}</small></article>
+  <article><span>Professional Risk</span><b>{{ risk.score or 0 }}/100</b><small>{{ risk.label or 'No confirmed risk' }}</small></article>
+  <article><span>Findings</span><b>{{ summary.finding_count or 0 }}</b><small>{{ risk.max_severity or 'Info' }} max severity</small></article>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Required Dependencies</h4><span>{{ h.required_dependencies|length if h.required_dependencies else 0 }} checked</span></div>
+    <div class="dependency-grid compact-dependency-grid">
+      {% for dep in h.required_dependencies %}
+      <article class="{{ 'installed' if dep.installed else 'missing' }}"><div><span>{{ dep.status }}</span><b>{{ dep.name }}</b></div><small>{{ 'Ready' if dep.installed else 'Install required package' }}</small></article>
+      {% else %}<p class="muted">Health checker has not run yet.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Optional Product Stack</h4><span>safe to skip</span></div>
+    <div class="dependency-grid compact-dependency-grid">
+      {% for dep in h.optional_dependencies %}
+      <article class="{{ 'installed' if dep.installed else 'optional' }}"><div><span>{{ dep.status }}</span><b>{{ dep.name }}</b></div><small>{{ 'Enabled' if dep.installed else 'Optional enhancement' }}</small></article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Parser Registry</h4><span>future-ready import architecture</span></div>
+  <div class="table-wrap mini-table">
+    <table>
+      <thead><tr><th>Parser</th><th>Status</th><th>Extensions</th></tr></thead>
+      <tbody>
+      {% for parser in h.parsers %}
+      <tr><td><b>{{ parser.name }}</b></td><td><span class="badge verified">{{ parser.status }}</span></td><td><code>{{ parser.extensions|join(', ') }}</code></td></tr>
+      {% else %}<tr><td colspan="3" class="muted">No parser registry data.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Directory & Storage Checks</h4><span>{{ h.root }}</span></div>
+  <div class="table-wrap mini-table">
+    <table>
+      <thead><tr><th>Path</th><th>Exists</th><th>Writable</th></tr></thead>
+      <tbody>
+      {% for row in h.directories %}
+      <tr><td><code>{{ row.path }}</code></td><td>{{ 'yes' if row.exists else 'no' }}</td><td>{{ 'yes' if row.writable else 'no' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Normalized Analysis Warnings</h4><span>safe demo checklist</span></div>
+  <div class="command-checklist compact-list">
+    {% for warning in pa.warnings %}<article class="cmd review"><b>Review</b><span>{{ warning }}</span></article>{% else %}<article class="cmd success"><b>Clean</b><span>No normalized-data warnings.</span></article>{% endfor %}
+  </div>
+  <div class="install-command-strip">
+    <button type="button" data-copy="{{ h.install_command }}"><b>Required install</b><small>{{ h.install_command }}</small></button>
+    <button type="button" data-copy="{{ h.test_command }}"><b>Test suite</b><small>{{ h.test_command }}</small></button>
+    <button type="button" data-copy="{{ h.startup_command }}"><b>Startup</b><small>{{ h.startup_command }}</small></button>
+    <button type="button" data-copy="{{ h.optional_command }}"><b>Optional stack</b><small>{{ h.optional_command }}</small></button>
+  </div>
+</section>
+{% endblock %}

@@ -1,7 +1,26 @@
-# Privacy Notice
+import os
+import sys
 
-WiGuard Nexus stores imported network evidence locally under the project `data/` directory. Uploaded configurations may contain hostnames, IP ranges, ACLs, service names, routing details, and other sensitive network information.
+try:
+    from wiguard import create_app
+except ModuleNotFoundError as exc:
+    missing = getattr(exc, "name", "dependency")
+    print("\n[WiGuard Backend] Missing Python dependency:", missing)
+    print("Run one of these commands from the project folder:")
+    print("  python -m pip install -r requirements.txt")
+    print("  START_BACKEND_WINDOWS.bat")
+    if os.environ.get("WIGUARD_VERBOSE_ERRORS", "0").lower() in {"1", "true", "yes", "on"}:
+        print("\nFull error:", exc)
+    raise
 
-The application does not intentionally send evidence to external services. Operators are responsible for protecting the machine, backups, exported ZIP packages, and generated reports.
+app = create_app()
 
-Before sharing exports, review `state_snapshot.json`, `raw_evidence.json`, `full_report.html`, and PDF/JSON reports for sensitive infrastructure details.
+if __name__ == "__main__":
+    print("\nWiGuard Nexus backend is starting...")
+    print("Open: http://127.0.0.1:5000")
+    print("Default demo login: admin / admin123")
+    app.run(
+        host=os.environ.get("WIGUARD_HOST", "127.0.0.1"),
+        port=int(os.environ.get("WIGUARD_PORT", "5000")),
+        debug=os.environ.get("FLASK_DEBUG", "0").lower() in {"1", "true", "yes", "on"},
+    )

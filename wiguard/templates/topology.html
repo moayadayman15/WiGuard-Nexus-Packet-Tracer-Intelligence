@@ -10,6 +10,19 @@
 {% set rel = profile.relationships or {} %}
 
 {% set tins = topology_insights or {} %}
+
+{% set pi = product_intelligence or {} %}
+{% set brain = pi.topology_brain or {} %}
+<section class="panel topology-brain-panel">
+  <div class="panel-head"><h4>Topology Brain Analytics</h4><a href="{{ url_for('pages.product_intelligence') }}">Product intelligence</a></div>
+  <div class="product-snapshot-grid">
+    <article><span>Health</span><b>{{ brain.health_score or 0 }}/100</b><small>{{ brain.headline or 'Waiting for graph' }}</small></article>
+    <article><span>Backend</span><b>{{ brain.backend or 'builtin' }}</b><small>NetworkX if installed</small></article>
+    <article><span>Critical Nodes</span><b>{{ brain.critical_nodes|length if brain.critical_nodes else 0 }}</b><small>blast-radius candidates</small></article>
+    <article><span>Isolated</span><b>{{ brain.isolated|length if brain.isolated else 0 }}</b><small>needs CDP/LLDP evidence</small></article>
+  </div>
+</section>
+
 <section class="panel topology-insights-panel">
   <div class="panel-head"><h4>Topology Confidence Insights</h4><span>{{ tins.confirmed_edges or 0 }} confirmed · {{ tins.inferred_edges or 0 }} inferred</span></div>
   <div class="diagnostic-grid">

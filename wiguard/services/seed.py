@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def now_iso():
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def seed_state():

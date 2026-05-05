@@ -7,36 +7,49 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='design-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="page-{{ page|default('app') }}">
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-logo">WG</div>
       <div>
         <h1>WiGuard Nexus</h1>
-        <p>v5.9.3-professional-quality-studio</p>
+        <p>{{ state.version or '5.12.4-pkt-xml-converter' }}</p>
       </div>
     </div>
 
-    <nav class="nav">
-      <a class="{{ 'active' if page=='overview' else '' }}" href="{{ url_for('pages.overview') }}">Overview</a>
-      <a class="{{ 'active' if page=='projects' else '' }}" href="{{ url_for('pages.projects') }}">Projects</a>
-      <a class="{{ 'active' if page=='wireless' else '' }}" href="{{ url_for('pages.wireless_manager') }}">Wireless Manager</a>
-      {% if can_role('analyst') %}<a class="{{ 'active' if page=='import' else '' }}" href="{{ url_for('pages.import_center') }}">Import Center</a>{% endif %}
-      <a class="{{ 'active' if page=='objects' else '' }}" href="{{ url_for('pages.object_explorer') }}">Object Explorer</a>
-      <a class="{{ 'active' if page=='topology' else '' }}" href="{{ url_for('pages.topology') }}">Topology</a>
-      <a class="{{ 'active' if page=='diff' else '' }}" href="{{ url_for('pages.diff') }}">Policy Diff</a>
-      <a class="{{ 'active' if page=='root' else '' }}" href="{{ url_for('pages.root_cause') }}">Root Cause</a>
-      {% if can_role('auditor') %}<a class="{{ 'active' if page=='reports' else '' }}" href="{{ url_for('pages.reports') }}">Report Center</a>{% endif %}
-      {% if can_role('auditor') %}<a class="{{ 'active' if page=='verifier' else '' }}" href="{{ url_for('pages.verifier') }}">Verifier</a>{% endif %}
-      <a class="{{ 'active' if page=='rules' else '' }}" href="{{ url_for('pages.rules') }}">Rules</a>
-      <a class="{{ 'active' if page=='simulation' else '' }}" href="{{ url_for('pages.simulation') }}">Simulation Lab</a>
-      <a class="{{ 'active' if page=='playbooks' else '' }}" href="{{ url_for('pages.playbooks') }}">Playbooks</a>
-      <a class="{{ 'active' if page=='history' else '' }}" href="{{ url_for('pages.history') }}">Import History</a>
-      <a class="{{ 'active' if page=='timeline' else '' }}" href="{{ url_for('pages.timeline') }}">Risk Timeline</a>
-      <a class="{{ 'active' if page=='snapshot' else '' }}" href="{{ url_for('pages.snapshot') }}">Snapshot Compare</a>
-      <a class="{{ 'active' if page=='events' else '' }}" href="{{ url_for('pages.events') }}">Events</a>
-      {% if can_role('admin') %}<a class="{{ 'active' if page=='settings' else '' }}" href="{{ url_for('pages.settings') }}">Settings</a>{% endif %}
+    <nav class="nav unified-nav">
+      <div class="nav-section-title">Main workflow</div>
+      <a class="{{ 'active' if page=='overview' else '' }}" href="{{ url_for('pages.overview') }}">01 Command Dashboard</a>
+      {% if can_role('analyst') %}<a class="{{ 'active' if page=='import' else '' }}" href="{{ url_for('pages.import_center') }}">02 Import & Extraction</a>{% endif %}
+      <a class="{{ 'active' if page=='workspace' else '' }}" href="{{ url_for('pages.workspace') }}">03 Analyst Workspace</a>
+      <a class="{{ 'active' if page=='analysis' else '' }}" href="{{ url_for('pages.analysis_studio_page') }}">04 Analysis Studio</a>
+      <a class="{{ 'active' if page=='intelligence' else '' }}" href="{{ url_for('pages.product_intelligence') }}">05 Intelligence Engine</a>
+      <a class="{{ 'active' if page=='system-health' else '' }}" href="{{ url_for('pages.system_health') }}">06 System Health</a>
+      <a class="{{ 'active' if page=='threat' else '' }}" href="{{ url_for('pages.threat_map') }}">07 Threat Map</a>
+      {% if can_role('auditor') %}<a class="{{ 'active' if page=='reports' else '' }}" href="{{ url_for('pages.reports') }}">07 Report Builder</a>{% endif %}
+      <div class="nav-section-title">Advanced tools</div>
+      <details class="nav-more">
+        <summary>Open legacy/specialized pages</summary>
+        <a href="{{ url_for('pages.projects') }}">Projects</a>
+        <a href="{{ url_for('pages.wireless_manager') }}">Wireless Manager</a>
+        <a href="{{ url_for('pages.object_explorer') }}">Object Explorer</a>
+        <a href="{{ url_for('pages.topology') }}">Topology</a>
+        <a href="{{ url_for('pages.threat_map') }}">Threat Map</a>
+        <a href="{{ url_for('pages.product_intelligence') }}">Intelligence Engine</a>
+        <a href="{{ url_for('pages.system_health') }}">System Health</a>
+        <a href="{{ url_for('pages.diff') }}">Policy Diff</a>
+        <a href="{{ url_for('pages.root_cause') }}">Root Cause</a>
+        <a href="{{ url_for('pages.rules') }}">Rules</a>
+        <a href="{{ url_for('pages.simulation') }}">Simulation Lab</a>
+        <a href="{{ url_for('pages.playbooks') }}">Playbooks</a>
+        <a href="{{ url_for('pages.history') }}">Import History</a>
+        <a href="{{ url_for('pages.timeline') }}">Risk Timeline</a>
+        <a href="{{ url_for('pages.snapshot') }}">Snapshot Compare</a>
+        <a href="{{ url_for('pages.events') }}">Events</a>
+        {% if can_role('auditor') %}<a href="{{ url_for('pages.verifier') }}">Verifier</a>{% endif %}
+        {% if can_role('admin') %}<a href="{{ url_for('pages.settings') }}">Settings</a>{% endif %}
+      </details>
     </nav>
 
     <div class="sidebar-card">
@@ -60,6 +73,7 @@
         <p>{{ state.meta.tagline }}</p>
       </div>
       <div class="top-actions">
+        <button class="ghost-btn command-palette-trigger" type="button" data-command-palette-open>Ctrl+K</button>
         <span class="user-pill">{{ current_user or 'analyst' }} · {{ current_role }} · {{ current_tenant_id }}</span>
         <form method="post" action="{{ url_for('actions.logout') }}" class="inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -70,9 +84,9 @@
       </div>
     </header>
 
-    <section class="workflow">
+    <section class="workflow workflow-v511">
       {% for step in state.meta.workflow %}
-      <span class="{{ 'done' if loop.index <= 2 or state.active_extraction else '' }}">{{ loop.index }}. {{ step }}</span>
+      <span class="{{ 'done' if loop.index <= 1 or state.active_extraction else '' }}">{{ loop.index }}. {{ step }}</span>
       {% endfor %}
     </section>
 
@@ -98,7 +112,21 @@ window.WIGUARD_TOPOLOGY = {{ topology|tojson }};
 window.WIGUARD_OBJECTS = {{ objects|tojson }};
 window.WIGUARD_DIAGNOSTICS = {{ diagnostics|tojson }};
 window.WIGUARD_TOPOLOGY_INSIGHTS = {{ topology_insights|tojson }};
+window.WIGUARD_IMPORT_TRUTH = {{ import_truth|tojson }};
+window.WIGUARD_PRODUCT_INTELLIGENCE = {{ product_intelligence|tojson }};
+window.WIGUARD_PROFESSIONAL_HEALTH = {{ professional_health|tojson }};
 </script>
+<div class="command-palette" id="command-palette" aria-hidden="true">
+  <div class="command-palette-backdrop" data-command-palette-close></div>
+  <section class="command-palette-dialog" role="dialog" aria-modal="true" aria-label="WiGuard command palette">
+    <div class="command-palette-head">
+      <b>Jump to page</b>
+      <button type="button" class="ghost-btn" data-command-palette-close>Esc</button>
+    </div>
+    <input id="command-palette-search" placeholder="Search dashboard, import, objects, topology, threat map..." autocomplete="off">
+    <div id="command-palette-results" class="command-palette-results"></div>
+  </section>
+</div>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

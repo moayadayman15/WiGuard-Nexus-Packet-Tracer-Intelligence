@@ -263,13 +263,29 @@ def build_quality_gates(objects: Dict[str, Any], source_mode: str) -> List[Dict[
         {"name": "Line-level traceability", "status": "pass" if line_ratio >= 0.70 else "review", "score": line_ratio, "detail": f"{_pct(line_ratio)}% of list objects have source-line evidence."},
         {"name": "Native Packet Tracer confidence", "status": "review" if source_mode == "pkt_binary_recovery" else "pass", "score": 0.45 if source_mode == "pkt_binary_recovery" else 0.92, "detail": "Native binary recovery used." if source_mode == "pkt_binary_recovery" else "Structured/text source decoded."},
     ]
+    if _count(objects, "source_conversion_manifest"):
+        manifest = (objects.get("source_conversion_manifest") or [{}])[0] if isinstance(objects.get("source_conversion_manifest"), list) else {}
+        gates.insert(0, {
+            "name": "Universal payload visibility",
+            "status": "pass",
+            "score": min(1.0, (_count(objects, "source_key_value_index") + _count(objects, "universal_network_facts")) / 120),
+            "detail": f"Indexed {manifest.get('total_nodes', 0)} payload node(s), {manifest.get('leaf_values', 0)} leaf value(s), {_count(objects, 'source_key_value_index')} key/value row(s), and {_count(objects, 'universal_network_facts')} network fact candidate(s).",
+        })
+    if _count(objects, "external_converter_outputs"):
+        outputs = objects.get("external_converter_outputs") or []
+        gates.insert(0, {
+            "name": "External Packet Tracer converter",
+            "status": "pass",
+            "score": 0.96,
+            "detail": f"{len(outputs)} converter XML/JSON output(s) were parsed before WiGuard built the normalized object layer.",
+        })
     if _count(objects, "internal_xml_bridge"):
         bridge = (objects.get("internal_xml_bridge") or [{}])[0] if isinstance(objects.get("internal_xml_bridge"), list) else {}
         gates.insert(0, {
             "name": "Internal XML → JSON bridge",
-            "status": "pass" if (bridge.get("visible_counts") or {}) else "review",
-            "score": min(1.0, sum((bridge.get("visible_counts") or {}).values()) / 24) if isinstance(bridge.get("visible_counts"), dict) else 0.45,
-            "detail": f"Bridge generated {bridge.get('xml_bytes', 0)} XML bytes and {bridge.get('normalized_json_bytes', 0)} normalized JSON bytes from visible native evidence.",
+            "status": "pass" if (bridge.get("visible_counts") or {}) or bridge.get("external_converter_outputs") else "review",
+            "score": 0.96 if bridge.get("external_converter_outputs") else (min(1.0, sum((bridge.get("visible_counts") or {}).values()) / 24) if isinstance(bridge.get("visible_counts"), dict) else 0.45),
+            "detail": f"Bridge generated {bridge.get('xml_bytes', 0)} XML bytes and {bridge.get('normalized_json_bytes', 0)} normalized JSON bytes from visible native/converter evidence.",
         })
     if _count(objects, "native_pkt_profile"):
         native_profile = (objects.get("native_pkt_profile") or [{}])[0] if isinstance(objects.get("native_pkt_profile"), list) else {}
@@ -319,7 +335,24 @@ def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: 
     # Native binary recovery is useful, but must be honestly discounted.
     if source_mode in {"pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
         native_profile = (objects.get("native_pkt_profile") or [{}])[0] if isinstance(objects.get("native_pkt_profile"), list) else {}
-        weighted_score = min(weighted_score, float(native_profile.get("confidence", 0.42) or 0.42))
+        companion_verified = any(
+            isinstance(row, dict) and row.get("status") == "parsed"
+            for row in (objects.get("companion_exports") or [])
+        )
+        converter_verified = _count(objects, "external_converter_outputs") > 0 or bool(native_profile.get("external_converter_outputs"))
+        native_cap = 0.97 if converter_verified else (0.92 if companion_verified else float(native_profile.get("confidence", 0.42) or 0.42))
+        core_signal_keys = [
+            "devices", "interfaces", "vlans", "acl_rules", "dhcp_scopes",
+            "ip_inventory", "endpoint_inventory", "internal_xml_bridge",
+            "decoded_payloads", "raw_evidence", "source_key_value_index",
+            "universal_network_facts", "source_conversion_manifest",
+        ]
+        core_hits = sum(1 for key in core_signal_keys if _count(objects, key) > 0)
+        evidence_ratio = 0.0
+        if isinstance(objects.get("evidence_profile"), dict):
+            evidence_ratio = float(objects.get("evidence_profile", {}).get("line_mapping_ratio", 0) or 0)
+        native_recovery_score = min(native_cap, 0.24 + (core_hits * 0.055) + min(0.10, evidence_ratio * 0.20))
+        weighted_score = min(native_cap, max(weighted_score, native_recovery_score))
     elif source_mode == "pkt_binary_recovery":
         weighted_score = min(weighted_score, 0.68)
     elif source_mode == "external_xml_converter":
@@ -368,6 +401,8 @@ def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: 
             "roaming_events": _count(objects, "roaming_events"),
             "lab_result_summary": _count(objects, "lab_result_summary"),
             "native_pkt_profile": _count(objects, "native_pkt_profile"),
+            "native_source_manifest": _count(objects, "native_source_manifest"),
+            "binary_evidence_summary": _count(objects, "binary_evidence_summary"),
             "binary_signatures": _count(objects, "binary_signatures"),
             "native_visible_hints": _count(objects, "native_visible_hints"),
             "internal_xml_bridge": _count(objects, "internal_xml_bridge"),
@@ -376,7 +411,15 @@ def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: 
             "auto_conversion_pipeline": _count(objects, "auto_conversion_pipeline"),
             "decoded_payloads": _count(objects, "decoded_payloads"),
             "companion_exports": _count(objects, "companion_exports"),
+            "external_converter_outputs": _count(objects, "external_converter_outputs"),
             "evidence_registry": _count(objects, "evidence_registry"),
+            "source_conversion_manifest": _count(objects, "source_conversion_manifest"),
+            "source_payload_tree": _count(objects, "source_payload_tree"),
+            "source_key_value_index": _count(objects, "source_key_value_index"),
+            "universal_network_facts": _count(objects, "universal_network_facts"),
+            "payload_tables": _count(objects, "payload_tables"),
+            "universal_xml_preview": _count(objects, "universal_xml_preview"),
+            "universal_json_preview": _count(objects, "universal_json_preview"),
         },
         "analyst_next_step": _next_step(source_mode, checklist, readiness),
         "coverage_domains": objects.get("coverage_domains", []),
@@ -394,6 +437,8 @@ def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: 
         "roaming_events": objects.get("roaming_events", [])[:80],
         "lab_result_summary": objects.get("lab_result_summary", [])[:5],
         "native_pkt_profile": objects.get("native_pkt_profile", [])[:2],
+        "native_source_manifest": objects.get("native_source_manifest", [])[:5],
+        "binary_evidence_summary": objects.get("binary_evidence_summary", [])[:5],
         "binary_signatures": objects.get("binary_signatures", [])[:80],
         "recovered_string_preview": objects.get("recovered_string_preview", [])[:80],
         "native_conversion_guidance": objects.get("native_conversion_guidance", [])[:20],
@@ -405,12 +450,20 @@ def build_conversion_profile(filename: str, raw: bytes, text: str, source_mode: 
         "decoded_payloads": objects.get("decoded_payloads", [])[:80],
         "extraction_fidelity": objects.get("extraction_fidelity", [])[:3],
         "companion_exports": objects.get("companion_exports", [])[:20],
+        "external_converter_outputs": objects.get("external_converter_outputs", [])[:20],
+        "source_conversion_manifest": objects.get("source_conversion_manifest", [])[:5],
+        "source_payload_tree": objects.get("source_payload_tree", [])[:120],
+        "source_key_value_index": objects.get("source_key_value_index", [])[:160],
+        "universal_network_facts": objects.get("universal_network_facts", [])[:160],
+        "payload_tables": objects.get("payload_tables", [])[:60],
+        "universal_xml_preview": objects.get("universal_xml_preview", [])[:2],
+        "universal_json_preview": objects.get("universal_json_preview", [])[:2],
     }
 
 
 def _next_step(source_mode: str, checklist: Iterable[Dict[str, Any]], readiness: str) -> str:
     if source_mode in {"pkt_binary_recovery", "pkt_native_inspection", "pkt_auto_xml_json_bridge"}:
-        return "Native .pkt/.pka was automatically processed in the background: converter probe → internal XML bridge → normalized JSON → object extraction. If the source file exposes little internal evidence, upload exported show outputs or configure PTEXPLORER_PATH for full proprietary fidelity."
+        return "Native .pkt/.pka was automatically processed in the background: external converter probe → internal XML bridge → normalized JSON → object extraction. If the source file exposes little internal evidence, configure WIGUARD_PKT_CONVERTER_PATH/PTEXPLORER_PATH or upload exported show outputs/XML/JSON."
     missing = [row.get("command") for row in checklist if row.get("status") == "missing"]
     if missing:
         return "Upload these missing command outputs to increase confidence: " + ", ".join(missing[:4])

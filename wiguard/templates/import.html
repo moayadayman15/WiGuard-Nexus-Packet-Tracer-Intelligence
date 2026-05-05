@@ -9,12 +9,23 @@
 {% set intake_tier = import_contract.tier or 'waiting_for_import' %}
 {% set intake_companion = (profile.companion_exports or [])[:1] %}
 {% set structured_summary = profile.structured_summary or {} %}
+{% set evidence_profile = profile.evidence_profile or {} %}
+{% set line_mapping_ratio = evidence_profile.line_mapping_ratio or 0 %}
+{% set detected_sections = structured_summary.detected_sections or {} %}
 
-<section class="page-title pt-hero">
-  <span class="pill">Packet Tracer Conversion Lab</span>
-  <h3>Turn Packet Tracer evidence into a verified WiGuard workspace</h3>
-  <p>Upload `.pkt/.pka`, exported configs, XML, JSON, or a ZIP of show-command outputs. WiGuard grades conversion readiness, shows the exact auto-conversion path, and labels what is verified vs inferred before any report is published.</p>
-  <div class="hero-stats hero-stats-compact">
+<section class="page-title pt-hero import-hero-premium">
+  <div class="import-hero-glow"></div>
+  <div class="import-hero-copy">
+    <span class="pill">WiGuard Import Command Center</span>
+    <h3>Packet Tracer evidence that feels alive, visible, and analyst-ready</h3>
+    <p>Upload `.pkt/.pka`, exported configs, XML, JSON, or ZIP evidence. The page now separates native recovery from verified extraction, shows live backend proof, and keeps every weak import visible instead of returning an empty screen.</p>
+    <div class="hero-actions">
+      <a class="primary-btn" href="#import-dropzone-area">Start Import</a>
+      <a class="ghost-btn" href="{{ url_for('pages.object_explorer') }}">Open Object Explorer</a>
+      <a class="ghost-btn" href="{{ url_for('pages.reports') }}">Report Builder</a>
+    </div>
+  </div>
+  <div class="hero-stats hero-stats-compact import-hero-stats">
     <article>
       <span>Current import</span>
       <b>{{ active.filename or 'No file imported yet' }}</b>
@@ -37,6 +48,122 @@
     </article>
   </div>
 </section>
+{% set truth = import_truth or {} %}
+<section class="panel import-truth-board" id="truth-board">
+  <div class="panel-head"><h4>Import Truth Board</h4><span class="badge {{ 'pass' if truth.can_claim_full_fidelity else 'review' }}">{{ truth.tier or 'waiting' }}</span></div>
+  <div class="truth-board-grid">
+    <article><span>What we know</span><b>{{ truth.filename }}</b><small>{{ truth.source_mode }} · {{ (truth.source_hash or '—')[:18] }}</small></article>
+    <article><span>Extraction readiness</span><b>{{ truth.readiness_score or 0 }}%</b><small>{{ truth.claim }}</small></article>
+    <article><span>Extracted areas</span><b>{{ truth.top_counts|length if truth.top_counts else 0 }}</b><small>{% for item in truth.top_counts[:4] %}{{ item.label }}={{ item.count }}{% if not loop.last %}, {% endif %}{% else %}No extracted areas yet{% endfor %}</small></article>
+    <article><span>Missing critical areas</span><b>{{ truth.critical_missing|length if truth.critical_missing else 0 }}</b><small>{% for m in truth.critical_missing[:3] %}{{ m.label }}{% if not loop.last %}, {% endif %}{% else %}No critical gaps detected{% endfor %}</small></article>
+  </div>
+  <div class="truth-columns">
+    <div><h5>Why results may be partial</h5>{% for reason in truth.why or [] %}<p>{{ reason }}</p>{% endfor %}</div>
+    <div><h5>How to improve accuracy</h5>{% for a in truth.next_actions[:4] %}<p><b>{{ a.priority }} — {{ a.title }}:</b> {{ a.why }}</p>{% endfor %}</div>
+  </div>
+</section>
+
+{% set source_manifest = (objects.source_conversion_manifest or [])[:1] %}
+{% set source_tree = (objects.source_payload_tree or [])[:12] %}
+{% set kv_index = (objects.source_key_value_index or [])[:12] %}
+{% set network_facts = (objects.universal_network_facts or [])[:14] %}
+{% set payload_tables = (objects.payload_tables or [])[:6] %}
+<section class="panel deep-payload-board" id="payload-intel">
+  <div class="panel-head">
+    <h4>Deep Payload Intelligence — JSON/XML/PKT Bridge Visibility</h4>
+    <span class="badge {{ 'pass' if source_manifest else 'review' }}">{{ 'indexed' if source_manifest else 'waiting' }}</span>
+  </div>
+  <div class="payload-metrics-grid">
+    <article><span>Payload nodes</span><b>{{ source_manifest[0].total_nodes if source_manifest else 0 }}</b><small>recursive JSON/XML/bridge nodes walked</small></article>
+    <article><span>Leaf values</span><b>{{ source_manifest[0].leaf_values if source_manifest else 0 }}</b><small>values preserved in the key/value index</small></article>
+    <article><span>Network facts</span><b>{{ objects.universal_network_facts|length if objects.universal_network_facts else 0 }}</b><small>IP/MAC/interface/VLAN/device candidates</small></article>
+    <article><span>Tables detected</span><b>{{ objects.payload_tables|length if objects.payload_tables else 0 }}</b><small>arrays converted into reviewable table summaries</small></article>
+  </div>
+  <div class="three-col payload-preview-columns">
+    <div class="mini-list">
+      <h5>Network fact candidates</h5>
+      {% for row in network_facts %}
+        <article><b>{{ row.fact_type.replace('_',' ') }} · {{ row.value }}</b><small>{{ row.path }}</small></article>
+      {% else %}<p class="muted">No network facts yet. Upload JSON/XML/PKT evidence to populate this panel.</p>{% endfor %}
+    </div>
+    <div class="mini-list">
+      <h5>Key / Value evidence index</h5>
+      {% for row in kv_index %}
+        <article><b>{{ row.key }} <span class="muted">({{ row.value_type }})</span></b><small>{{ row.value }} · {{ row.path }}</small></article>
+      {% else %}<p class="muted">No key/value rows yet.</p>{% endfor %}
+    </div>
+    <div class="mini-list">
+      <h5>Payload tree preview</h5>
+      {% for row in source_tree %}
+        <article><b>{{ row.path }}</b><small>{{ row.type }} · children={{ row.children }} · {{ row.preview }}</small></article>
+      {% else %}<p class="muted">No tree rows yet.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="table-wrap mini-table">
+    <table>
+      <thead><tr><th>Detected table path</th><th>Rows</th><th>Top columns</th></tr></thead>
+      <tbody>
+        {% for table in payload_tables %}
+          <tr><td>{{ table.path }}</td><td>{{ table.rows }}</td><td>{% for c in table.columns[:8] %}<span class="chip">{{ c.name }}</span>{% endfor %}</td></tr>
+        {% else %}
+          <tr><td colspan="3" class="muted">No array/table structures detected yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="import-command-strip">
+  <article class="{{ 'done' if active.filename else 'idle' }}">
+    <span>01</span><b>Intake</b><small>{{ active.filename or 'Awaiting evidence' }}</small>
+  </article>
+  <article class="{{ 'done' if meta.source_mode or active.source_mode else 'idle' }}">
+    <span>02</span><b>Decode</b><small>{{ meta.source_mode or active.source_mode or 'No parser selected yet' }}</small>
+  </article>
+  <article class="{{ 'done' if meta.internal_xml_bridge_used or meta.auto_xml_json_bridge_used else 'review' }}">
+    <span>03</span><b>Normalize</b><small>{{ 'XML/JSON bridge active' if meta.internal_xml_bridge_used or meta.auto_xml_json_bridge_used else 'Direct or pending bridge' }}</small>
+  </article>
+  <article class="{{ 'done' if readiness_score >= 70 else 'review' if active.filename else 'idle' }}">
+    <span>04</span><b>Validate</b><small>{{ readiness_score }}% readiness · {{ intake_tier.replace('_', ' ') }}</small>
+  </article>
+</section>
+
+<section class="import-view-toolbar" aria-label="Import display mode" data-import-view-toolbar>
+  <div>
+    <span class="section-kicker">Page Density</span>
+    <h4>Choose how much evidence you want to see</h4>
+    <p>Executive keeps the page clean. Analyst shows the important evidence. Deep opens the full forensic/debug view.</p>
+  </div>
+  <div class="import-view-actions" role="group" aria-label="Import page density">
+    <button type="button" data-import-view="executive">Executive</button>
+    <button type="button" data-import-view="analyst">Analyst</button>
+    <button type="button" data-import-view="deep">Deep</button>
+  </div>
+</section>
+
+<section class="import-focus-rail" aria-label="Import page shortcuts">
+  <a href="#upload-console"><span>Upload</span><b>Clean intake</b></a>
+  <a href="#truth-board"><span>Truth</span><b>What happened</b></a>
+  <a href="#payload-intel"><span>Payload</span><b>Deep data</b></a>
+  <a href="#native-proof"><span>Proof</span><b>Native evidence</b></a>
+  <a href="#generated-artifacts"><span>Export</span><b>Artifacts</b></a>
+</section>
+
+{% if not active.filename %}
+<section class="import-empty-state">
+  <div>
+    <span class="pill">No empty imports anymore</span>
+    <h4>Before uploading, the UI is already prepared to show native PKT evidence, bridge output, object counts, warnings, and the next best export needed.</h4>
+    <p>When the backend cannot fully read Packet Tracer proprietary topology, WiGuard will still expose source hash, binary evidence, recovered strings, XML bridge preview, normalized JSON preview, and analyst next actions.</p>
+  </div>
+  <div class="empty-state-checks">
+    <span>Visible source manifest</span>
+    <span>Live upload result card</span>
+    <span>Native truth layer</span>
+    <span>Failure details instead of blank UI</span>
+  </div>
+</section>
+{% endif %}
 
 {% set diag = diagnostics or {} %}
 <section class="panel diagnostic-panel">
@@ -87,40 +214,79 @@
   </div>
 </section>
 
-<section class="conversion-console">
-  <div class="panel upload-panel">
-    <div class="panel-head"><h4>1. Upload Network Evidence</h4><span>{{ meta.extension or 'waiting' }}</span></div>
-    <form class="upload-box" method="post" enctype="multipart/form-data" action="{{ url_for('actions.import_file') }}">
+<section class="conversion-console" id="upload-console">
+  <div class="panel upload-panel import-upload-cockpit" id="import-dropzone-area">
+    <div class="panel-head import-panel-head">
+      <div>
+        <span class="section-kicker">Evidence Intake</span>
+        <h4>1. Upload Network Evidence</h4>
+        <p>Clean import flow with live proof, file telemetry, companion verification, and zero silent failures.</p>
+      </div>
+      <span class="badge info">{{ meta.extension or 'waiting' }}</span>
+    </div>
+    <form class="upload-box premium-upload-box" method="post" enctype="multipart/form-data" action="{{ url_for('actions.import_file') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <label class="dropzone pt-dropzone" id="dropzone">
-        <input id="file-input" type="file" name="network_file" required>
-        <span>Drop Packet Tracer / config bundle here</span>
-        <small>.pkt .pka .xml .json .txt .cfg .conf .zip</small>
+      <label class="dropzone pt-dropzone premium-dropzone" id="dropzone">
+        <input id="file-input" type="file" name="network_file" accept=".pkt,.pka,.xml,.json,.txt,.cfg,.conf,.log,.zip" required>
+        <em>PKT</em>
+        <span>Drop Packet Tracer or config evidence here</span>
+        <small>.pkt .pka .xml .json .txt .cfg .conf .log .zip</small>
         <strong id="file-name">No file selected</strong>
       </label>
-      <div class="upload-guidance">
+
+      <div class="selected-file-profile" id="selected-file-profile">
         <article>
-          <b>Native Packet Tracer</b>
-          <small>`.pkt/.pka` files are auto-processed through converter probing, visible string recovery, XML bridging, JSON normalization, and object extraction.</small>
+          <span>Detected type</span>
+          <b id="selected-file-kind">Waiting</b>
+          <small id="selected-file-extension">Choose a file to classify the import path.</small>
         </article>
         <article>
-          <b>Structured imports</b>
-          <small>XML/JSON/TXT/ZIP evidence is parsed directly and validated against WiGuard extraction and traceability rules.</small>
+          <span>Size</span>
+          <b id="selected-file-size">—</b>
+          <small>Large binary files stay visible through manifest + hash proof.</small>
+        </article>
+        <article>
+          <span>Expected pipeline</span>
+          <b id="selected-file-mode">Auto</b>
+          <small id="selected-file-pipeline">Intake → decode → normalize → validate.</small>
         </article>
       </div>
-      <label class="companion-export-box">
+
+      <div class="import-mode-lanes">
+        <article>
+          <span>Native lane</span>
+          <b>.pkt / .pka</b>
+          <small>Converter probe, string recovery, binary summary, XML bridge, JSON normalization, and truth-contract warnings.</small>
+        </article>
+        <article>
+          <span>Verified lane</span>
+          <b>Config / XML / JSON / ZIP</b>
+          <small>Direct parsing with object extraction, line mapping, coverage domains, and report-safe evidence.</small>
+        </article>
+        <article>
+          <span>Companion lane</span>
+          <b>Best accuracy</b>
+          <small>Attach exported running-config/show outputs next to PKT to upgrade recovered facts into verified objects.</small>
+        </article>
+      </div>
+
+      <label class="companion-export-box premium-companion-box">
         <span>Optional companion export for true verification</span>
-        <input id="companion-input" type="file" name="companion_file">
-        <small>Use exported running-config/show outputs/XML/JSON/ZIP beside a native .pkt/.pka file. This upgrades evidence from native recovery to verified parse where possible.</small>
+        <input id="companion-input" type="file" name="companion_file" accept=".xml,.json,.txt,.cfg,.conf,.log,.zip">
+        <small>Recommended for Packet Tracer files: export running-config, show commands, XML/JSON, or a ZIP bundle so the backend can prove devices, VLANs, interfaces, ACLs, trunks, and relationships instead of only recovering binary hints.</small>
         <strong id="companion-name">No companion export selected</strong>
       </label>
-      <button class="primary-btn full" type="submit">Import → Convert → Validate → Generate Artifacts</button>
-      <div class="upload-status" id="upload-status">Waiting for file. Conversion runs automatically in the background after upload.</div>
-      <div class="upload-meta-grid">
+
+      <div class="import-action-row">
+        <button class="primary-btn full import-primary-btn" type="submit">Import → Convert → Validate → Generate Artifacts</button>
+        <div class="upload-status" id="upload-status">Waiting for file. Conversion runs automatically in the background after upload.</div>
+      </div>
+
+      <div class="upload-meta-grid premium-meta-grid">
         <article>
           <span>Accepted evidence</span>
-          <b>8 formats</b>
-          <small>Packet Tracer binaries, configs, XML, JSON, text exports, and ZIP bundles.</small>
+          <b>9 formats</b>
+          <small>Packet Tracer binaries, configs, XML, JSON, text exports, logs, and ZIP bundles.</small>
         </article>
         <article>
           <span>Current source hash</span>
@@ -129,33 +295,48 @@
         </article>
         <article>
           <span>Structured sections</span>
-          <b>{{ structured_summary.detected_sections|length if structured_summary.detected_sections else 0 }}</b>
+          <b>{{ detected_sections|length if detected_sections else 0 }}</b>
           <small>{{ structured_summary.status or 'No structured sections detected yet' }}</small>
         </article>
       </div>
     </form>
-    <form method="post" action="{{ url_for('actions.load_sample') }}">
+    <form method="post" action="{{ url_for('actions.load_sample') }}" class="sample-load-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="ghost-btn full" type="submit">Load Production Sample</button>
     </form>
-    <div class="hint-panel">
+    <div class="hint-panel premium-hint-panel">
       <strong>Best accuracy workflow</strong>
-      <span>Native `.pkt/.pka` uploads now run through a forced background chain: converter probe → printable segment reconstruction → internal XML bridge → normalized JSON → object extraction. The UI labels what is verified, partial, or opaque so the tool never fakes 100% certainty.</span>
+      <span>Native `.pkt/.pka` uploads now run through a forced background chain: converter probe → printable segment reconstruction → internal XML bridge → normalized JSON → object extraction. The UI labels verified, recovered, partial, and opaque evidence so the tool never fakes 100% certainty.</span>
     </div>
   </div>
 
   <div class="panel readiness-panel">
-    <div class="panel-head"><h4>2. Conversion Readiness</h4><span class="badge {{ readiness }}">{{ readiness.replace('_',' ') }}</span></div>
-    <div class="readiness-ring" style="--score: {{ readiness_score }}"><b>{{ readiness_score }}%</b><span>ready</span></div>
-    <div class="summary-lines">
-      <div><span>Mode</span><b>{{ meta.source_mode or active.source_mode or 'N/A' }}</b></div>
-      <div><span>File size</span><b>{{ meta.bytes or 0 }} bytes</b></div>
-      <div><span>Objects</span><b>{{ profile.objects_total or 0 }}</b></div>
-      <div><span>Printable lines</span><b>{{ meta.printable_lines or 0 }}</b></div>
+    <div class="panel-head readiness-head">
+      <div>
+        <span class="section-kicker">Live Quality Meter</span>
+        <h4>2. Conversion Readiness</h4>
+      </div>
+      <span id="readiness-badge" class="badge {{ readiness }}">{{ readiness.replace('_',' ') }}</span>
     </div>
-    <p class="muted">{{ profile.analyst_next_step or 'Run an import to see a conversion decision.' }}</p>
+    <div class="readiness-stage">
+      <div id="readiness-ring" class="readiness-ring premium-readiness-ring" style="--score: {{ readiness_score }}"><b id="readiness-percent">{{ readiness_score }}%</b><span>ready</span></div>
+      <div class="trust-ladder">
+        <article id="trust-file" class="{{ 'pass' if active.filename else 'idle' }}"><b>File accepted</b><small id="trust-file-text">{{ active.filename or 'Not uploaded yet' }}</small></article>
+        <article id="trust-parser" class="{{ 'pass' if meta.source_mode or active.source_mode else 'idle' }}"><b>Parser selected</b><small id="trust-parser-text">{{ meta.source_mode or active.source_mode or 'Waiting for classification' }}</small></article>
+        <article id="trust-objects" class="{{ 'pass' if (profile.objects_total or counts.values()|sum) else 'review' }}"><b>Objects visible</b><small id="trust-objects-text">{{ count_breakdown.real_object_count or 0 }} real objects · {{ count_breakdown.evidence_entry_count or 0 }} evidence rows</small></article>
+        <article id="trust-report" class="{{ 'pass' if import_contract.can_publish_technical else 'review' }}"><b>Report safe</b><small id="trust-report-text">{{ intake_tier.replace('_', ' ') }}</small></article>
+      </div>
+    </div>
+    <div class="summary-lines premium-summary-lines">
+      <div><span>Mode</span><b id="readiness-mode">{{ meta.source_mode or active.source_mode or 'N/A' }}</b></div>
+      <div><span>File size</span><b id="readiness-size">{{ meta.bytes or 0 }} bytes</b></div>
+      <div><span>Objects</span><b id="readiness-objects">{{ count_breakdown.real_object_count or 0 }}</b></div>
+      <div><span>Evidence rows</span><b id="readiness-evidence">{{ count_breakdown.evidence_entry_count or 0 }}</b></div>
+      <div><span>Printable lines</span><b id="readiness-lines">{{ meta.printable_lines or 0 }}</b></div>
+    </div>
+    <p class="readiness-next-step" id="readiness-next-step">{{ profile.analyst_next_step or 'Run an import to see a conversion decision.' }}</p>
     {% if state.active_extraction.pipeline %}
-    <div class="pipeline-rail">
+    <div class="pipeline-rail" id="conversion-pipeline-rail">
       {% for step in state.active_extraction.pipeline[:6] %}
       <article class="{{ step.status|replace('_', '-') }}">
         <span class="step-index">{{ loop.index }}</span>
@@ -167,7 +348,7 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="empty-inline-note">No import has been processed yet. Once you upload a file, WiGuard will show the exact conversion chain here.</div>
+    <div class="empty-inline-note" id="conversion-pipeline-empty">No import has been processed yet. Once you upload a file, WiGuard will show the exact conversion chain here.</div>
     {% endif %}
   </div>
 </section>
@@ -190,7 +371,7 @@
   </article>
   <article class="insight-card">
     <span>Object traceability</span>
-    <b>{{ ((profile.evidence_profile.line_mapping_ratio or 0) * 100)|round|int }}%</b>
+    <b>{{ (line_mapping_ratio * 100)|round|int }}%</b>
     <small>List objects currently mapped to source lines.</small>
   </article>
 </section>
@@ -212,7 +393,84 @@
     <article><span>VLANs</span><b>{{ objects.vlans|length if objects.vlans else 0 }}</b><small>{% for v in (objects.vlans or [])[:4] %}{{ v.id or v.vlan }}{% if not loop.last %}, {% endif %}{% else %}No VLANs extracted{% endfor %}</small></article>
     <article><span>Links</span><b>{{ (objects.cdp_links|length if objects.cdp_links else 0) + (objects.lldp_links|length if objects.lldp_links else 0) }}</b><small>CDP/LLDP/structured link evidence</small></article>
   </div>
+
 </section>
+
+<section class="panel native-truth-panel native-truth-always" id="native-proof">
+  <div class="panel-head">
+    <h4>3.05 Native Import Truth Layer</h4>
+    <span>backend proof, even before topology objects</span>
+  </div>
+  <div class="native-truth-grid">
+    {% set manifest = (objects.native_source_manifest or [])[0] if objects.native_source_manifest else {} %}
+    {% set bridge_row = (objects.internal_xml_bridge or [])[0] if objects.internal_xml_bridge else {} %}
+    <article>
+      <span>File accepted</span>
+      <b>{{ manifest.filename or active.filename or '—' }}</b>
+      <small>{{ manifest.bytes or 0 }} bytes · {{ (manifest.sha256 or active.source_hash or '—')[:16] }}</small>
+    </article>
+    <article>
+      <span>Native status</span>
+      <b>{{ (manifest.recoverability or 'review').replace('_',' ') }}</b>
+      <small>{{ manifest.source_mode or active.source_mode or 'waiting' }}</small>
+    </article>
+    <article>
+      <span>Bridge output</span>
+      <b>{{ manifest.xml_bridge_bytes or bridge_row.xml_bytes or 0 }} XML bytes</b>
+      <small>{{ manifest.normalized_json_bytes or bridge_row.normalized_json_bytes or 0 }} normalized JSON bytes</small>
+    </article>
+    <article>
+      <span>Recovered signals</span>
+      <b>{{ (objects.native_visible_hints or [])|length }}</b>
+      <small>{{ (objects.decoded_payloads or [])|length }} decoded payloads · {{ (objects.recovered_string_preview or [])|length }} strings</small>
+    </article>
+  </div>
+  {% set converter_outputs = objects.external_converter_outputs or profile.external_converter_outputs or [] %}
+  <div class="converter-proof-box">
+    <div>
+      <span>External .pkt → XML converter</span>
+      <b>{{ 'Merged' if converter_outputs else (manifest.external_converter_status or 'Not configured / no XML yet') }}</b>
+      <small>{{ converter_outputs|length }} parsed output(s). Configure <code>WIGUARD_PKT_CONVERTER_PATH</code> or legacy <code>PTEXPLORER_PATH</code> to use tools that export Packet Tracer XML.</small>
+    </div>
+    {% if manifest.converter_attempts %}
+    <details>
+      <summary>Show converter attempts</summary>
+      <div class="mini-list compact-scroll">
+        {% for attempt in manifest.converter_attempts[:6] %}
+          <article><b>{{ attempt.status }}</b><small>{{ attempt.tool }} · {{ attempt.adapter or attempt.env or '' }} · {{ attempt.detail or attempt.stderr_preview or attempt.error or '' }}</small></article>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+  </div>
+
+  <div class="native-truth-note">
+    {% for row in objects.binary_evidence_summary or [] %}
+      <article>
+        <b>{{ row.status.replace('_',' ') if row.status else 'review' }}</b>
+        <p>{{ row.summary }}</p>
+        <small>{{ row.next_action }}</small>
+      </article>
+    {% else %}
+      <article><b>Waiting</b><p>Upload a Packet Tracer file to generate native binary proof.</p></article>
+    {% endfor %}
+  </div>
+</section>
+
+{% if objects.extraction_completeness %}
+<section class="panel completeness-panel import-completeness-panel">
+  <div class="panel-head"><h4>3.15 Data Fidelity Scorecard</h4><span>what the upload really proved</span></div>
+  <div class="completeness-grid">
+    {% for row in objects.extraction_completeness %}
+    <article class="{{ row.status }}">
+      <div><span>{{ row.family.replace('_',' ') }}</span><b>{{ row.score }}%</b></div>
+      <small>{{ row.label }} · {{ row.objects }} object(s), {{ row.line_mapped }} line/path mapped</small>
+      <i style="--pct: {{ row.score }}"></i>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 {% set contracts = objects.verified_extraction_contract or [] %}
 {% set contract = contracts[0] if contracts else (profile.verified_extraction_contract or {}) %}
@@ -254,8 +512,27 @@
   </div>
   <div class="hint-panel">
     <strong>{{ native.decision or meta.format_note }}</strong>
-    <span>WiGuard has already run the background XML/JSON bridge. If the native binary exposes limited evidence, the preview below proves exactly what was decoded and what still needs exported configs/converter support.</span>
+    <span>WiGuard has already run the background XML/JSON bridge and will also merge output from any configured local Packet Tracer XML converter. If the native binary exposes limited evidence, the preview below proves exactly what was decoded and what still needs exported configs/converter support.</span>
   </div>
+
+  {% if profile.external_converter_outputs %}
+  <div class="panel-subblock pkt-bridge-block">
+    <div class="panel-head compact">
+      <h5>External Converter XML/JSON Outputs</h5>
+      <span>{{ profile.external_converter_outputs|length }} parsed output(s)</span>
+    </div>
+    <div class="table-wrap mini-table">
+      <table>
+        <thead><tr><th>Name</th><th>Kind</th><th>Source</th><th>Bytes</th><th>Preview</th></tr></thead>
+        <tbody>
+        {% for out in profile.external_converter_outputs[:8] %}
+          <tr><td>{{ out.name }}</td><td>{{ out.kind }}</td><td>{{ out.source }}</td><td>{{ out.bytes }}</td><td><small>{{ out.preview }}</small></td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
   {% if fidelity %}
   <div class="fidelity-strip {{ fidelity.status }}">
@@ -490,6 +767,12 @@
 </section>
 {% endif %}
 
+<details class="advanced-evidence-vault">
+  <summary>
+    <span>Advanced Evidence Vault</span>
+    <b>Show deep extractor details, runtime atoms, policy checks, VLAN crosschecks, and structured schema maps</b>
+  </summary>
+
 <section class="two-col">
   <div class="panel">
     <div class="panel-head"><h4>4. Quality Gates</h4></div>
@@ -721,7 +1004,9 @@
   {% endif %}
 </section>
 
-<section class="panel">
+</details>
+
+<section class="panel extraction-pipeline-panel">
   <div class="panel-head"><h4>18. Extraction Pipeline</h4><span>{{ state.active_extraction.filename or 'No import yet' }}</span></div>
   <p class="muted section-intro">Every stage below reflects the real backend path used for the current import. This makes the conversion workflow easier to audit and easier to explain to analysts and reviewers.</p>
   <div class="pipeline">
@@ -737,7 +1022,7 @@
   </div>
 </section>
 
-<section class="panel">
+<section class="panel generated-artifacts-panel" id="generated-artifacts">
   <div class="panel-head"><h4>19. Generated Artifacts</h4><a href="{{ url_for('actions.download_evidence_zip') }}">Download ZIP</a></div>
   <div class="artifact-grid">
   {% for name, path in artifacts.items() %}

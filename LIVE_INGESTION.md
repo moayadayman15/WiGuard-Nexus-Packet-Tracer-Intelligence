@@ -1,12 +1,19 @@
-# WiGuard Nexus Live Ingestion
+# User Guide
 
-v5.5 supports live ingestion through a safe HTTP API by default:
+## Core Workflow
 
-```bash
-curl -X POST http://127.0.0.1:5000/api/v1/events \
-  -H "Authorization: Bearer wgn_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"connector_type":"syslog_events","events":[{"message":"authentication fail client aa:bb:cc:dd:ee:ff ssid=StaffWiFi ap=AP-01"}]}'
-```
+1. Create/select a project.
+2. Define SSIDs, VLANs, DHCP scopes, AP inventory, and client sessions.
+3. Import wired evidence or load the sample config.
+4. Simulate or import wireless events.
+5. Review the validation matrix, event-to-wired correlation, anomalies, confidence score, and remediation playbooks.
+6. Export reports and evidence packages.
 
-For production deployments that need raw UDP syslog, see `wiguard/services/live_ingestion.py`. It contains a stdlib-only UDP listener skeleton that parses syslog lines and forwards normalized records into the same event model. The listener is not auto-started by Flask to avoid opening network ports during demos.
+## Wireless Manager
+
+- **SSID Profiles**: expected role, VLAN, DHCP scope, services.
+- **AP Inventory**: AP location, switch/uplink, supported VLANs, capacity.
+- **Client Sessions**: client lifecycle and active policy state.
+- **Event Simulator**: association, disassociation, auth failure, roaming, DHCP assignment, policy violation.
+- **Policy Studio**: configurable rules and remediation guidance.
+- **Vendor Connectors**: CSV/JSON adapters for WLC, AP inventory, RADIUS, DHCP, and syslog exports.

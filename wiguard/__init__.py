@@ -2,11 +2,8 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from .services.storage import Storage
-from .services.database import AppDatabase
-from .services.wireless import normalize_wireless_state
-from .services.live_ingestion import LiveIngestionController
-from .services.background import BackgroundJobRunner, noop_job_handler
+from .version import get_version, get_product_label
+from .services.state_schema import ensure_state_shape
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -19,6 +16,11 @@ def _bool_env(name: str, default: bool = False) -> bool:
 def create_app():
     from flask import Flask, request
     from .security import csrf_token, current_user, current_role, current_tenant_id, can_role, enforce_request_security
+    from .services.storage import Storage
+    from .services.database import AppDatabase
+    from .services.wireless import normalize_wireless_state
+    from .services.live_ingestion import LiveIngestionController
+    from .services.background import BackgroundJobRunner, noop_job_handler
 
     app = Flask(__name__, instance_relative_config=True)
     root = Path(__file__).resolve().parent.parent
@@ -27,13 +29,21 @@ def create_app():
     if env == "production" and secret == "dev-only-change-me-wiguard-nexus-v5":
         raise RuntimeError("Production mode requires WIGUARD_SECRET_KEY to be set to a strong random value.")
 
+    if env == "production" and not _bool_env("WIGUARD_DISABLE_DEMO_FALLBACK", True):
+        raise RuntimeError("Production mode must not enable emergency/demo fallback authentication. Set WIGUARD_DISABLE_DEMO_FALLBACK=1 and create a real admin user.")
+
     db_backend = os.environ.get("WIGUARD_DB_BACKEND", "sqlite").strip().lower()
     database_url = os.environ.get("DATABASE_URL", "")
+    data_file = Path(os.environ.get("WIGUARD_DATA_FILE", root / "data" / "state.json"))
+    # Keep SQLite beside an overridden state file unless explicitly configured.
+    # This prevents test/demo runs with temporary JSON storage from locking or
+    # mutating the repository-level demo database.
+    db_path = Path(os.environ.get("WIGUARD_DB_PATH", data_file.parent / "wiguard.sqlite3"))
     app.config.update(
         SECRET_KEY=secret,
         ROOT_DIR=root,
-        DATA_FILE=Path(os.environ.get("WIGUARD_DATA_FILE", root / "data" / "state.json")),
-        DB_PATH=Path(os.environ.get("WIGUARD_DB_PATH", root / "data" / "wiguard.sqlite3")),
+        DATA_FILE=data_file,
+        DB_PATH=db_path,
         DB_BACKEND=db_backend,
         DATABASE_URL=database_url,
         ARTIFACT_DIR=Path(os.environ.get("WIGUARD_ARTIFACT_DIR", root / "data" / "artifacts")),
@@ -69,15 +79,32 @@ def create_app():
     storage = Storage(app.config["DATA_FILE"])
     storage.ensure_seed()
     state = storage.load()
-    state.setdefault("version", "5.9.3-professional-quality-studio")
-    state.setdefault("tenant_id", app.config["DEFAULT_TENANT_ID"])
-    state.setdefault("tenants", [{"id": app.config["DEFAULT_TENANT_ID"], "name": "Main Tenant", "status": "active"}])
-    for p in state.get("projects", []):
-        p.setdefault("tenant_id", state.get("tenant_id", app.config["DEFAULT_TENANT_ID"]))
+    # Force runtime metadata forward on every boot. Older state.json files kept a
+    # stale older title, which made the UI look rolled back after backend fixes.
+    runtime_version = get_version()
+    state = ensure_state_shape(
+        state,
+        tenant_id=app.config["DEFAULT_TENANT_ID"],
+        version=runtime_version,
+        product=get_product_label(),
+        tagline="Network Intelligence Engine with product-grade topology, threat mapping, AI readiness, evidence, policy analysis, and report-ready Packet Tracer intelligence",
+    )
+    state["meta"].update({
+        "product": get_product_label(),
+        "workflow": ["Dashboard", "Import", "Workspace", "Analysis", "Intelligence", "Threat Map", "Reports"],
+    })
     normalize_wireless_state(state)
     storage.save(state)
     app.extensions["storage"] = storage
-    app.extensions["db"] = AppDatabase(app.config["DB_PATH"])
+    try:
+        app.extensions["db"] = AppDatabase(app.config["DB_PATH"])
+        app.logger.info("WiGuard SQLite initialized at db_path=%s", app.config["DB_PATH"])
+    except Exception as exc:
+        # Do not let a locked/corrupt local SQLite file kill the whole backend.
+        # Upload/import can still persist to state.json and the UI will expose DB health.
+        app.extensions["db"] = None
+        app.config["DB_INIT_ERROR"] = str(exc)
+        app.logger.exception("WiGuard SQLite initialization failed; continuing with JSON-only mode: %s", exc)
     app.logger.info("WiGuard booted with data_file=%s db_path=%s", app.config["DATA_FILE"], app.config["DB_PATH"])
     app.extensions["live_ingestion"] = LiveIngestionController(app)
     runner = BackgroundJobRunner(app, handlers={"noop": noop_job_handler, "report_generation": noop_job_handler, "connector_sync": noop_job_handler})

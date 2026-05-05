@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set studio = analysis_studio or {} %}
+<section class="page-title analysis-title">
+  <span class="pill">Analysis & Policy Studio</span>
+  <h3>Risk scoring, policy rules, root cause, simulation, and remediation</h3>
+  <p>One page for understanding problems instead of jumping between diff, rules, root cause, simulation, and playbooks.</p>
+</section>
+
+<section class="analysis-command-grid">
+  <article><span>Risk Score</span><b>{{ studio.risk.score }}</b><small>{{ studio.risk.grade }} · {{ studio.risk.risk_level }}</small></article>
+  <article><span>Failed Checks</span><b>{{ studio.diffs|selectattr('status','equalto','Fail')|list|length }}</b><small>policy drift requiring action</small></article>
+  <article><span>Root Causes</span><b>{{ studio.causes|length }}</b><small>generated explanations</small></article>
+  <article><span>Evidence Quality</span><b>{{ studio.quality.score or 0 }}/100</b><small>{{ studio.quality.grade or 'waiting' }}</small></article>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Policy Rules Engine</h4><span class="badge info">active rule packs</span></div>
+    <div class="rule-card-grid">
+      {% for r in studio.rule_cards %}<article><b>{{ r.title }}</b><small>{{ r.coverage }}</small><span>{{ r.status }}</span></article>{% endfor %}
+    </div>
+    <div class="hint-panel"><strong>Rule readiness</strong><span>{{ studio.rule_assessment.summary or 'Import evidence to calculate validation readiness.' }}</span></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Severity Distribution</h4></div>
+    <div class="severity-bars">
+      {% for sev in ['Critical','High','Medium','Low','Info'] %}
+      <div><span>{{ sev }}</span><b style="width: {{ [studio.severity_counts.get(sev,0)*10,100]|min }}%"></b><em>{{ studio.severity_counts.get(sev,0) }}</em></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+
+{% set pi = product_intelligence or {} %}
+{% set ai = pi.ai_copilot or {} %}
+<section class="panel ai-command-panel">
+  <div class="panel-head"><h4>AI Root Cause v2 Command Panel</h4><a href="{{ url_for('pages.product_intelligence') }}">Optional stack</a></div>
+  <div class="ai-command-layout">
+    <article><span>Mode</span><b>{{ ai.mode or 'AI blueprint ready' }}</b><small>{{ 'Local copilot package can be used.' if ai.local_ready else 'Install Ollama for local AI explanations.' }}</small></article>
+    <article><span>RAG Search</span><b>{{ 'Ready' if ai.rag_ready else 'Optional' }}</b><small>Semantic evidence search for configs/reports</small></article>
+    <div class="copilot-quote wide"><b>Suggested analyst brief</b><p>{{ ai.copilot_message }}</p></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Prioritized Findings</h4><a href="{{ url_for('pages.diff') }}">Advanced policy diff</a></div>
+  <div class="table-wrap">
+    <table><thead><tr><th>Finding</th><th>Asset</th><th>Status</th><th>Severity</th><th>Confidence</th><th>Fix</th></tr></thead><tbody>
+      {% for d in studio.prioritized[:20] %}
+      <tr><td><b>{{ d.id }}</b><br><small>{{ d.category }}</small></td><td>{{ d.asset }}</td><td><span class="badge {{ d.status|lower }}">{{ d.status }}</span></td><td>{{ d.severity }}</td><td>{{ ((d.confidence or 0)*100)|round|int }}%</td><td><small>{{ d.recommendation or d.fix or 'Review remediation playbook.' }}</small></td></tr>
+      {% else %}<tr><td colspan="6" class="muted">No findings generated yet.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Root Cause Analyzer</h4><a href="{{ url_for('pages.root_cause') }}">Advanced RCA</a></div>
+    <div class="mini-list">
+      {% for c in studio.causes[:8] %}<article><b>{{ c.finding_id }}</b><small>{{ c.evidence_reason or c.summary or c.hypotheses|join('; ') }}</small></article>{% else %}<p class="muted">No root causes yet.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Remediation Playbooks</h4><a href="{{ url_for('pages.playbooks') }}">All playbooks</a></div>
+    <div class="mini-list">
+      {% for p in studio.playbooks[:8] %}<article><b>{{ p.title or p.finding_id }}</b><small>{{ p.summary or p.steps|join(' → ') }}</small></article>{% else %}<p class="muted">No playbooks yet.</p>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-head"><h4>Access Simulation History</h4><a href="{{ url_for('pages.simulation') }}">Run simulation</a></div>
+    <div class="mini-list">
+      {% for sim in studio.simulation_history %}<article><b>{{ sim.client }} → {{ sim.action }}</b><small>{{ sim.status }} · {{ sim.detail }}</small></article>{% else %}<p class="muted">No simulations yet.</p>{% endfor %}
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h4>Report Readiness Gate</h4><a href="{{ url_for('pages.reports') }}">Preview report</a></div>
+    <div class="contract-grid compact-contract">
+      <article><span>Technical</span><b>{{ 'Ready' if analyst_signoff.can_publish_technical else 'Needs caveats' }}</b></article>
+      <article><span>Executive</span><b>{{ 'Ready' if analyst_signoff.can_publish_executive else 'Blocked' }}</b></article>
+      <article><span>Full Fidelity</span><b>{{ 'Allowed' if analyst_signoff.can_claim_full_fidelity else 'Forbidden' }}</b></article>
+    </div>
+  </div>
+</section>
+{% endblock %}

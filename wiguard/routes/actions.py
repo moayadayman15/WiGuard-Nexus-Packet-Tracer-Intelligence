@@ -8,8 +8,9 @@ from ..security import (
 from ..services.extractor import PacketTracerImportService
 from ..services.artifacts import generate_artifacts, verify_manifest, verify_package_bytes
 from ..services.reporting import report_json_bytes, report_pdf_bytes, report_html_bytes, evidence_zip_bytes, custom_report_html_bytes
-from ..services.intelligence import object_counts, build_policy_diff, run_access_simulation, sanitize_objects
-from ..services.util import now_iso
+from ..services.intelligence import object_counts, object_count_breakdown, build_policy_diff, run_access_simulation, sanitize_objects
+from ..services.util import now_iso, log_safely, friendly_error
+from ..services.state_schema import tenant_scoped_copy
 from ..services.connectors import (
     import_connector_payload, SUPPORTED_CONNECTORS, check_connector_credentials, vendor_sync_preview
 )
@@ -19,6 +20,9 @@ from ..services.wireless import (
     delete_ap, delete_ssid, add_or_update_policy_rule, delete_policy_rule
 )
 from ..services.live_ingestion import SyslogListenerConfig
+from ..services.code_quality import scan_project
+from ..services.professional_pipeline import build_professional_analysis, ProfessionalReportBuilder
+from ..version import get_version
 
 bp = Blueprint("actions", __name__)
 
@@ -31,18 +35,194 @@ def db():
     return current_app.extensions.get("db")
 
 
+def _create_job_safe(job_type, payload, actor=None, tenant_id=None):
+    db_obj = db()
+    if not db_obj:
+        return "inline"
+    try:
+        return db_obj.create_job(job_type, payload or {}, actor or current_user() or "system", tenant_id or current_tenant_id())
+    except Exception as exc:
+        current_app.logger.exception("Job creation failed for %s; continuing inline: %s", job_type, exc)
+        return "inline"
+
+
+def _update_job_safe(job_id, status, progress=None, result=None, error=None):
+    if not job_id or job_id == "inline" or not db():
+        return
+    try:
+        db().update_job(job_id, status, progress, result=result, error=error)
+    except Exception as exc:
+        current_app.logger.exception("Job update failed for %s: %s", job_id, exc)
+
+
+def _first_uploaded_file(*names):
+    """Return the first non-empty upload field.
+
+    Older UI builds and browser drag/drop behaviors may send the primary evidence
+    under slightly different field names. Supporting aliases makes the backend
+    resilient without weakening extension validation, because PacketTracerImportService
+    still validates the final filename and content container.
+    """
+    for name in names:
+        candidate = request.files.get(name)
+        if candidate and getattr(candidate, "filename", ""):
+            return candidate
+    # Last-resort fallback: if exactly one file was posted, treat it as evidence.
+    files = [f for f in request.files.values() if f and getattr(f, "filename", "")]
+    return files[0] if len(files) == 1 else None
+
+
+
+
+def _wants_json_response():
+    """True when the upload was sent by the live UI/AJAX workflow."""
+    accept = (request.headers.get("Accept") or "").lower()
+    requested = (request.headers.get("X-Requested-With") or "").lower()
+    return "application/json" in accept or requested in {"xmlhttprequest", "fetch"} or request.form.get("response_mode") == "json"
+
+
+def _json_import_payload(import_record=None, message="", ok=True, error=None):
+    """Compact import summary for the live upload UI.
+
+    The full source-of-truth remains the persisted state and generated artifacts.
+    This payload gives the frontend enough data to update immediately without a
+    hard browser refresh.
+    """
+    state = storage().load() if current_app.extensions.get("storage") else {}
+    active = state.get("active_extraction", {}) or {}
+    objects = active.get("objects", {}) or {}
+    profile = active.get("conversion_profile", {}) or {}
+    meta = profile.get("metadata", {}) or {}
+    counts = import_record.get("counts", {}) if isinstance(import_record, dict) else object_counts(objects) if objects else {}
+    breakdown = import_record.get("count_breakdown", {}) if isinstance(import_record, dict) else object_count_breakdown(objects) if objects else {}
+    bridge = (objects.get("internal_xml_bridge") or [{}])[0] if isinstance(objects.get("internal_xml_bridge"), list) else {}
+    contract = (objects.get("verified_extraction_contract") or [{}])[0] if isinstance(objects.get("verified_extraction_contract"), list) else {}
+    return {
+        "ok": bool(ok),
+        "message": message,
+        "error": str(error) if error else None,
+        "redirect": url_for("pages.import_center"),
+        "filename": active.get("filename") or (import_record or {}).get("filename"),
+        "source_mode": active.get("source_mode"),
+        "source_hash": active.get("source_hash"),
+        "imported_at": active.get("imported_at"),
+        "object_count": (import_record or {}).get("object_count") or breakdown.get("real_object_count") or 0,
+        "evidence_entry_count": (import_record or {}).get("evidence_entry_count") or breakdown.get("evidence_entry_count") or 0,
+        "total_extracted_entries": (import_record or {}).get("total_extracted_entries") or breakdown.get("total_extracted_entries") or sum(counts.values()),
+        "count_breakdown": breakdown,
+        "counts": counts,
+        "pipeline": active.get("pipeline", []),
+        "profile": {
+            "readiness": profile.get("readiness"),
+            "readiness_score": profile.get("readiness_score"),
+            "objects_total": profile.get("objects_total"),
+            "structured_status": (profile.get("structured_summary") or {}).get("status"),
+            "analyst_next_step": profile.get("analyst_next_step"),
+            "source_mode": meta.get("source_mode") or active.get("source_mode"),
+            "extension": meta.get("extension"),
+            "internal_xml_bridge_used": meta.get("internal_xml_bridge_used"),
+            "auto_xml_json_bridge_used": meta.get("auto_xml_json_bridge_used"),
+            "bytes": meta.get("bytes") or active.get("source_size"),
+            "printable_lines": meta.get("printable_lines") or meta.get("line_count") or 0,
+        },
+        "bridge": {
+            "fidelity": bridge.get("fidelity"),
+            "xml_bytes": bridge.get("xml_bytes"),
+            "normalized_json_bytes": bridge.get("normalized_json_bytes"),
+            "visible_counts": bridge.get("visible_counts", {}),
+            "external_converter_status": bridge.get("external_converter_status"),
+            "external_converter_outputs": bridge.get("external_converter_outputs", len(objects.get("external_converter_outputs", []) or [])),
+        },
+        "external_converter": {
+            "outputs": len(objects.get("external_converter_outputs", []) or []),
+            "attempts": ((objects.get("native_source_manifest") or [{}])[0].get("converter_attempts", []) if isinstance(objects.get("native_source_manifest"), list) and objects.get("native_source_manifest") else []),
+        },
+        "contract": {
+            "tier": contract.get("tier"),
+            "claim": contract.get("claim"),
+            "can_claim_full_fidelity": contract.get("can_claim_full_fidelity"),
+            "can_publish_technical": contract.get("can_publish_technical"),
+        },
+        "artifacts": active.get("artifacts", {}),
+    }
+
+def _ensure_visible_import_data(objects, result):
+    """Guarantee the UI has truthful rows even for weak/opaque imports.
+
+    This does not fake Packet Tracer fidelity. If proprietary/native parsing yields
+    no topology objects, the page still shows raw evidence, parser warnings, source
+    hash, mode, and next-step guidance instead of looking like the backend produced
+    nothing.
+    """
+    objects = objects if isinstance(objects, dict) else {}
+    profile = result.get("conversion_profile", {}) if isinstance(result, dict) else {}
+    meta = profile.get("metadata", {}) if isinstance(profile, dict) else {}
+    source_mode = result.get("source_mode") or meta.get("source_mode") or "unknown"
+    filename = result.get("filename") or meta.get("filename") or "uploaded evidence"
+    source_hash = result.get("source_hash") or meta.get("sha256") or ""
+    source_size = result.get("source_size") or meta.get("bytes") or 0
+    native_mode = source_mode in {"pkt_native_inspection", "pkt_binary_recovery", "pkt_auto_xml_json_bridge"} or str(filename).lower().endswith((".pkt", ".pka"))
+
+    text_preview = (result.get("text") or "")[:4000]
+    list_total = sum(len(v) for v in objects.values() if isinstance(v, list))
+
+    if native_mode:
+        native_profile = {}
+        if isinstance(objects.get("native_pkt_profile"), list) and objects.get("native_pkt_profile"):
+            native_profile = objects["native_pkt_profile"][0] if isinstance(objects["native_pkt_profile"][0], dict) else {}
+        objects.setdefault("native_source_manifest", []).append({
+            "filename": filename,
+            "source_mode": source_mode,
+            "sha256": source_hash,
+            "bytes": source_size,
+            "status": "accepted_and_visible",
+            "recoverability": native_profile.get("recoverability") or meta.get("recoverability") or "native_binary_review",
+            "decision": native_profile.get("decision") or meta.get("format_note") or "Native Packet Tracer file was accepted and inspected.",
+            "evidence": {"source_line": 1, "confidence": float(native_profile.get("confidence", 0.42) or 0.42), "source_text": "Native Packet Tracer intake manifest generated by backend."},
+        }) if not objects.get("native_source_manifest") else None
+        objects.setdefault("binary_evidence_summary", []).append({
+            "name": "native-binary-processing",
+            "status": native_profile.get("recoverability") or "review",
+            "summary": native_profile.get("decision") or "The backend accepted the .pkt/.pka file and produced an evidence contract even when topology objects are limited.",
+            "source_hash": source_hash,
+            "source_mode": source_mode,
+            "counts": ((objects.get("internal_xml_bridge") or [{}])[0].get("visible_counts", {}) if isinstance(objects.get("internal_xml_bridge"), list) and objects.get("internal_xml_bridge") else {}),
+            "next_action": "For full topology details, export running-config/show outputs/XML/JSON from Packet Tracer and attach them as companion evidence.",
+            "evidence": {"source_line": 1, "confidence": float(native_profile.get("confidence", 0.42) or 0.42), "source_text": "Binary processing summary; not a simulated topology object."},
+        }) if not objects.get("binary_evidence_summary") else None
+        if not text_preview.strip():
+            text_preview = f"Native Packet Tracer binary accepted. filename={filename} sha256={source_hash[:16]} bytes={source_size} mode={source_mode}"
+
+    if (list_total == 0 or (native_mode and not objects.get("devices") and not objects.get("interfaces"))) and text_preview.strip():
+        objects.setdefault("raw_evidence", []).append({
+            "name": filename,
+            "source_mode": source_mode,
+            "preview": text_preview[:1200],
+            "evidence": {"source_line": 1, "confidence": 0.45, "source_text": "Raw/native evidence preserved because few normalized topology objects were extracted."},
+        })
+        objects.setdefault("command_blocks", []).append({
+            "command": "raw/native uploaded evidence",
+            "start_line": 1,
+            "lines": max(1, len(text_preview.splitlines())),
+            "evidence": {"source_line": 1, "confidence": 0.45, "source_text": "Fallback evidence block."},
+        })
+        objects.setdefault("import_warnings", []).append({
+            "severity": "Medium" if not native_mode else "High",
+            "title": "No normalized topology objects extracted yet" if not native_mode else "Native Packet Tracer topology needs exported evidence",
+            "detail": "The backend received and stored the file, but no parser rule produced devices/interfaces/VLANs/ACLs. Upload exported running-config/show outputs, XML/JSON, or a ZIP bundle for stronger extraction." if not native_mode else "The native .pkt/.pka was accepted, hashed, inspected, bridged to XML/JSON, and recorded. Packet Tracer's proprietary binary may not expose full topology directly; attach exported show-command/config/XML/JSON evidence for real devices/interfaces/VLANs.",
+        })
+    return objects
+
+
 def _save_state(state, audit_action=None, target="", detail=""):
     state.setdefault("tenant_id", current_tenant_id())
-    state.setdefault("version", "5.9.3-professional-quality-studio")
+    state.setdefault("version", get_version())
     try:
         normalize_wireless_state(state)
     except Exception as exc:
         # Persistence must win. A dashboard normalizer problem should be visible in
         # logs but must never discard user changes.
-        try:
-            current_app.logger.exception("State normalization failed before save: %s", exc)
-        except Exception:
-            pass
+        log_safely(current_app.logger, "exception", "State normalization failed before save: %s", exc)
     storage().save(state)
     db_obj = db()
     if db_obj and audit_action:
@@ -58,30 +238,21 @@ def _save_state(state, audit_action=None, target="", detail=""):
         except Exception as exc:
             # The JSON state is the source of truth for UI data. A SQLite audit
             # or snapshot issue must not make the user think the form did not save.
-            try:
-                current_app.logger.exception("State saved but audit/snapshot failed for %s: %s", audit_action, exc)
-            except Exception:
-                pass
+            log_safely(current_app.logger, "exception", "State saved but audit/snapshot failed for %s: %s", audit_action, exc)
 
 
 def _tenant_scoped_state(state):
-    tenant_id = current_tenant_id()
-    scoped = dict(state)
-    scoped["tenant_id"] = tenant_id
-    for key in ["projects", "imports", "events", "simulations"]:
-        if isinstance(scoped.get(key), list):
-            scoped[key] = [x for x in scoped[key] if not isinstance(x, dict) or x.get("tenant_id", tenant_id) == tenant_id]
-    active = scoped.get("active_extraction") or {}
-    if active and active.get("tenant_id", tenant_id) != tenant_id:
-        scoped["active_extraction"] = {}
-    return scoped
+    return tenant_scoped_copy(state, current_tenant_id())
 
 def _persist_import_result(result, source_note):
     state = storage().load()
     normalize_wireless_state(state)
     tenant_id = state.get("tenant_id", current_tenant_id())
-    objects = sanitize_objects(result.get("objects", {}))
+    objects = _ensure_visible_import_data(result.get("objects", {}), result)
+    objects = sanitize_objects(objects)
     result["objects"] = objects
+    counts = object_counts(objects)
+    breakdown = object_count_breakdown(objects)
     import_record = {
         "id": f"import-{len(state.get('imports', [])) + 1}",
         "tenant_id": tenant_id,
@@ -90,8 +261,11 @@ def _persist_import_result(result, source_note):
         "source_mode": result["source_mode"],
         "source_note": source_note,
         "imported_at": result["imported_at"],
-        "object_count": sum(object_counts(objects).values()),
-        "counts": object_counts(objects),
+        "object_count": breakdown.get("real_object_count", 0),
+        "evidence_entry_count": breakdown.get("evidence_entry_count", 0),
+        "total_extracted_entries": breakdown.get("total_extracted_entries", 0),
+        "count_breakdown": breakdown,
+        "counts": counts,
         "source_hash": result.get("source_hash"),
     }
     state["active_extraction"] = {
@@ -103,10 +277,12 @@ def _persist_import_result(result, source_note):
         "imported_at": result["imported_at"],
         "objects": objects,
         "pipeline": result["pipeline"],
+        "source_size": result.get("source_size"),
         "raw_text_preview": result["text"][:6000],
         "missing_evidence": result.get("missing_evidence", []),
         "confidence_summary": result.get("confidence_summary", {}),
         "conversion_profile": result.get("conversion_profile", {}),
+        "count_breakdown": breakdown,
     }
     state.setdefault("imports", []).insert(0, import_record)
     state.setdefault("events", []).insert(0, {
@@ -115,7 +291,7 @@ def _persist_import_result(result, source_note):
         "type": "import",
         "client": "",
         "severity": "Info",
-        "detail": f"{source_note} {result['filename']} and extracted {import_record['object_count']} object/evidence entries.",
+        "detail": f"{source_note} {result['filename']} and extracted {import_record['object_count']} real objects plus {import_record['evidence_entry_count']} evidence/support entries.",
         "created_at": now_iso()
     })
     _save_state(state, "import.persist", result["filename"], source_note)
@@ -177,7 +353,7 @@ def register():
         flash(f"Account created as {role}. Data is now stored in SQLite.", "success")
         return redirect(url_for("pages.overview"))
     except Exception as exc:
-        flash(f"Registration failed: {exc}", "error")
+        flash(f"Registration failed: {friendly_error(exc)}", "error")
         return redirect(url_for("pages.register"))
 
 
@@ -192,7 +368,7 @@ def accept_invite():
         flash("Invite accepted and account created.", "success")
         return redirect(url_for("pages.overview"))
     except Exception as exc:
-        flash(f"Invite acceptance failed: {exc}", "error")
+        flash(f"Invite acceptance failed: {friendly_error(exc)}", "error")
         return redirect(url_for("actions.accept_invite", token=token))
 
 
@@ -206,7 +382,7 @@ def password_reset_request():
         flash(f"Password reset completed for {username}. Please sign in.", "success")
         return redirect(url_for("pages.login"))
     except Exception as exc:
-        flash(f"Password reset failed: {exc}", "error")
+        flash(f"Password reset failed: {friendly_error(exc)}", "error")
         return redirect(url_for("actions.password_reset_request", token=token))
 
 
@@ -222,7 +398,7 @@ def logout():
 def reset():
     storage().reset()
     state = storage().load()
-    state["version"] = "5.9.3-professional-quality-studio"
+    state["version"] = get_version()
     state["tenant_id"] = current_tenant_id()
     normalize_wireless_state(state)
     _save_state(state, "state.reset", "seed", "State reset to clean wireless seed")
@@ -231,31 +407,55 @@ def reset():
 
 
 @bp.post("/actions/import")
+@bp.post("/actions/import/live")
+@bp.post("/api/import")
+@bp.post("/upload")
 @require_role("analyst")
 def import_file():
-    uploaded = request.files.get("network_file")
-    companion = request.files.get("companion_file")
+    wants_json = _wants_json_response()
+    uploaded = _first_uploaded_file("network_file", "packet_file", "evidence_file", "file", "upload", "network_upload")
+    companion = request.files.get("companion_file") or request.files.get("companion")
     if not uploaded or not uploaded.filename:
-        flash("Choose a Packet Tracer/config file first.", "error")
+        msg = "Choose a Packet Tracer/config file first. Backend received no file field."
+        if wants_json:
+            return jsonify(_json_import_payload(message=msg, ok=False, error=msg)), 400
+        flash(msg, "error")
         return redirect(url_for("pages.import_center"))
+    try:
+        stream = getattr(uploaded, "stream", None)
+        if stream and hasattr(stream, "seek"):
+            stream.seek(0)
+    except Exception as exc:
+        current_app.logger.debug("Could not rewind uploaded stream before import: %s", exc)
     service = PacketTracerImportService(current_app.config["UPLOAD_DIR"])
     job_meta = {"filename": uploaded.filename}
     if companion and companion.filename:
         job_meta["companion_filename"] = companion.filename
-    job_id = db().create_job("evidence_import", job_meta, current_user() or "system", current_tenant_id()) if db() else "inline"
+    job_id = _create_job_safe("evidence_import", job_meta, current_user() or "system", current_tenant_id())
     try:
-        if db():
-            db().update_job(job_id, "running", 20)
+        _update_job_safe(job_id, "running", 20, {"stage": "file_intake"})
         result = service.extract(uploaded, companion_file=companion)
+        current_app.logger.info(
+            "Import extraction completed filename=%s mode=%s lists=%s",
+            result.get("filename"),
+            result.get("source_mode"),
+            {k: len(v) for k, v in (result.get("objects") or {}).items() if isinstance(v, list) and len(v)},
+        )
+        _update_job_safe(job_id, "running", 75, {"stage": "persisting_artifacts"})
         import_record = _persist_import_result(result, "Imported")
-        if db():
-            db().update_job(job_id, "completed", 100, {"import_id": import_record["id"], "object_count": import_record["object_count"]})
+        _update_job_safe(job_id, "completed", 100, {"import_id": import_record["id"], "object_count": import_record["object_count"], "evidence_entry_count": import_record.get("evidence_entry_count", 0), "total_extracted_entries": import_record.get("total_extracted_entries", 0)})
         companion_note = " Companion export merged." if companion and companion.filename else ""
-        flash(f"Import completed. Extracted objects: {import_record['object_count']}.{companion_note}", "success")
+        msg = f"Import completed. Real objects: {import_record['object_count']} · Evidence/support entries: {import_record.get('evidence_entry_count', 0)}.{companion_note}"
+        if wants_json:
+            return jsonify(_json_import_payload(import_record, msg, ok=True))
+        flash(msg, "success")
     except Exception as exc:
-        if db():
-            db().update_job(job_id, "failed", 100, error=str(exc))
-        flash(f"Import failed: {exc}", "error")
+        current_app.logger.exception("Import failed for uploaded evidence %s", getattr(uploaded, "filename", "uploaded"))
+        _update_job_safe(job_id, "failed", 100, error=str(exc))
+        msg = f"Import failed: {friendly_error(exc)}"
+        if wants_json:
+            return jsonify(_json_import_payload(message=msg, ok=False, error=friendly_error(exc))), 400
+        flash(msg, "error")
     return redirect(url_for("pages.import_center"))
 
 
@@ -275,7 +475,7 @@ def load_sample():
         _persist_import_result(result, "Loaded production sample")
         flash("Production sample loaded and artifacts generated.", "success")
     except Exception as exc:
-        flash(f"Sample import failed: {exc}", "error")
+        flash(f"Sample import failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.import_center"))
 
 
@@ -313,7 +513,7 @@ def wireless_ssid_save():
         _save_state(state, "wireless.ssid.save", name, "SSID policy updated")
         flash(f"SSID policy saved for {name}.", "success")
     except Exception as exc:
-        flash(f"SSID save failed: {exc}", "error")
+        flash(f"SSID save failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.wireless_manager") + "#ssid")
 
 
@@ -326,7 +526,7 @@ def wireless_ap_save():
         _save_state(state, "wireless.ap.save", name, "AP inventory updated")
         flash(f"AP inventory saved for {name}.", "success")
     except Exception as exc:
-        flash(f"AP save failed: {exc}", "error")
+        flash(f"AP save failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.wireless_manager") + "#ap")
 
 
@@ -372,7 +572,7 @@ def wireless_import_events():
         _save_state(state, "wireless.events.import", uploaded.filename, f"Imported {count} event(s)")
         flash(f"Imported {count} wireless event(s)." + (f" Errors: {'; '.join(errors)}" if errors else ""), "success" if not errors else "error")
     except Exception as exc:
-        flash(f"Event import failed: {exc}", "error")
+        flash(f"Event import failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.wireless_manager") + "#events")
 
 
@@ -409,7 +609,7 @@ def scenario_builder(scenario_id):
 @require_role("admin")
 def update_settings():
     state = storage().load()
-    state.setdefault("meta", {})["product"] = request.form.get("product", state.get("meta", {}).get("product", "WiGuard Nexus v5.5")).strip() or "WiGuard Nexus v5.5"
+    state.setdefault("meta", {})["product"] = request.form.get("product", state.get("meta", {}).get("product", f"WiGuard Nexus v{get_version()}")).strip() or f"WiGuard Nexus v{get_version()}"
     state.setdefault("meta", {})["tagline"] = request.form.get("tagline", state.get("meta", {}).get("tagline", "Wireless Policy Manager with enterprise evidence intelligence")).strip()
     wireless_settings = state.setdefault("policy_settings", {}).setdefault("wireless", {})
     for key in ["auth_failure_threshold", "roaming_threshold", "ap_load_warning", "ap_load_critical"]:
@@ -429,7 +629,7 @@ def wireless_client_save():
         _save_state(state, "wireless.client.save", name, "Client session profile updated")
         flash(f"Client saved: {name}.", "success")
     except Exception as exc:
-        flash(f"Client save failed: {exc}", "error")
+        flash(f"Client save failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.wireless_manager") + "#sessions")
 
 
@@ -478,7 +678,7 @@ def policy_studio_rule_save():
         _save_state(state, "policy_studio.rule.save", rid, "Policy Studio rule updated")
         flash(f"Policy rule saved: {rid}.", "success")
     except Exception as exc:
-        flash(f"Policy rule save failed: {exc}", "error")
+        flash(f"Policy rule save failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.rules") + "#studio")
 
 
@@ -514,7 +714,7 @@ def connector_import():
         if db():
             db().connector_run(connector_type, uploaded.filename, 0, "error", str(exc), current_user() or "system")
             db().update_job(job_id, "failed", 100, error=str(exc))
-        flash(f"Connector import failed: {exc}", "error")
+        flash(f"Connector import failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.wireless_manager") + "#connectors")
 
 
@@ -555,15 +755,17 @@ def connector_sync():
             db().connector_run(connector_type, "api-sync-preview", len(result.get("records", [])), "ok" if result.get("ok") else "error", result.get("detail", ""), current_user() or "system")
         flash(f"Sync preview: {result.get('detail')}", "success" if result.get("ok") else "error")
     except Exception as exc:
-        if db():
-            db().update_job(job_id, "failed", 100, error=str(exc))
-        flash(f"Connector sync failed: {exc}", "error")
+        _update_job_safe(job_id, "failed", 100, error=str(exc))
+        flash(f"Connector sync failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.wireless_manager") + "#connectors")
 
 
 @bp.post("/actions/live-ingestion/settings")
 @require_role("admin")
 def live_ingestion_settings():
+    if not db():
+        flash("Database is unavailable. Settings were not saved; check System Health.", "error")
+        return redirect(url_for("pages.settings") + "#live-ingestion")
     host = request.form.get("host", "0.0.0.0").strip() or "0.0.0.0"
     port = int(request.form.get("port", 5514) or 5514)
     enabled = request.form.get("enabled") == "1"
@@ -576,6 +778,9 @@ def live_ingestion_settings():
 @bp.post("/actions/live-ingestion/start")
 @require_role("admin")
 def live_ingestion_start():
+    if not db():
+        flash("Database is unavailable. Live ingestion cannot be started from Settings.", "error")
+        return redirect(url_for("pages.settings") + "#live-ingestion")
     settings = db().get_app_setting("live_ingestion", {"host": "0.0.0.0", "port": 5514})
     ctrl = current_app.extensions.get("live_ingestion")
     started = ctrl.start(SyslogListenerConfig(host=settings.get("host", "0.0.0.0"), port=int(settings.get("port", 5514)))) if ctrl else False
@@ -587,6 +792,9 @@ def live_ingestion_start():
 @bp.post("/actions/live-ingestion/stop")
 @require_role("admin")
 def live_ingestion_stop():
+    if not db():
+        flash("Database is unavailable. Live ingestion status could not be audited.", "error")
+        return redirect(url_for("pages.settings") + "#live-ingestion")
     ctrl = current_app.extensions.get("live_ingestion")
     stopped = ctrl.stop() if ctrl else False
     db().audit(current_user() or "system", "live.listener.stop", "udp_syslog", "stopped" if stopped else "not-running")
@@ -597,6 +805,9 @@ def live_ingestion_stop():
 @bp.post("/actions/jobs/worker/start")
 @require_role("admin")
 def job_worker_start():
+    if not db():
+        flash("Database is unavailable. Background jobs cannot be audited.", "error")
+        return redirect(url_for("pages.settings") + "#jobs")
     runner = current_app.extensions.get("job_runner")
     started = runner.start() if runner else False
     db().audit(current_user() or "system", "job.worker.start", "background", "started" if started else "already-running")
@@ -607,6 +818,9 @@ def job_worker_start():
 @bp.post("/actions/jobs/worker/stop")
 @require_role("admin")
 def job_worker_stop():
+    if not db():
+        flash("Database is unavailable. Background jobs cannot be audited.", "error")
+        return redirect(url_for("pages.settings") + "#jobs")
     runner = current_app.extensions.get("job_runner")
     stopped = runner.stop() if runner else False
     db().audit(current_user() or "system", "job.worker.stop", "background", "stopped" if stopped else "not-running")
@@ -617,6 +831,9 @@ def job_worker_stop():
 @bp.post("/actions/jobs/run-next")
 @require_role("admin")
 def job_run_next():
+    if not db():
+        flash("Database is unavailable. No queued job can be processed.", "error")
+        return redirect(url_for("pages.settings") + "#jobs")
     runner = current_app.extensions.get("job_runner")
     job = runner.run_next() if runner else None
     flash(f"Processed queued job: {job.get('id')}" if job else "No queued jobs to process.", "success")
@@ -626,6 +843,9 @@ def job_run_next():
 @bp.post("/actions/jobs/<job_id>/retry")
 @require_role("admin")
 def job_retry(job_id):
+    if not db():
+        flash("Database is unavailable. Job retry was not queued.", "error")
+        return redirect(url_for("pages.settings") + "#jobs")
     db().retry_job(job_id)
     db().audit(current_user() or "system", "job.retry.manual", job_id, "Queued for retry")
     flash("Job queued for retry.", "success")
@@ -682,7 +902,7 @@ def admin_change_password(username):
         db().audit(current_user() or "system", "auth.password_change.admin", username, "Password changed and sessions revoked", severity="High")
         flash("Password changed and sessions revoked.", "success")
     except Exception as exc:
-        flash(f"Password change failed: {exc}", "error")
+        flash(f"Password change failed: {friendly_error(exc)}", "error")
     return redirect(url_for("pages.settings") + "#users")
 
 
@@ -733,12 +953,12 @@ def restore_database():
         db().restore_from_upload(tmp)
         flash("Database restored after PRAGMA integrity_check. Restart the app if you changed active users or schema state.", "success")
     except Exception as exc:
-        flash(f"Database restore failed: {exc}", "error")
+        flash(f"Database restore failed: {friendly_error(exc)}", "error")
     finally:
         try:
             tmp.unlink()
-        except Exception:
-            pass
+        except OSError as exc:
+            log_safely(current_app.logger, "warning", "Could not remove temporary restore upload %s: %s", tmp, exc)
     return redirect(url_for("pages.settings") + "#backups")
 
 
@@ -919,6 +1139,13 @@ def api_jobs():
     return jsonify({"jobs": db().list_jobs() if db() else []})
 
 
+@bp.get("/api/code-quality")
+@require_role("admin")
+def api_code_quality():
+    """Small admin-only hygiene report for release handoff checks."""
+    return jsonify(scan_project(current_app.config["ROOT_DIR"]))
+
+
 @bp.get("/api/v1/state")
 @require_api_scope("read")
 def api_v1_state():
@@ -936,6 +1163,27 @@ def api_v1_ingest_events():
         count, errors = _run_connector_job(job_id, connector_type, "api_events.json", raw, live=True)
         return jsonify({"ok": not errors, "job_id": job_id, "count": count, "errors": errors})
     except Exception as exc:
-        if db():
-            db().update_job(job_id, "failed", 100, error=str(exc))
-        return jsonify({"ok": False, "job_id": job_id, "error": str(exc)}), 400
+        _update_job_safe(job_id, "failed", 100, error=str(exc))
+        return jsonify({"ok": False, "job_id": job_id, "error": friendly_error(exc)}), 400
+
+
+@bp.get("/download/professional-analysis.json")
+@require_role("auditor")
+def download_professional_analysis_json():
+    state = storage().load()
+    active = state.get("active_extraction", {}) or {}
+    objects = active.get("objects", {}) or {}
+    result = build_professional_analysis(objects, {"filename": active.get("filename"), "source_mode": active.get("source_mode")})
+    raw = ProfessionalReportBuilder().build_json(result)
+    return send_file(__import__("io").BytesIO(raw), as_attachment=True, download_name="wiguard_professional_analysis.json", mimetype="application/json")
+
+
+@bp.get("/download/professional-analysis.html")
+@require_role("auditor")
+def download_professional_analysis_html():
+    state = storage().load()
+    active = state.get("active_extraction", {}) or {}
+    objects = active.get("objects", {}) or {}
+    result = build_professional_analysis(objects, {"filename": active.get("filename"), "source_mode": active.get("source_mode")})
+    raw = ProfessionalReportBuilder().build_html(result)
+    return send_file(__import__("io").BytesIO(raw), as_attachment=True, download_name="wiguard_professional_analysis.html", mimetype="text/html")

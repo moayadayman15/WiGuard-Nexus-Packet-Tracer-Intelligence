@@ -39,6 +39,18 @@ CANONICAL_LIST_KEYS = [
     "internal_xml_bridge", "converted_xml_preview", "normalized_json_preview",
     "auto_conversion_pipeline", "decoded_payloads", "extraction_fidelity",
     "printable_segments_preview", "reconstructed_config_preview",
+    # v5.9.8 deep fidelity layers: preserve every useful IOS/PT detail instead of
+    # only counting the high-level topology objects.
+    "all_config_commands", "interface_features", "management_services",
+    "gateway_redundancy", "routing_protocol_details", "extraction_completeness",
+    # v5.12 universal payload visibility: every JSON/XML/bridge upload gets
+    # a recursive tree, key/value index, XML bridge, normalized JSON preview,
+    # and fact candidates so unknown schemas never render as empty.
+    "source_conversion_manifest", "source_payload_tree", "source_key_value_index",
+    "universal_network_facts", "payload_tables", "universal_xml_preview",
+    "universal_json_preview",
+    # v5.12.4: real external Packet Tracer converter outputs and adapter attempts.
+    "external_converter_outputs",
 ]
 
 
@@ -124,7 +136,58 @@ def _mac_like(value: Any) -> bool:
 
 
 def path_hint(path: str) -> str:
-    return str(path or "").lower().replace("/", ".")
+    value = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(path or ""))
+    return value.lower().replace("/", ".")
+
+
+def _hint_terms(*values: Any) -> set:
+    text = " ".join(str(v or "") for v in values)
+    text = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", text)
+    return {t for t in re.split(r"[^a-z0-9]+", text.lower()) if t}
+
+
+def _has_any_term(terms: set, names: Iterable[str]) -> bool:
+    wanted = {_key_token(name) for name in names}
+    normalized = {_key_token(term) for term in terms}
+    return bool(normalized & wanted)
+
+
+def _safe_path_key(path: str, parent_tokens: Iterable[str]) -> Optional[str]:
+    """Infer a record name from object-map JSON paths.
+
+    Many topology exports use dictionaries instead of arrays, for example
+    {"devices": {"R1": {...}}} or {"interfaces": {"Gig0/0": {...}}}.
+    The previous normalizer only trusted in-record name/id fields, so these
+    valid exports lost device/interface identities. This helper recovers the
+    key only when it sits under an explicit parent context, avoiding random
+    wrapper keys becoming fake objects.
+    """
+    if not path:
+        return None
+    segments = [seg for seg in str(path).replace("$.", "").split(".") if seg and seg != "$"]
+    if not segments:
+        return None
+    leaf = segments[-1]
+    # Array rows such as nodes[0] are not stable names. Object-map leaves are.
+    if re.search(r"\[\d+\]$", leaf):
+        return None
+    leaf = leaf.strip().strip('"\'')
+    if not leaf or len(leaf) > 140:
+        return None
+    token = _key_token(leaf)
+    generic = {
+        "network", "topology", "devices", "device", "nodes", "node", "interfaces", "interface",
+        "ports", "port", "links", "link", "connections", "vlans", "vlan", "config", "data",
+        "attributes", "properties", "metadata", "settings", "children", "items", "records", "objects",
+    }
+    if token in generic or looks_like_ip(leaf):
+        return None
+    parents = {_key_token(x) for x in parent_tokens}
+    for parent in segments[:-1]:
+        base = re.sub(r"\[\d+\]$", "", parent)
+        if _key_token(base) in parents:
+            return leaf
+    return None
 
 
 def has_canonical_objects(payload: Any) -> bool:
@@ -205,8 +268,9 @@ class StructuredEvidenceNormalizer:
     TYPE_KEYS = ["type", "deviceType", "device_type", "model", "category", "class", "className", "platform", "kind", "family"]
     IFACE_KEYS = ["interface", "interfaceName", "ifName", "if_name", "portName", "port_name", "port", "name", "id", "label",
         "portId", "port_id", "interfaceId", "interface_id", "adapterName", "adapter_name", "nicName", "nic_name"]
-    DEVICE_REF_KEYS = ["device", "deviceName", "hostname", "parent", "node", "nodeName", "nodeId", "deviceId", "owner", "host",
-        "sourceDevice", "targetDevice", "destinationDevice", "srcDevice", "dstDevice", "sourceNode", "targetNode"]
+    DEVICE_REF_KEYS = ["device", "deviceName", "hostname", "parent", "node", "nodeName", "nodeId", "deviceId", "objectId", "uuid", "guid", "owner", "host",
+        "sourceDevice", "targetDevice", "destinationDevice", "srcDevice", "dstDevice", "sourceNode", "targetNode",
+        "sourceId", "targetId", "srcId", "dstId", "fromId", "toId", "localId", "remoteId"]
 
     def __init__(self):
         self.objects = blank_objects()
@@ -307,6 +371,16 @@ class StructuredEvidenceNormalizer:
             "config", "configuration", "settings", "metadata", "meta", "data",
             "details", "parameters", "params", "addressing", "ipConfig", "ip_config",
             "networkConfig", "network_config", "portConfig", "port_config",
+            # Real Packet Tracer converter JSON often stores useful values one
+            # layer deeper than the object row, e.g. {"ipv4": {"address":
+            # "10.0.0.1", "mask": "255.255.255.0"}} or
+            # {"switchport": {"mode": "access", "vlan": 10}}.
+            # Promoting only scalar/list leaves preserves the raw structure while
+            # allowing the canonical extractor to populate interfaces/VLANs/IPs.
+            "ipv4", "ipv6", "ip", "ipAddressing", "ip_addressing",
+            "switchport", "switchPort", "layer2", "layer3", "ethernet",
+            "portSettings", "port_settings", "interfaceConfig", "interface_config",
+            "vlanMembership", "vlan_membership", "membership", "address",
         ]
         for wrapper in wrapper_keys:
             nested = record.get(wrapper)
@@ -348,6 +422,8 @@ class StructuredEvidenceNormalizer:
         return record
 
     def _walk_xml(self, elem: ET.Element, path: str, parent: Dict[str, Any], ancestors: List[Dict[str, Any]]) -> None:
+        self.summary["records_walked"] += 1
+        self._remember_path(path)
         record = self._flatten_xml_record(elem)
         expanded_record = self._flatten_nested_payload(record)
         self._consume_record(expanded_record, path, parent, ancestors)
@@ -378,7 +454,7 @@ class StructuredEvidenceNormalizer:
         if not isinstance(record, dict):
             return parent
         merged = dict(parent or {})
-        name = first_value(record, self.DEVICE_KEYS)
+        name = first_value(record, self.DEVICE_KEYS) or _safe_path_key(path, ["devices", "device", "nodes", "node", "routers", "switches", "hosts", "endpoints", "ap", "access_points"])
         dtype = first_value(record, self.TYPE_KEYS)
         if self._record_is_device(record, path, name, dtype):
             merged.update({"deviceName": name, "hostname": name, "deviceType": dtype})
@@ -446,19 +522,32 @@ class StructuredEvidenceNormalizer:
             if tuple(str(existing.get(k, "")) for k in identity_keys) == marker and any(marker):
                 # Enrich rather than duplicate.
                 for k, v in row.items():
-                    if existing.get(k) in (None, "", [], {}) and v not in (None, "", [], {}):
+                    current = existing.get(k)
+                    if current in (None, "", [], {}) and v not in (None, "", [], {}):
                         existing[k] = v
+                    elif k == "name" and v not in (None, "", [], {}):
+                        current_text = str(current or "")
+                        new_text = str(v or "")
+                        # Replace generated/placeholder VLAN names with a later
+                        # concrete VLAN label from a real vlan record.
+                        if current_text.startswith("VLAN_") and not new_text.startswith("VLAN_"):
+                            existing[k] = v
                 return
         self.objects[key].append(row)
 
     def _record_is_device(self, record: Dict[str, Any], path: str, name: Any, dtype: Any) -> bool:
+        tag_token = _key_token(record.get("tag"))
+        if tag_token in {"devices", "nodes", "interfaces", "ports", "vlans", "links", "connections", "cables", "topology"}:
+            return False
         hint = path_hint(path)
         keys = {str(k).lower() for k in record.keys()}
-        blob = f"{name or ''} {dtype or ''} {hint}".lower()
-        non_device_child = any(x in hint for x in ["interface", "interfaces", "port", "ports", "vlan", "vlans", "link", "links", "dhcp", "acl", "route", "mac", "arp"])
+        terms = _hint_terms(hint, *keys, name, dtype)
+        non_device_child = _has_any_term(terms, ["interface", "interfaces", "port", "ports", "vlan", "vlans", "link", "links", "dhcp", "acl", "route", "mac", "arp"])
         explicit_device_key = any(_key_token(k) in {"devicetype", "deviceclass", "devicecategory", "hostname", "devicename", "nodeid"} for k in keys)
-        path_is_device = any(x in hint for x in ["device", "devices", "node", "nodes", "router", "switch", "topology.physical", "network.physical"])
-        return bool(name and (path_is_device and not (non_device_child and not explicit_device_key) or any(t in blob for t in self.DEVICE_TYPE_HINTS) or explicit_device_key))
+        path_is_device = _has_any_term(terms, ["device", "devices", "node", "nodes", "router", "switch"]) or "topology.physical" in hint or "network.physical" in hint
+        type_terms = _hint_terms(name, dtype)
+        type_hint = any(_has_any_term(type_terms, [t]) for t in self.DEVICE_TYPE_HINTS if len(t) > 2) or _has_any_term(type_terms, ["ap", "pc"])
+        return bool(name and ((path_is_device and not (non_device_child and not explicit_device_key)) or type_hint or explicit_device_key))
 
     def _infer_device_type(self, name: Any, dtype: Any) -> str:
         blob = f"{name or ''} {dtype or ''}".lower()
@@ -479,7 +568,7 @@ class StructuredEvidenceNormalizer:
         return "device"
 
     def _maybe_device(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
-        name = first_value(record, self.DEVICE_KEYS)
+        name = first_value(record, self.DEVICE_KEYS) or _safe_path_key(path, ["devices", "device", "nodes", "node", "routers", "switches", "hosts", "endpoints", "access_points", "aps"])
         dtype = first_value(record, self.TYPE_KEYS)
         if name and self._record_is_device(record, path, name, dtype) and not looks_like_ip(str(name)) and len(str(name)) <= 140:
             ev = structured_evidence(path, record, 0.86)
@@ -494,7 +583,7 @@ class StructuredEvidenceNormalizer:
                 "evidence": ev,
             }
             self._add_unique("devices", row, ["id"])
-            for id_key in ["id", "nodeId", "node_id", "deviceId", "device_id", "uuid", "guid"]:
+            for id_key in ["id", "nodeId", "node_id", "deviceId", "device_id", "objectId", "object_id", "uuid", "guid", "sourceId", "targetId"]:
                 val = first_value(record, [id_key])
                 if val not in (None, "", [], {}):
                     self._id_to_name[str(val)] = str(name)
@@ -502,7 +591,14 @@ class StructuredEvidenceNormalizer:
 
     def _device_name_from_ref(self, value: Any) -> Optional[str]:
         if isinstance(value, dict):
-            value = first_value(value, self.DEVICE_KEYS + ["node", "device", "deviceId", "nodeId"])
+            # Endpoint dictionaries usually look like {nodeId/deviceId, port}.
+            # Resolve the stable node id before generic name/id fields so link
+            # rows become R1 ↔ SW1 instead of raw n1 ↔ n2 identifiers.
+            value = first_value(value, [
+                "nodeId", "node_id", "deviceId", "device_id", "objectId", "object_id", "uuid", "guid",
+                "sourceId", "targetId", "srcId", "dstId", "fromId", "toId", "localId", "remoteId",
+                "node", "device", "sourceNode", "targetNode", "sourceDevice", "targetDevice",
+            ] + self.DEVICE_KEYS)
         if value in (None, "", [], {}):
             return None
         return self._id_to_name.get(str(value), str(value))
@@ -522,19 +618,41 @@ class StructuredEvidenceNormalizer:
         return None
 
     def _maybe_interface(self, record: Dict[str, Any], path: str, hint: str, keys: set, parent: Dict[str, Any], ancestors: List[Dict[str, Any]]) -> None:
-        name = first_value(record, self.IFACE_KEYS)
-        interface_context = any(x in hint for x in ["interface", "interfaces", "port", "ports", "switchport", "ethernet", "serial", "gigabit", "fastethernet", "adapter", "nic"])
+        terms = _hint_terms(hint, *keys, record.get("tag"))
+        if _key_token(record.get("tag")) in {"devices", "nodes", "interfaces", "ports", "vlans", "links", "connections", "cables", "topology"}:
+            return
+        # Do not turn a device/node row into an interface just because it owns an
+        # `interfaces` or `ports` child array. The actual child rows are walked
+        # separately and will become real interfaces.
+        device_name = first_value(record, self.DEVICE_KEYS) or _safe_path_key(path, ["devices", "device", "nodes", "node", "routers", "switches", "hosts", "endpoints", "access_points", "aps"])
+        device_type = first_value(record, self.TYPE_KEYS)
+        explicit_iface_identity = first_value(record, [
+            "interface", "interfaceName", "ifName", "if_name", "portName", "port_name",
+            "port", "portId", "port_id", "interfaceId", "interface_id", "slotPort", "modulePort", "adapterName", "adapter_name", "nicName", "nic_name",
+        ])
+        if explicit_iface_identity in (None, "", [], {}) and self._record_is_device(record, path, device_name, device_type):
+            return
+        path_iface = _safe_path_key(path, ["interfaces", "interface", "ports", "port", "adapters", "nics", "modules"])
+        name = explicit_iface_identity or first_value(record, ["name", "label", "id"]) or path_iface
+        interface_context = _has_any_term(terms, ["interface", "interfaces", "port", "ports", "switchport", "ethernet", "serial", "gigabit", "fastethernet", "adapter", "nic", "moduleport", "connectionpoint"])
         if not name or not interface_context:
             return
         name = str(name)
-        if len(name) > 140 or looks_like_ip(name) or name.lower() in {"interfaces", "ports", "link", "links"}:
+        if len(name) > 140 or looks_like_ip(name) or name.lower() in {"interfaces", "ports", "link", "links", "devices", "nodes"}:
             return
         ip_value = first_value(record, ["ip", "ipAddress", "ip_address", "address", "ipv4", "ipv4Address", "ipAddr"])
         mask_value = first_value(record, ["mask", "subnetMask", "subnet_mask", "netmask"])
+        ipv4_block = first_value(record, ["ipv4", "ipConfig", "ip_config", "addressing"])
         if isinstance(ip_value, dict):
-            ip_value = first_value(ip_value, ["address", "ip", "ipv4"])
+            ip_value = first_value(ip_value, ["address", "ip", "ipv4", "value"])
+        if not mask_value and isinstance(ipv4_block, dict):
+            mask_value = first_value(ipv4_block, ["mask", "subnetMask", "subnet_mask", "netmask", "prefixLength"])
+        switchport_block = first_value(record, ["switchport", "switchPort", "layer2", "portConfig", "port_config"])
         mode = first_value(record, ["mode", "switchportMode", "switchport_mode", "portMode", "port_mode", "linkMode"])
         vlan = first_value(record, ["accessVlan", "access_vlan", "vlan", "vlanId", "vlan_id", "vid", "accessVID", "pvid"])
+        if isinstance(switchport_block, dict):
+            mode = mode or first_value(switchport_block, ["mode", "switchportMode", "portMode"])
+            vlan = vlan or first_value(switchport_block, ["accessVlan", "access_vlan", "vlan", "vlanId", "vid", "pvid"])
         native_vlan = first_value(record, ["nativeVlan", "native_vlan", "nativeVID", "nativeVid"])
         allowed = first_value(record, ["allowedVlans", "trunkAllowedVlans", "trunk_allowed_vlans", "allowed_vlan", "allowed", "taggedVlans", "tagged"])
         allowed_vlans = self._coerce_vlan_list(allowed)
@@ -611,17 +729,28 @@ class StructuredEvidenceNormalizer:
         return self._coerce_vlan_list(value)
 
     def _maybe_vlan(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
+        if _key_token(record.get("tag")) in {"devices", "nodes", "interfaces", "ports", "vlans", "links", "connections", "cables", "topology"}:
+            return
         vlan = first_value(record, ["vlan", "vlanId", "vlan_id", "vid", "id", "number"])
-        vlan_context = "vlan" in hint or {"vlan", "vlanid", "vid", "pvid"} & {_key_token(k) for k in keys}
+        terms = _hint_terms(hint, *keys)
+        vlan_context = _has_any_term(terms, ["vlan", "vlans", "vlanid", "vid", "pvid"]) or {"vlan", "vlanid", "vid", "pvid"} & {_key_token(k) for k in keys}
         if vlan in (None, "") or not vlan_context:
             return
         vlan_id = self._vlan_id(vlan)
         if not vlan_id:
             return
         ev = structured_evidence(path, record, 0.85)
+        tag_terms = _hint_terms(record.get("tag"), hint)
+        concrete_name = first_value(record, ["vlanName", "vlan_name", "label"])
+        # A converter interface row often contains name=GigabitEthernet0/0 and
+        # vlanId=10. That proves VLAN 10 exists, but the interface name is not the
+        # VLAN name. Only use the generic name field when the record itself is a
+        # VLAN context.
+        if concrete_name in (None, "", [], {}) and _has_any_term(tag_terms, ["vlan", "vlans"]):
+            concrete_name = first_value(record, ["name"])
         row = {
             "id": vlan_id,
-            "name": str(first_value(record, ["name", "vlanName", "vlan_name", "label"], f"VLAN_{vlan_id}")),
+            "name": str(concrete_name or f"VLAN_{vlan_id}"),
             "status": first_value(record, ["status", "state"]),
             "ports_hint": first_value(record, ["ports", "interfaces", "members"]),
             "source": "structured_import",
@@ -636,32 +765,54 @@ class StructuredEvidenceNormalizer:
 
     def _endpoint_port(self, value: Any) -> Optional[str]:
         if isinstance(value, dict):
-            p = first_value(value, ["port", "interface", "ifName", "name", "portName", "adapter", "portId", "interfaceName", "sourcePort", "targetPort"])
+            p = first_value(value, [
+                "port", "interface", "ifName", "if_name", "name", "portName", "port_name",
+                "adapter", "adapterName", "slotPort", "modulePort", "portId", "interfaceId",
+                "interfaceName", "sourcePort", "targetPort", "localPort", "remotePort",
+            ])
             return str(p) if p not in (None, "", [], {}) else None
         return None
 
     def _link_from_endpoint_list(self, record: Dict[str, Any]) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-        endpoints = first_value(record, ["endpoints", "points", "interfaces", "ports", "terminations", "nodes"])
+        # Use explicit endpoint arrays only. Treating a topology container's
+        # generic `nodes` list as a link caused false edges such as n1 -> n2.
+        endpoints = first_value(record, ["endpoints", "points", "terminations", "connectionPoints", "connection_points"])
         if not isinstance(endpoints, list) or len(endpoints) < 2:
             return None, None, None, None
         a, b = endpoints[0], endpoints[1]
-        src = self._device_name_from_ref(first_value(a, ["device", "node", "nodeId", "deviceId", "host", "name", "id", "sourceDevice", "targetDevice", "destinationDevice"]) if isinstance(a, dict) else a)
-        dst = self._device_name_from_ref(first_value(b, ["device", "node", "nodeId", "deviceId", "host", "name", "id", "sourceDevice", "targetDevice", "destinationDevice"]) if isinstance(b, dict) else b)
+        src = self._device_name_from_ref(a)
+        dst = self._device_name_from_ref(b)
         return src, dst, self._endpoint_port(a), self._endpoint_port(b)
 
     def _maybe_link(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
-        link_context = any(x in hint for x in ["link", "links", "edge", "edges", "connection", "connections", "cable", "cables", "wire"])
-        src = self._endpoint_value(record, ["source", "src", "from", "sourceDevice", "source_device", "nodeA", "a", "localDevice", "local_device", "deviceA", "device_a"])
-        dst = self._endpoint_value(record, ["target", "dst", "to", "targetDevice", "target_device", "nodeB", "b", "remoteDevice", "remote_device", "neighbor", "deviceB", "device_b"])
+        terms = _hint_terms(hint, *keys, record.get("tag"))
+        key_tokens = {_key_token(k) for k in keys}
+        endpoint_key_present = bool(key_tokens & {
+            "source", "src", "from", "target", "dst", "to", "sourcedevice", "targetdevice",
+            "source_node", "target_node", "sourcenode", "targetnode", "sourceid", "targetid", "srcid", "dstid", "fromid", "toid", "devicea", "deviceb",
+            "nodea", "nodeb", "localdevice", "remotedevice", "localid", "remoteid", "neighbor", "endpoints",
+            "connectionpoints", "terminations",
+        })
+        indexed_link_path = bool(re.search(r"(?:links|connections|cables|edges)\[\d+\]", hint))
+        tag_is_link = _key_token(record.get("tag")) in {"link", "connection", "cable", "edge", "wire"}
+        if not (endpoint_key_present or indexed_link_path or tag_is_link):
+            return
+        link_context = _has_any_term(terms, ["link", "links", "edge", "edges", "connection", "connections", "cable", "cables", "wire"])
+        src_endpoint = first_value(record, ["source", "src", "from", "sourceDevice", "source_device", "sourceNode", "source_node", "sourceId", "srcId", "fromId", "localId", "nodeA", "a", "localDevice", "local_device", "deviceA", "device_a"])
+        dst_endpoint = first_value(record, ["target", "dst", "to", "targetDevice", "target_device", "targetNode", "target_node", "targetId", "dstId", "toId", "remoteId", "nodeB", "b", "remoteDevice", "remote_device", "neighbor", "deviceB", "device_b"])
+        src = self._device_name_from_ref(src_endpoint)
+        dst = self._device_name_from_ref(dst_endpoint)
         local_int = first_value(record, ["sourceInterface", "source_interface", "localInterface", "local_interface", "fromPort", "sourcePort", "srcPort", "portA", "interfaceA", "localPort"])
         remote_int = first_value(record, ["targetInterface", "target_interface", "remoteInterface", "remote_interface", "toPort", "targetPort", "dstPort", "destinationPort", "portB", "interfaceB", "remotePort"])
+        local_int = local_int or self._endpoint_port(src_endpoint)
+        remote_int = remote_int or self._endpoint_port(dst_endpoint)
         if not (src and dst):
             esrc, edst, eint_a, eint_b = self._link_from_endpoint_list(record)
             src, dst = src or esrc, dst or edst
             local_int, remote_int = local_int or eint_a, remote_int or eint_b
-        if not (link_context and src and dst):
+        if not (link_context and src and dst and str(src) != str(dst)):
             return
-        ev = structured_evidence(path, record, 0.83)
+        ev = structured_evidence(path, record, 0.86)
         row = {
             "device": str(src),
             "neighbor": str(dst),
@@ -675,7 +826,8 @@ class StructuredEvidenceNormalizer:
         self.objects["structured_relationships"].append({"type": "link", "a": row["device"], "a_port": row["local_interface"], "b": row["neighbor"], "b_port": row["remote_interface"], "evidence": ev})
 
     def _maybe_dhcp(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
-        dhcp_context = "dhcp" in hint or any("dhcp" in k for k in keys)
+        terms = _hint_terms(hint, *keys)
+        dhcp_context = _has_any_term(terms, ["dhcp"]) or any("dhcp" in k for k in keys)
         if not dhcp_context:
             return
         name = first_value(record, ["name", "pool", "poolName", "pool_name", "id"], "DHCP_POOL")
@@ -700,7 +852,8 @@ class StructuredEvidenceNormalizer:
         }, ["name", "cidr", "default_gateway"])
 
     def _maybe_acl(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
-        acl_context = any(x in hint for x in ["acl", "accesslist", "access-list", "firewallrule", "rule", "rules"])
+        terms = _hint_terms(hint, *keys)
+        acl_context = _has_any_term(terms, ["acl", "accesslist", "access", "firewallrule", "rule", "rules"])
         action = first_value(record, ["action", "permitDeny", "permission", "effect", "decision"])
         if not (acl_context and action):
             return
@@ -721,7 +874,8 @@ class StructuredEvidenceNormalizer:
         }, ["acl_name", "sequence", "action", "protocol", "source", "destination", "destination_port"])
 
     def _maybe_route(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
-        route_context = "route" in hint or "routing" in hint or any(_key_token(k) in {"nexthop", "gateway"} for k in keys)
+        terms = _hint_terms(hint, *keys)
+        route_context = _has_any_term(terms, ["route", "routes", "routing"]) or any(_key_token(k) in {"nexthop", "gateway"} for k in keys)
         dest = first_value(record, ["destination", "dest", "network", "prefix", "cidr", "route", "target"])
         next_hop = first_value(record, ["nextHop", "next_hop", "gateway", "via", "router"])
         mask = first_value(record, ["mask", "netmask", "subnetMask"])
@@ -734,7 +888,8 @@ class StructuredEvidenceNormalizer:
         self._add_unique("route_table", row, ["destination", "next_hop", "interface"])
 
     def _maybe_nat(self, record: Dict[str, Any], path: str, hint: str, keys: set) -> None:
-        nat_context = "nat" in hint or any("nat" in k for k in keys)
+        terms = _hint_terms(hint, *keys)
+        nat_context = _has_any_term(terms, ["nat"]) or any("nat" in k for k in keys)
         if not nat_context:
             return
         inside = first_value(record, ["inside", "insideLocal", "inside_local", "source"])
@@ -1124,10 +1279,64 @@ def _dedupe_core_objects(objects: Dict[str, Any]) -> None:
         if isinstance(objects.get(key), list):
             objects[key] = _dedupe_rows(objects.get(key), identity)
 
+def _derive_inventory_from_interfaces(objects: Dict[str, Any]) -> None:
+    """Backfill L3/endpoint inventory from parsed interface blocks.
+
+    The IOS parser extracts interface IPs reliably, but older builds only
+    populated `ip_inventory` from `show ip interface brief`. That made Packet
+    Tracer imports look incomplete even when running-config contained valid IP
+    addresses. This derivation is evidence-preserving and never invents values.
+    """
+    seen_ip = {
+        (str(row.get("device") or ""), str(row.get("interface") or row.get("name") or ""), str(row.get("ip_address") or row.get("ip") or ""))
+        for row in objects.get("ip_inventory", []) or []
+        if isinstance(row, dict)
+    }
+    seen_endpoint = {
+        (str(row.get("device") or ""), str(row.get("interface") or ""), str(row.get("ip_address") or ""))
+        for row in objects.get("endpoint_inventory", []) or []
+        if isinstance(row, dict)
+    }
+    for iface in list(objects.get("interfaces", []) or []):
+        if not isinstance(iface, dict):
+            continue
+        ip = iface.get("ip_address") or iface.get("ip")
+        name = iface.get("name") or iface.get("interface") or iface.get("normalized_name")
+        if not ip or not name:
+            continue
+        device = iface.get("device") or iface.get("hostname")
+        evidence = iface.get("evidence") if isinstance(iface.get("evidence"), dict) else structured_evidence("derived/interface_ip", iface, 0.72)
+        ip_marker = (str(device or ""), str(name or ""), str(ip or ""))
+        if ip_marker not in seen_ip:
+            objects.setdefault("ip_inventory", []).append({
+                "device": device,
+                "interface": name,
+                "name": name,
+                "ip": ip,
+                "ip_address": ip,
+                "status": iface.get("status") or "configured",
+                "source": "derived_from_interface_block",
+                "evidence": evidence,
+            })
+            seen_ip.add(ip_marker)
+        ep_marker = (str(device or ""), str(name or ""), str(ip or ""))
+        if ep_marker not in seen_endpoint:
+            objects.setdefault("endpoint_inventory", []).append({
+                "device": device,
+                "interface": name,
+                "ip_address": ip,
+                "mac": iface.get("mac"),
+                "source": "derived_from_interface_block",
+                "evidence": evidence,
+            })
+            seen_endpoint.add(ep_marker)
+
+
 def finalize_objects(extractor: Any, objects: Dict[str, Any]) -> Dict[str, Any]:
     objects = merge_unique(blank_objects(), objects or {})
     _dedupe_core_objects(objects)
     extractor.bind_acls_to_interfaces(objects)
+    _derive_inventory_from_interfaces(objects)
     objects["dhcp_gateway_matches"] = extractor.match_dhcp_gateways(objects)
     objects["subnet_inventory"] = extractor.derive_subnet_inventory(objects)
     objects["vlan_crosscheck"] = extractor.derive_vlan_crosscheck(objects)

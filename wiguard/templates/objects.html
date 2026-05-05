@@ -11,7 +11,7 @@
     <input type="search" name="q" value="{{ query }}" placeholder="Search VLAN, interface, ACL, IP, hostname, MAC, command...">
     <select name="category">
       <option value="all">All categories</option>
-      {% for key in objects.keys() %}
+      {% for key in objects.keys() if objects is mapping %}
       <option value="{{ key }}" {{ 'selected' if category==key else '' }}>{{ key }}</option>
       {% endfor %}
     </select>
@@ -33,7 +33,23 @@
     <a class="category-tile" href="{{ url_for('pages.object_explorer', category=key) }}"><span>{{ key.replace('_',' ') }}</span><b>{{ value }}</b></a>
     {% endfor %}
   </div>
+
 </section>
+
+{% if objects.extraction_completeness %}
+<section class="panel completeness-panel">
+  <div class="panel-head"><h4>Deep Extraction Completeness</h4><span>coverage by evidence family</span></div>
+  <div class="completeness-grid">
+    {% for row in objects.extraction_completeness %}
+    <article class="{{ row.status }}">
+      <div><span>{{ row.family.replace('_',' ') }}</span><b>{{ row.score }}%</b></div>
+      <small>{{ row.label }} · {{ row.objects }} object(s), {{ row.line_mapped }} mapped</small>
+      <i style="--pct: {{ row.score }}"></i>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
 
 {% set contracts = objects.verified_extraction_contract or [] %}
 {% set contract = contracts[0] if contracts else {} %}
@@ -75,15 +91,25 @@
         <b>{{ row.category }}</b>
         {% set er = row.evidence_row or {} %}
         <span class="badge {{ er.status or 'unmapped' }}">{{ er.status or 'unmapped' }}</span>
-        <span>Confidence {{ ((er.confidence or obj.evidence.confidence or 0.5)*100)|round|int if obj.evidence or er else 50 }}%</span>
+        <span>Confidence {{ (((er.get('confidence') if er else none) or (obj.get('evidence', {}).get('confidence') if obj is mapping else none) or 0.5) * 100)|round|int }}%</span>
       </div>
       {% if er %}
       <div class="evidence-strip"><span>{{ 'High-value' if er.high_value else 'Standard' }}</span><code>{{ er.source_type or 'source' }}{% if er.source_line %} · line {{ er.source_line }}{% endif %}{% if er.source_path %} · {{ er.source_path }}{% endif %}</code></div>
       {% endif %}
-      {% if obj.evidence %}
-      <div class="evidence-strip"><span>Line {{ obj.evidence.source_line or 'N/A' }}</span><code>{{ obj.evidence.source_text or 'derived evidence' }}</code></div>
+      {% if obj is mapping and obj.get('evidence') %}
+      <div class="evidence-strip"><span>Line {{ obj.get('evidence', {}).get('source_line') or 'N/A' }}</span><code>{{ obj.get('evidence', {}).get('source_text') or 'derived evidence' }}</code></div>
       {% endif %}
-      <pre>{{ obj|tojson(indent=2) }}</pre>
+      <div class="object-field-grid">
+        {% for k, v in obj.items() if obj is mapping %}
+          {% if k not in ['evidence','line_map','raw','source_text'] and (v is string or v is number or v is boolean) %}
+          <span><small>{{ k.replace('_',' ') }}</small><b>{{ v }}</b></span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <details class="json-details">
+        <summary>Open full object JSON</summary>
+        <pre>{{ obj|tojson(indent=2) }}</pre>
+      </details>
     </article>
     {% else %}
     <p class="muted">No objects found. Import a config first.</p>

@@ -1,56 +1,74 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="hero compact-hero">
+{% set truth = import_truth or {} %}
+<section class="hero command-hero">
   <div>
-    <span class="pill">Production Core v5</span>
-    <h3>Real workflow, cleaner UI, evidence-driven reports</h3>
-    <p>This build focuses on working data: import evidence, extract objects, validate policies, explain causes, generate different report types, and verify package integrity.</p>
+    <span class="pill">Unified Flow</span>
+    <h3>Upload → Extract → Understand → Analyze → Report</h3>
+    <p>WiGuard is now organized as a guided analyst workflow. No more scattered pages: every core action moves through Import, Workspace, Analysis, and Reports.</p>
   </div>
-  <div class="hero-actions">
-    <a class="primary-btn" href="{{ url_for('pages.import_center') }}">Start Import</a>
-    <a class="ghost-btn" href="{{ url_for('pages.reports') }}">Open Reports</a>
+  <div class="hero-actions stacked-actions">
+    <a class="primary-btn" href="{{ url_for('pages.import_center') }}">Import New Evidence</a>
+    <a class="ghost-btn" href="{{ url_for('pages.workspace') }}">Open Analyst Workspace</a>
+    <a class="ghost-btn" href="{{ url_for('pages.analysis_studio_page') }}">Open Analysis Studio</a>
   </div>
 </section>
 
-<section class="kpi-grid">
+<section class="flow-command-strip">
+  <a class="flow-step done" href="{{ url_for('pages.import_center') }}"><span>01</span><b>Import</b><small>File intake + truth contract</small></a>
+  <a class="flow-step {{ 'done' if active.filename else 'idle' }}" href="{{ url_for('pages.workspace') }}"><span>02</span><b>Workspace</b><small>Topology + objects + evidence</small></a>
+  <a class="flow-step {{ 'done' if diffs else 'idle' }}" href="{{ url_for('pages.analysis_studio_page') }}"><span>03</span><b>Analyze</b><small>Rules + risk + root cause</small></a>
+  <a class="flow-step {{ 'done' if artifacts else 'idle' }}" href="{{ url_for('pages.reports') }}"><span>04</span><b>Report</b><small>Preview + export package</small></a>
+</section>
+
+<section class="kpi-grid command-kpis">
+  <article class="kpi"><span>Import Readiness</span><strong>{{ truth.readiness_score or 0 }}%</strong><small>{{ truth.tier or 'waiting' }}</small></article>
+  <article class="kpi"><span>Visible Evidence</span><strong>{{ counts.values()|sum }}</strong><small>objects + native proof rows</small></article>
   <article class="kpi"><span>Risk Score</span><strong>{{ risk.score }}</strong><small>{{ risk.grade }} · {{ risk.risk_level }}</small></article>
-  <article class="kpi"><span>Extracted Objects</span><strong>{{ counts.values()|sum }}</strong><small>Evidence-backed object inventory</small></article>
-  <article class="kpi"><span>Failed Diffs</span><strong>{{ diffs|selectattr('status','equalto','Fail')|list|length }}</strong><small>Expected vs extracted reality</small></article>
-  <article class="kpi"><span>Verifier</span><strong>{{ verifier.valid }}/{{ verifier.valid + verifier.invalid + verifier.missing }}</strong><small>{{ verifier.status|upper }}</small></article>
+  <article class="kpi"><span>Report Gate</span><strong>{{ 'Ready' if analyst_signoff.can_publish_technical else 'Review' }}</strong><small>{{ evidence_quality_matrix.grade or 'No evidence' }}</small></article>
 </section>
 
-<section class="two-col">
-  <div class="panel">
-    <div class="panel-head"><h4>Operating Workflow</h4><a href="{{ url_for('pages.import_center') }}">Import now</a></div>
-    <div class="workflow-list">
-      <div><b>1</b><span>Upload Packet Tracer export/config</span></div>
-      <div><b>2</b><span>Extract line-mapped objects</span></div>
-      <div><b>3</b><span>Compare expected policy vs evidence</span></div>
-      <div><b>4</b><span>Generate reports by audience</span></div>
-      <div><b>5</b><span>Verify evidence package integrity</span></div>
+<section class="two-col command-grid">
+  <div class="panel import-truth-card">
+    <div class="panel-head"><h4>Last Import Truth</h4><a href="{{ url_for('pages.import_center') }}">Details</a></div>
+    <div class="truth-summary-line"><span>File</span><b>{{ truth.filename }}</b></div>
+    <div class="truth-summary-line"><span>Mode</span><b>{{ truth.source_mode }}</b></div>
+    <div class="truth-summary-line"><span>Hash</span><b>{{ (truth.source_hash or '—')[:18] }}</b></div>
+    <div class="truth-claim {{ 'pass' if truth.can_claim_full_fidelity else 'review' }}">{{ truth.claim }}</div>
+    <h5>What we extracted</h5>
+    <div class="chip-cloud">
+      {% for item in truth.top_counts[:12] %}<span>{{ item.label }} · {{ item.count }}</span>{% else %}<span>No extracted data yet</span>{% endfor %}
     </div>
   </div>
-
   <div class="panel">
-    <div class="panel-head"><h4>Policy Health Snapshot</h4><a href="{{ url_for('pages.diff') }}">View matrix</a></div>
-    <div class="mini-bars">
-      <div><span>Passed</span><b>{{ diffs|selectattr('status','equalto','Pass')|list|length }}</b></div>
-      <div><span>Review</span><b>{{ diffs|selectattr('status','equalto','Review')|list|length }}</b></div>
-      <div><span>Failed</span><b>{{ diffs|selectattr('status','equalto','Fail')|list|length }}</b></div>
+    <div class="panel-head"><h4>Next Best Actions</h4><span class="badge info">guided</span></div>
+    <div class="mini-list action-list">
+      {% for a in truth.next_actions[:5] %}<article><b>{{ a.priority }} — {{ a.title }}</b><small>{{ a.why }}</small></article>{% endfor %}
     </div>
-    <canvas class="chart" data-chart="diffs"></canvas>
+  </div>
+</section>
+
+
+{% set pi = product_intelligence or {} %}
+<section class="panel product-snapshot-panel">
+  <div class="panel-head"><h4>Product Intelligence Snapshot</h4><a href="{{ url_for('pages.product_intelligence') }}">Open Intelligence Engine</a></div>
+  <div class="product-snapshot-grid">
+    <article><span>Maturity</span><b>{{ pi.maturity_score or 0 }}%</b><small>{{ pi.maturity_label or 'Core prototype' }}</small></article>
+    <article><span>Optional Stack</span><b>{{ pi.dependency_health.installed_count or 0 }}/{{ pi.dependency_health.total_count or 0 }}</b><small>{{ pi.dependency_health.grade or 'Core install' }}</small></article>
+    <article><span>Topology Brain</span><b>{{ pi.topology_brain.health_score or 0 }}/100</b><small>{{ pi.topology_brain.headline or 'Waiting for evidence' }}</small></article>
+    <article><span>AI Copilot</span><b>{{ 'Ready' if pi.ai_copilot.local_ready else 'Blueprint' }}</b><small>{{ pi.ai_copilot.mode or 'Optional local AI' }}</small></article>
   </div>
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h4>Critical Policy Diff Preview</h4><a href="{{ url_for('pages.root_cause') }}">Root cause</a></div>
+  <div class="panel-head"><h4>Priority Findings Preview</h4><a href="{{ url_for('pages.analysis_studio_page') }}">Open full analysis</a></div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Asset</th><th>Expected</th><th>Actual</th><th>Status</th><th>Severity</th></tr></thead>
       <tbody>
       {% for d in diffs[:8] %}
         <tr><td>{{ d.asset }}</td><td>{{ d.expected }}</td><td>{{ d.actual }}</td><td><span class="badge {{ d.status|lower }}">{{ d.status }}</span></td><td>{{ d.severity }}</td></tr>
-      {% endfor %}
+      {% else %}<tr><td colspan="5" class="muted">Import evidence or load the sample project to generate policy findings.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

@@ -1,14 +1,19 @@
 from flask import Blueprint, render_template, current_app, request
 from ..security import current_tenant_id
+from ..version import get_product_label, get_version
+from ..services.state_schema import ensure_state_shape
 from ..services.intelligence import (
     build_policy_diff, build_root_causes, build_topology, build_timeline,
-    build_playbooks, risk_score, object_counts, get_objects, build_snapshot_diff, build_extraction_diagnostics, build_topology_insights, build_validation_rule_assessment, build_evidence_quality_matrix, build_analyst_signoff
+    build_playbooks, risk_score, object_counts, object_count_breakdown, get_objects, build_snapshot_diff, build_extraction_diagnostics, build_topology_insights, build_validation_rule_assessment, build_evidence_quality_matrix, build_analyst_signoff, build_import_truth_summary, build_workspace_model, build_analysis_studio, build_report_builder_model
 )
 from ..services.artifacts import verify_manifest
 from ..services.reporting import REPORT_TYPES
 from ..services.compliance import build_compliance_matrix
 from ..services.connectors import SUPPORTED_CONNECTORS, CONNECTOR_SCHEMAS
 from ..services.wireless import normalize_wireless_state, wireless_dashboard
+from ..services.util import log_safely
+from ..services.product_intelligence import build_product_intelligence
+from ..services.professional_pipeline import health_report, build_professional_analysis
 
 bp = Blueprint("pages", __name__)
 
@@ -18,10 +23,7 @@ def _safe_context(label, default, func):
     try:
         return func()
     except Exception as exc:
-        try:
-            current_app.logger.exception("WiGuard page context failed for %s: %s", label, exc)
-        except Exception:
-            pass
+        log_safely(current_app.logger, "exception", "WiGuard page context failed for %s: %s", label, exc)
         return default
 
 
@@ -32,23 +34,13 @@ def _safe_db(db_obj, label, default, method_name, *args, **kwargs):
 
 
 def _tenant_state(state):
-    tenant_id = current_tenant_id()
-    state.setdefault("tenant_id", tenant_id)
-    state.setdefault("meta", {})
-    state["meta"].setdefault("product", "WiGuard Nexus")
-    state["meta"].setdefault("tagline", "Wireless policy intelligence workspace")
-    state["meta"].setdefault("workflow", ["Tenant", "Project", "Upload", "Convert", "Validate", "Analyze", "Report"])
-    state.setdefault("projects", [])
-    if not state["projects"]:
-        state["projects"].append({"id": "main-campus", "tenant_id": tenant_id, "name": "Main Campus Lab", "environment": "Wireless Campus Policy Validation", "owner": "Network Security Team", "status": "active"})
-    for p in state.get("projects", []):
-        p.setdefault("tenant_id", tenant_id)
-        p.setdefault("name", p.get("id", "Workspace"))
-    state.setdefault("current_project", state["projects"][0].get("id", "main-campus"))
-    state.setdefault("active_extraction", {})
-    state.setdefault("events", [])
-    state.setdefault("imports", [])
-    return state
+    return ensure_state_shape(
+        state,
+        tenant_id=current_tenant_id(),
+        version=get_version(),
+        product=get_product_label(),
+        tagline="Network Intelligence Engine workspace",
+    )
 
 
 def ctx():
@@ -63,6 +55,7 @@ def ctx():
         visible_projects = state.get("projects", []) or [{"id": "main-campus", "name": "Main Campus Lab", "tenant_id": tenant_id}]
     current_project = next((p for p in visible_projects if p.get("id") == state.get("current_project")), visible_projects[0])
     counts = _safe_context("object_counts", {}, lambda: object_counts(objects))
+    count_breakdown = _safe_context("object_count_breakdown", {}, lambda: object_count_breakdown(objects))
     diffs = _safe_context("policy_diff", [], lambda: build_policy_diff(state))
     wireless = _safe_context("wireless_dashboard", {"matrix": [], "risk": {"score": 0}, "confidence": {}}, lambda: wireless_dashboard(state, diffs))
     event_type_filter = request.args.get("type", "").strip()
@@ -101,6 +94,7 @@ def ctx():
         "conversion_profile": active.get("conversion_profile", {}) or objects.get("packet_tracer_profile", {}) or {},
         "objects": objects,
         "counts": counts,
+        "count_breakdown": count_breakdown,
         "diffs": diffs,
         "causes": _safe_context("root_causes", [], lambda: build_root_causes(state)),
         "topology": _safe_context("topology", {"nodes": [], "edges": []}, lambda: build_topology(state)),
@@ -146,6 +140,13 @@ def ctx():
         "rule_assessment": _safe_context("rule_assessment", {}, lambda: build_validation_rule_assessment(state)),
         "evidence_quality_matrix": _safe_context("evidence_quality_matrix", {}, lambda: build_evidence_quality_matrix(state)),
         "analyst_signoff": _safe_context("analyst_signoff", {}, lambda: build_analyst_signoff(state)),
+        "import_truth": _safe_context("import_truth", {}, lambda: build_import_truth_summary(state)),
+        "workspace_model": _safe_context("workspace_model", {}, lambda: build_workspace_model(state)),
+        "analysis_studio": _safe_context("analysis_studio", {}, lambda: build_analysis_studio(state)),
+        "report_builder": _safe_context("report_builder", {}, lambda: build_report_builder_model(state, REPORT_TYPES)),
+        "product_intelligence": _safe_context("product_intelligence", {}, lambda: build_product_intelligence(state)),
+        "professional_health": _safe_context("professional_health", {}, lambda: health_report(current_app.config.get("ROOT_DIR"))),
+        "professional_analysis": _safe_context("professional_analysis", {}, lambda: build_professional_analysis(objects, {"filename": active.get("filename"), "source_mode": active.get("source_mode")}).__dict__),
     }
 
 
@@ -153,19 +154,54 @@ def ctx():
 def health():
     db_obj = current_app.extensions.get("db")
     storage_ok = bool(current_app.extensions.get("storage"))
-    payload = {"ok": True, "storage": storage_ok, "database": db_obj.health() if db_obj else {"ok": False}}
+    pro = _safe_context("professional.healthz", {}, lambda: health_report(current_app.config.get("ROOT_DIR")))
+    db_health = _safe_context(
+        "db.healthz",
+        {"ok": False, "error": current_app.config.get("DB_INIT_ERROR", "database unavailable")},
+        lambda: db_obj.health() if db_obj else {"ok": False, "error": current_app.config.get("DB_INIT_ERROR", "database unavailable")},
+    )
+    payload = {"ok": bool(storage_ok and pro.get("ok", True)), "storage": storage_ok, "database": db_health, "professional_pipeline": pro}
     from flask import jsonify
     return jsonify(payload)
+
+
+@bp.route("/system-health")
+def system_health():
+    return render_template("system_health.html", page="system-health", **ctx())
+
+
+@bp.route("/api/system-health")
+def api_system_health():
+    from flask import jsonify
+    return jsonify(health_report(current_app.config.get("ROOT_DIR")))
+
+
+@bp.route("/api/normalized-data")
+def api_normalized_data():
+    from flask import jsonify
+    state = current_app.extensions["storage"].load()
+    active = state.get("active_extraction", {}) or {}
+    objects = (active.get("objects") or {}) if isinstance(active, dict) else {}
+    result = build_professional_analysis(objects, {"filename": active.get("filename"), "source_mode": active.get("source_mode")})
+    return jsonify(result.__dict__)
 
 
 @bp.route("/login")
 def login():
     db_obj = current_app.extensions.get("db")
-    user_count = db_obj.user_count() if db_obj else 0
+    user_count = 0
+    db_login_error = ""
+    if db_obj:
+        try:
+            user_count = db_obj.user_count()
+        except Exception as exc:
+            db_login_error = str(exc)
+            current_app.logger.exception("Login page could not read SQLite user count; showing fallback login: %s", exc)
     return render_template(
         "login.html",
         next_url=request.args.get("next", "/"),
         user_count=user_count,
+        db_login_error=db_login_error,
         registration_enabled=current_app.config.get("REGISTRATION_ENABLED", True),
         demo_fallback_enabled=not current_app.config.get("DISABLE_DEMO_FALLBACK", False),
         admin_username=current_app.config.get("ADMIN_USERNAME", "admin"),
@@ -205,6 +241,16 @@ def import_center():
     return render_template("import.html", page="import", **ctx())
 
 
+@bp.route("/workspace")
+def workspace():
+    return render_template("workspace.html", page="workspace", **ctx())
+
+
+@bp.route("/analysis")
+def analysis_studio_page():
+    return render_template("analysis.html", page="analysis", **ctx())
+
+
 @bp.route("/objects")
 def object_explorer():
     query = request.args.get("q", "").lower().strip()
@@ -212,11 +258,20 @@ def object_explorer():
     status_filter = request.args.get("status", "all")
     high_value_only = request.args.get("high_value", "") == "1"
     data = ctx()
-    objects = data["objects"]
+    objects = data["objects"] if isinstance(data.get("objects"), dict) else {}
     flat = []
+
+    def normalize_object_for_explorer(obj):
+        """Return a template-safe dict for any extracted row."""
+        if isinstance(obj, dict):
+            normalized = dict(obj)
+            if not isinstance(normalized.get("evidence"), dict):
+                normalized["evidence"] = {}
+            return normalized
+        return {"value": str(obj), "evidence": {}, "kind": type(obj).__name__}
+
     def object_evidence_row(cat, obj):
-        if not isinstance(obj, dict):
-            return {}
+        obj = normalize_object_for_explorer(obj)
         name_candidates = [obj.get("hostname"), obj.get("id"), obj.get("name"), obj.get("interface"), obj.get("normalized_interface"), obj.get("vlan"), obj.get("ip_address"), obj.get("acl"), obj.get("pool")]
         for candidate in name_candidates:
             if candidate not in (None, "", []):
@@ -240,7 +295,8 @@ def object_explorer():
             for obj in value:
                 text = str(obj).lower()
                 if (category == "all" or key == category) and (not query or query in text) and passes_evidence_filters(key, obj):
-                    flat.append({"category": key, "object": obj, "evidence_row": object_evidence_row(key, obj)})
+                    safe_obj = normalize_object_for_explorer(obj)
+                    flat.append({"category": key, "object": safe_obj, "evidence_row": object_evidence_row(key, safe_obj)})
         elif isinstance(value, dict):
             for subkey, subval in value.items():
                 if isinstance(subval, list):
@@ -248,7 +304,8 @@ def object_explorer():
                         text = str(obj).lower()
                         name = f"{key}.{subkey}"
                         if (category == "all" or key == category or name == category) and (not query or query in text) and passes_evidence_filters(key, obj):
-                            flat.append({"category": name, "object": obj, "evidence_row": object_evidence_row(key, obj)})
+                            safe_obj = normalize_object_for_explorer(obj)
+                            flat.append({"category": name, "object": safe_obj, "evidence_row": object_evidence_row(key, safe_obj)})
     data.update({"flat_objects": flat, "query": query, "category": category, "status_filter": status_filter, "high_value_only": high_value_only})
     return render_template("objects.html", page="objects", **data)
 
@@ -256,6 +313,16 @@ def object_explorer():
 @bp.route("/topology")
 def topology():
     return render_template("topology.html", page="topology", **ctx())
+
+
+@bp.route("/intelligence")
+def product_intelligence():
+    return render_template("product_intelligence.html", page="intelligence", **ctx())
+
+
+@bp.route("/threat-map")
+def threat_map():
+    return render_template("threat_map.html", page="threat", **ctx())
 
 
 @bp.route("/diff")

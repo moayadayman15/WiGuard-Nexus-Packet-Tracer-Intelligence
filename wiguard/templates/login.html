@@ -10,7 +10,7 @@
   <main class="login-card auth-card-wide">
     <div class="brand-logo big">WG</div>
     <h1>WiGuard Nexus</h1>
-    <p>Secure analyst access is required before opening evidence, reports, uploads, or wireless policy data.</p>
+    <p>Backend recovery login is now hardened: if SQLite has a temporary problem, the local demo fallback still lets you enter and fix uploads/imports.</p>
 
     {% if user_count == 0 and registration_enabled %}
       <div class="setup-panel">
@@ -21,9 +21,15 @@
     {% endif %}
 
     {% if demo_fallback_enabled and environment != 'production' %}
-      <div class="hint-panel">
+      <div class="hint-panel recovery-login-panel">
         <strong>Local demo fallback</strong>
-        <span>Username: <code>{{ admin_username }}</code> · Password: <code>admin123</code> unless you changed WIGUARD_ADMIN_PASSWORD.</span>
+        <span>Username: <code>{{ admin_username }}</code> · Password: <code>admin123</code>. Legacy local demo password <code>admin</code> is also accepted in development mode only.</span>
+      </div>
+    {% endif %}
+
+    {% if db_login_error %}
+      <div class="flash error">
+        SQLite auth warning: {{ db_login_error }}. You can still use the local fallback, then open Settings → Database.
       </div>
     {% endif %}
 

@@ -30,5 +30,5 @@
   </div>
 </section>
 
-<section class="panel"><div class="panel-head"><h4>Import History</h4></div><div class="table-wrap"><table><thead><tr><th>Import</th><th>Filename</th><th>Source Mode</th><th>Objects</th><th>Source Hash</th></tr></thead><tbody>{% for i in state.imports %}<tr><td>{{ i.id }}</td><td>{{ i.filename }}</td><td>{{ i.source_mode }}</td><td>{{ i.object_count }}</td><td><code>{{ i.source_hash or 'N/A' }}</code></td></tr>{% else %}<tr><td colspan="5">No snapshots yet.</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="panel"><div class="panel-head"><h4>Import History</h4></div><div class="table-wrap"><table><thead><tr><th>Import</th><th>Filename</th><th>Source Mode</th><th>Real Objects</th><th>Evidence Rows</th><th>Source Hash</th></tr></thead><tbody>{% for i in state.imports %}<tr><td>{{ i.id }}</td><td>{{ i.filename }}</td><td>{{ i.source_mode }}</td><td>{{ i.object_count }}</td><td>{{ i.evidence_entry_count or 0 }}</td><td><code>{{ i.source_hash or 'N/A' }}</code></td></tr>{% else %}<tr><td colspan="6">No snapshots yet.</td></tr>{% endfor %}</tbody></table></div></section>
 {% endblock %}

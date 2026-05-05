@@ -1,9 +1,29 @@
 {% extends 'base.html' %}
 {% block content %}
+{% set rb = report_builder or {} %}
+<section class="report-builder-gate panel">
+  <div class="panel-head"><h4>Report Builder Workflow Gate</h4><span class="badge {{ 'pass' if analyst_signoff.can_publish_technical else 'review' }}">{{ evidence_quality_matrix.grade or 'No evidence' }}</span></div>
+  <div class="report-gate-grid">
+    <article><span>Import Readiness</span><b>{{ rb.truth.readiness_score or 0 }}%</b><small>{{ rb.truth.tier }}</small></article>
+    <article><span>Technical Report</span><b>{{ 'Ready' if analyst_signoff.can_publish_technical else 'Needs caveats' }}</b><small>allowed with evidence caveats</small></article>
+    <article><span>Executive Report</span><b>{{ 'Ready' if analyst_signoff.can_publish_executive else 'Blocked' }}</b><small>prevents exaggerated claims</small></article>
+    <article><span>Evidence Package</span><b>{{ artifacts|length }}</b><small>generated artifacts</small></article>
+  </div>
+</section>
 <section class="page-title">
   <span class="pill">Report Builder Pro</span>
   <h3>Audience-specific, branded, previewable reports with evidence appendix</h3>
   <p>Export Executive, Technical, Compliance, Packet Tracer Conversion, Wireless Risk, Audit, Evidence Appendix, or Full reports.</p>
+</section>
+
+<section class="panel premium-panel">
+  <div class="panel-head"><h4>Professional Normalized Export</h4><span>redacted schema v1</span></div>
+  <p class="muted">Exports the new normalized asset/finding/evidence contract so the report is clean instead of dumping raw JSON/XML.</p>
+  <div class="button-row">
+    <a class="ghost-btn" href="{{ url_for('actions.download_professional_analysis_json') }}">Professional JSON</a>
+    <a class="primary-btn" href="{{ url_for('actions.download_professional_analysis_html') }}">Professional HTML</a>
+    <a class="ghost-btn" href="{{ url_for('pages.api_normalized_data') }}" target="_blank">API Preview</a>
+  </div>
 </section>
 
 <section class="two-col">

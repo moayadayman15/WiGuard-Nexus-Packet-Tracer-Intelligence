@@ -1,0 +1,45 @@
+{
+  "topology": {
+    "nodes": [
+      {
+        "id": "R1",
+        "type": "router",
+        "interfaces": [
+          {
+            "name": "GigabitEthernet0/0",
+            "ipAddress": "192.168.10.1",
+            "subnetMask": "255.255.255.0"
+          }
+        ]
+      },
+      {
+        "id": "SW1",
+        "type": "switch",
+        "ports": [
+          {
+            "name": "FastEthernet0/1",
+            "vlanId": 10
+          }
+        ]
+      }
+    ],
+    "links": [
+      {
+        "source": "R1",
+        "target": "SW1",
+        "sourcePort": "GigabitEthernet0/0",
+        "targetPort": "FastEthernet0/1",
+        "cableType": "copper"
+      }
+    ]
+  },
+  "vlans": [
+    {
+      "vlanId": 10,
+      "name": "Users"
+    }
+  ],
+  "configs": {
+    "R1": "hostname R1\ninterface GigabitEthernet0/0\n ip address 192.168.10.1 255.255.255.0\n no shutdown\nline vty 0 4\n transport input ssh\n"
+  }
+}

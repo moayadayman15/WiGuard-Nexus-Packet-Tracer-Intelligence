@@ -1,18 +1,8 @@
-[project]
-name = "wiguard-nexus"
-version = "5.7.0"
-description = "Wireless and wired policy evidence intelligence platform"
-requires-python = ">=3.10"
-dependencies = [
-  "Flask>=3.0,<4.0",
-  "Werkzeug>=3.0,<4.0",
-  "reportlab>=4.0,<5.0",
-]
-
-[project.optional-dependencies]
-dev = ["pytest>=8.0,<9.0"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-q"
+# Optional product/runtime polish stack
+Flask-Compress>=1.15,<2.0
+waitress>=3.0,<4.0
+python-dotenv>=1.0,<2.0
+pydantic>=2.7,<3.0
+orjson>=3.10,<4.0
+cryptography>=42.0,<46.0
+rich>=13.7,<15.0

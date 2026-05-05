@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set pi = product_intelligence or {} %}
+{% set deps = pi.dependency_health or {} %}
+{% set graph = pi.topology_brain or {} %}
+{% set ai = pi.ai_copilot or {} %}
+{% set attack = pi.attack_path or {} %}
+{% set es = pi.evidence_search or {} %}
+{% set relgate = pi.release_gate or {} %}
+{% set uix = pi.ui_upgrade or {} %}
+<section class="page-title product-intel-title">
+  <span class="pill">Network Intelligence Engine</span>
+  <h3>Product-grade upgrades: topology brain, optional AI stack, and launch readiness</h3>
+  <p>This page turns the project into a product cockpit: what is already active, what can be unlocked with libraries, and what the current evidence can prove.</p>
+</section>
+
+<section class="product-hero-panel">
+  <div>
+    <span>Product Maturity</span>
+    <strong>{{ pi.maturity_score or 0 }}%</strong>
+    <small>{{ pi.maturity_label or 'Core prototype' }}</small>
+  </div>
+  <div class="maturity-ring" style="--score: {{ pi.maturity_score or 0 }}"><b>{{ pi.maturity_score or 0 }}%</b></div>
+  <div class="copilot-quote">
+    <b>AI Copilot Brief</b>
+    <p>{{ ai.copilot_message }}</p>
+  </div>
+</section>
+
+<section class="product-gate-grid">
+  {% for g in pi.gates %}
+  <article class="{{ g.status }}"><span>{{ g.title }}</span><b>{{ g.status }}</b><small>{{ g.detail }}</small></article>
+  {% else %}<article><span>Waiting</span><b>No model</b><small>Refresh after import.</small></article>{% endfor %}
+</section>
+
+<section class="product-snapshot-grid v515-intel-row">
+  <article><span>Release Gate</span><b>{{ relgate.score or 0 }}%</b><small>{{ relgate.label or 'waiting' }}</small></article>
+  <article><span>Threat Paths</span><b>{{ attack.path_count or 0 }}</b><small>max risk {{ attack.max_risk or 0 }} · {{ attack.model or 'graph' }}</small></article>
+  <article><span>Evidence KB</span><b>{{ es.doc_count or 0 }}</b><small>{{ es.backend or 'keyword index' }}</small></article>
+  <article><span>UI Upgrade</span><b>{{ uix.upgrades|length if uix.upgrades else 0 }}</b><small>{{ uix.headline or 'cleaner cockpit' }}</small></article>
+</section>
+
+<section class="two-col product-grid">
+  <div class="panel">
+    <div class="panel-head"><h4>Topology Brain</h4><span class="badge {{ 'pass' if graph.health_score >= 70 else 'review' }}">{{ graph.health_score or 0 }}/100</span></div>
+    <div class="diagnostic-grid product-metrics">
+      <article><span>Backend</span><b>{{ graph.backend or 'builtin' }}</b><small>NetworkX is used when installed</small></article>
+      <article><span>Nodes</span><b>{{ graph.nodes or 0 }}</b><small>{{ graph.edges or 0 }} evidence edges</small></article>
+      <article><span>Components</span><b>{{ graph.components or 0 }}</b><small>largest: {{ graph.largest_component or 0 }}</small></article>
+      <article><span>Confidence</span><b>{{ graph.confidence_avg or 0 }}%</b><small>{{ graph.confirmed_edges or 0 }} confirmed edges</small></article>
+    </div>
+    <h5>Critical / blast-radius candidates</h5>
+    <div class="mini-list">
+      {% for n in graph.critical_nodes %}<article><b>{{ n.label }} · {{ n.type }}</b><small>degree {{ n.degree }} · {{ n.reason }}</small></article>{% else %}<p class="muted">Import topology evidence to calculate critical nodes.</p>{% endfor %}
+    </div>
+    <h5>Improve graph confidence</h5>
+    <div class="command-checklist compact-list">
+      {% for rec in graph.recommendations %}<article class="cmd review"><b>Recommended evidence</b><span>{{ rec }}</span></article>{% else %}<article class="cmd covered"><b>Good graph coverage</b><span>No immediate topology blocker detected.</span></article>{% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>AI Root Cause v2 Pack</h4><span class="badge {{ 'pass' if ai.local_ready else 'review' }}">{{ ai.mode }}</span></div>
+    <div class="ai-prompt-grid">
+      {% for prompt in ai.suggested_prompts %}<button type="button" data-copy="{{ prompt }}">{{ prompt }}</button>{% endfor %}
+    </div>
+    <h5>Top finding package</h5>
+    <div class="mini-list">
+      {% for d in ai.top_findings %}<article class="{{ d.severity|lower }}"><b>{{ d.id }} · {{ d.severity }}</b><small>{{ d.asset }} — {{ d.actual }}</small></article>{% else %}<p class="muted">No policy findings yet.</p>{% endfor %}
+    </div>
+    <h5>Report blockers</h5>
+    <div class="mini-list">
+      {% for b in ai.diagnostic_blockers %}<article class="review"><b>{{ b.title }}</b><small>{{ b.detail }}</small></article>{% else %}<article class="pass"><b>No major blocker</b><small>Still verify the report gate before export.</small></article>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="two-col product-grid v515-product-grid">
+  <div class="panel threat-map-panel">
+    <div class="panel-head"><h4>Threat Map / Blast Radius</h4><a href="{{ url_for('pages.threat_map') }}">Open Threat Map</a></div>
+    <p class="muted">{{ attack.headline or 'Waiting for topology evidence.' }}</p>
+    <div class="path-card-list compact-list">
+      {% for path in attack.paths[:5] %}
+      <article class="path-card {{ path.status }}">
+        <div><b>{{ path.source }} → {{ path.target }}</b><span>{{ path.hops }} hop(s) · risk {{ path.risk }} · confidence {{ path.confidence }}%</span></div>
+        <small>{{ path.path|join(' → ') }}</small>
+      </article>
+      {% else %}<article class="path-card review"><div><b>No attack path yet</b><span>Import richer topology and ACL evidence.</span></div></article>{% endfor %}
+    </div>
+  </div>
+  <div class="panel evidence-kb-panel">
+    <div class="panel-head"><h4>Evidence Knowledge Base</h4><span>{{ es.doc_count or 0 }} docs</span></div>
+    <div class="chip-cloud evidence-keyword-cloud">
+      {% for kw in es.top_keywords[:12] %}<span>{{ kw.term }} · {{ kw.count }}</span>{% else %}<span>No keywords yet</span>{% endfor %}
+    </div>
+    <h5>Suggested analyst searches</h5>
+    <div class="ai-prompt-grid compact-prompts">
+      {% for q in es.suggested_queries %}<button type="button" data-copy="{{ q }}">{{ q }}</button>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel launch-gate-panel">
+  <div class="panel-head"><h4>Launch / Report Quality Gates</h4><span>{{ relgate.pass_count or 0 }} pass · {{ relgate.review_count or 0 }} review · {{ relgate.fail_count or 0 }} fail</span></div>
+  <div class="release-gate-grid">
+    {% for gate in relgate.gates %}
+    <article class="{{ gate.status }}"><span>{{ gate.owner }}</span><b>{{ gate.title }}</b><small>{{ gate.detail }}</small><p>{{ gate.next }}</p></article>
+    {% else %}<article class="review"><span>QA</span><b>No gates loaded</b><small>Refresh after import.</small></article>{% endfor %}
+  </div>
+</section>
+
+<section class="panel ui-upgrade-panel">
+  <div class="panel-head"><h4>UI + Product Cleanup Applied</h4><span class="badge pass">v5.15.0</span></div>
+  <div class="feature-card-grid">
+    {% for item in uix.upgrades %}<article><span>{{ item.status }}</span><b>{{ item.title }}</b><small>{{ item.detail }}</small></article>{% else %}<article><span>active</span><b>Cleaner UI</b><small>Command cockpit ready.</small></article>{% endfor %}
+  </div>
+</section>
+
+<section class="panel optional-stack-panel">
+  <div class="panel-head"><h4>Optional Product Stack</h4><span>{{ deps.installed_count or 0 }}/{{ deps.total_count or 0 }} installed · {{ deps.score or 0 }}%</span></div>
+  <div class="install-command-strip">
+    <button type="button" data-copy="{{ deps.commands.p0 }}"><b>P0 install</b><small>{{ deps.commands.p0 }}</small></button>
+    <button type="button" data-copy="{{ deps.commands.p1 }}"><b>P0+P1 install</b><small>{{ deps.commands.p1 }}</small></button>
+    <button type="button" data-copy="{{ deps.commands.full }}"><b>Full stack</b><small>{{ deps.commands.full }}</small></button>
+  </div>
+  <div class="dependency-grid">
+    {% for row in deps.rows %}
+    <article class="{{ 'installed' if row.installed else 'missing' }}">
+      <div><span>{{ row.group }}</span><b>{{ row.name }}</b></div>
+      <em>{{ row.priority }}</em>
+      <small>{{ row.impact }}</small>
+      <code>{{ row.package }}</code>
+    </article>
+    {% else %}<p class="muted">No dependency catalog loaded.</p>{% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h4>Features Added in v5.14.0</h4><span class="badge info">product uplift</span></div>
+  <div class="feature-card-grid">
+    {% for card in pi.feature_cards %}<article><span>{{ card.tag }}</span><b>{{ card.title }}</b><small>{{ card.body }}</small></article>{% endfor %}
+  </div>
+</section>
+{% endblock %}

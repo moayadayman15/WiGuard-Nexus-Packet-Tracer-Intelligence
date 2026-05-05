@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set pi = product_intelligence or {} %}
+{% set attack = pi.attack_path or {} %}
+{% set graph = pi.topology_brain or {} %}
+{% set es = pi.evidence_search or {} %}
+<section class="page-title threat-hero">
+  <span class="pill">Threat Map</span>
+  <h3>Attack-path and blast-radius cockpit</h3>
+  <p>Uses the extracted topology graph to find candidate paths, choke points, and validation controls. Treat paths as hypotheses until ACL, route, and trunk evidence confirms them.</p>
+</section>
+
+<section class="product-hero-panel threat-hero-panel">
+  <div>
+    <span>Max Path Risk</span>
+    <strong>{{ attack.max_risk or 0 }}</strong>
+    <small>{{ attack.headline or 'Waiting for topology evidence' }}</small>
+  </div>
+  <div class="maturity-ring" style="--score: {{ attack.max_risk or 0 }}"><b>{{ attack.max_risk or 0 }}</b></div>
+  <div class="copilot-quote">
+    <b>Threat-model note</b>
+    <p>{{ attack.controls[0] if attack.controls else 'Import richer CDP/LLDP, VLAN, trunk, route, and ACL evidence to unlock stronger path validation.' }}</p>
+  </div>
+</section>
+
+<section class="product-snapshot-grid">
+  <article><span>Path Candidates</span><b>{{ attack.path_count or 0 }}</b><small>{{ attack.model or 'graph model' }}</small></article>
+  <article><span>Entry Nodes</span><b>{{ attack.entry_count or 0 }}</b><small>SSID/VLAN/client/policy starts</small></article>
+  <article><span>High-Value Targets</span><b>{{ attack.target_count or 0 }}</b><small>router/switch/server/control nodes</small></article>
+  <article><span>Graph Health</span><b>{{ graph.health_score or 0 }}/100</b><small>{{ graph.backend or 'builtin' }}</small></article>
+</section>
+
+<section class="two-col threat-layout">
+  <div class="panel">
+    <div class="panel-head"><h4>Candidate Attack Paths</h4><span>{{ attack.path_count or 0 }} paths</span></div>
+    <div class="path-card-list">
+      {% for path in attack.paths %}
+      <article class="path-card {{ path.status }}">
+        <div class="path-card-head"><b>{{ path.source }} -> {{ path.target }}</b><span>Risk {{ path.risk }} · {{ path.hops }} hop(s) · {{ path.confidence }}%</span></div>
+        <p>{{ path.why }}</p>
+        <div class="path-chain">
+          {% for node in path.path %}<span>{{ node }}</span>{% endfor %}
+        </div>
+      </article>
+      {% else %}
+      <article class="path-card review"><div class="path-card-head"><b>No path candidates yet</b><span>Need more evidence</span></div><p>Upload CDP/LLDP, interface status, trunks, route table, and ACL outputs.</p></article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h4>Choke Points & Controls</h4><span>blast-radius focus</span></div>
+    <h5>Choke points</h5>
+    <div class="mini-list">
+      {% for c in attack.choke_points %}<article><b>{{ c.label }}</b><small>Appears in {{ c.paths }} candidate path(s)</small></article>{% else %}<p class="muted">No repeated choke points yet.</p>{% endfor %}
+    </div>
+    <h5>Validation controls</h5>
+    <div class="command-checklist compact-list">
+      {% for control in attack.controls %}<article class="cmd review"><b>Validate</b><span>{{ control }}</span></article>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel evidence-kb-panel">
+  <div class="panel-head"><h4>Evidence Search Assist</h4><span>{{ es.doc_count or 0 }} indexed evidence docs</span></div>
+  <div class="install-command-strip">
+    {% for q in es.suggested_queries %}<button type="button" data-copy="{{ q }}"><b>Copy search prompt</b><small>{{ q }}</small></button>{% endfor %}
+  </div>
+  <div class="dependency-grid compact-dependency-grid">
+    {% for sample in es.samples[:6] %}
+    <article class="installed"><div><span>{{ sample.category }}</span><b>{{ sample.title }}</b></div><small>{{ sample.text[:180] }}</small><code>line {{ sample.line or 'N/A' }} · confidence {{ sample.confidence }}</code></article>
+    {% else %}<p class="muted">No evidence index yet.</p>{% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,26 +1,60 @@
-# Security Policy
+import importlib.util
+import os
+import socket
+import sys
+from pathlib import Path
 
-WiGuard Nexus handles network evidence, reports, and configuration-derived artifacts. Treat every workspace as sensitive.
+ROOT = Path(__file__).resolve().parent
 
-## Required production settings
+def fail(msg):
+    print(f"[FAIL] {msg}")
+    raise SystemExit(1)
 
-- Set `WIGUARD_SECRET_KEY` to a long random value.
-- Set `WIGUARD_ADMIN_USERNAME` and `WIGUARD_ADMIN_PASSWORD_HASH`.
-- Keep `FLASK_DEBUG=0`.
-- Keep `WIGUARD_AUTH_REQUIRED=1` unless running isolated tests.
-- Place the app behind HTTPS when accessed over a network.
+def ok(msg):
+    print(f"[OK] {msg}")
 
-## Implemented hardening
+print("WiGuard backend diagnosis")
+print("Python:", sys.version.replace("\n", " "))
+if sys.version_info < (3, 10):
+    fail("Python 3.10+ is required because the project uses modern typing syntax.")
+ok("Python version is supported")
 
-- Login gate for application routes.
-- CSRF validation for mutating POST actions.
-- Upload filename sanitization and UUID-based storage names.
-- Upload extension allowlist.
-- Flask `MAX_CONTENT_LENGTH` support through `WIGUARD_MAX_UPLOAD_BYTES`.
-- Safer ZIP text intake limits for member count and total/member bytes.
-- Atomic JSON state writes with backup recovery.
-- Evidence manifest with SHA256 hashes and detached manifest checksum.
+for mod in ["flask", "werkzeug", "reportlab"]:
+    if importlib.util.find_spec(mod) is None:
+        fail(f"Missing dependency: {mod}. Run: python -m pip install -r requirements.txt")
+    ok(f"Dependency available: {mod}")
 
-## Reporting vulnerabilities
+for path in [ROOT / "data", ROOT / "wiguard", ROOT / "wiguard" / "templates", ROOT / "wiguard" / "static"]:
+    if not path.exists():
+        fail(f"Missing required path: {path}")
+    ok(f"Path exists: {path.relative_to(ROOT)}")
 
-Open a private issue or contact the maintainer. Include steps to reproduce, affected route/service, expected impact, and any safe proof-of-concept details.
+host = os.environ.get("WIGUARD_HOST", "127.0.0.1")
+port = int(os.environ.get("WIGUARD_PORT", "5000"))
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.settimeout(0.6)
+    if s.connect_ex((host, port)) == 0:
+        fail(f"Port {host}:{port} is already in use. Close the old Flask process or change WIGUARD_PORT.")
+ok(f"Port is free: {host}:{port}")
+
+try:
+    from wiguard import create_app
+    from wiguard.services.code_quality import scan_project
+    app = create_app()
+    route_count = len(list(app.url_map.iter_rules()))
+    ok(f"Flask app factory loaded; {route_count} routes registered")
+    if not any(str(rule) in {"/actions/import", "/api/import", "/upload"} for rule in app.url_map.iter_rules()):
+        fail("Upload routes were not registered")
+    ok("Upload routes registered")
+    quality = scan_project(ROOT)
+    if quality.get("fatal"):
+        fail(f"Code syntax check failed: {quality['summary']}")
+    if quality["status"] == "warn":
+        print(f"[WARN] Code hygiene warnings only: {quality['summary']}")
+        print("[WARN] Startup will continue. Clean these before final release if needed.")
+    else:
+        ok(f"Code hygiene passed: {quality['python_files']} Python files checked")
+except Exception as exc:
+    fail(f"App import/create failed: {exc}")
+
+print("Diagnosis completed successfully.")

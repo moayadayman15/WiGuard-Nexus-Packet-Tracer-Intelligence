@@ -1,5 +1,6 @@
 import html
 import json
+import re
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -9,6 +10,50 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from .intelligence import build_report
 from .util import now_iso
+
+
+SENSITIVE_KEY_RE = re.compile(r"(password|passwd|secret|token|cookie|authorization|api[_-]?key|private[_-]?key|community|psk|radius[_-]?key|shared[_-]?secret)", re.I)
+SENSITIVE_VALUE_PATTERNS = [
+    re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-+/=]{12,}"),
+    re.compile(r"(?i)(authorization:\s*basic\s+)[A-Za-z0-9._\-+/=]{8,}"),
+    # Cisco secrets may include a hash type between the command and the real
+    # secret, e.g. "enable secret 5 <hash>". Keep the command/hash-type context
+    # and redact only the sensitive value.
+    re.compile(r"(?i)(enable\s+(?:secret|password)\s+(?:\d+\s+)?)[^\s]+"),
+    re.compile(r"(?i)(username\s+\S+\s+(?:password|secret)\s+(?:\d+\s+)?)[^\s]+"),
+    re.compile(r"(?i)(snmp-server\s+community\s+)[^\s]+"),
+    re.compile(r"(?i)((?:wpa-psk|radius-server\s+key)\s+)[^\s]+"),
+    re.compile(r"(?i)((?:token|api[_-]?key|secret|password|passwd|cookie)=)[^\s&]+"),
+]
+
+
+def _redact_string(value: str) -> str:
+    text = value
+    for pattern in SENSITIVE_VALUE_PATTERNS:
+        text = pattern.sub(lambda m: m.group(1) + "[REDACTED]", text)
+    return text
+
+
+def sanitize_export_payload(value):
+    """Recursively redact secrets before report/ZIP export.
+
+    The UI can analyze sensitive config evidence, but export packages should not
+    leak live passwords, API tokens, cookies, SNMP communities, WPA PSKs, or
+    authorization headers by default.
+    """
+    if isinstance(value, dict):
+        cleaned = {}
+        for key, inner in value.items():
+            if SENSITIVE_KEY_RE.search(str(key)):
+                cleaned[key] = "[REDACTED]"
+            else:
+                cleaned[key] = sanitize_export_payload(inner)
+        return cleaned
+    if isinstance(value, list):
+        return [sanitize_export_payload(item) for item in value]
+    if isinstance(value, str):
+        return _redact_string(value)
+    return value
 
 
 REPORT_TYPES = {
@@ -27,7 +72,7 @@ REPORT_TYPES = {
 
 
 def report_json_bytes(state, report_type):
-    payload = build_report(state, report_type)
+    payload = sanitize_export_payload(build_report(state, report_type))
     return BytesIO(json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
 
 
@@ -56,7 +101,7 @@ def _report_sections(report_type):
 
 
 def report_pdf_bytes(state, report_type):
-    payload = build_report(state, report_type)
+    payload = sanitize_export_payload(build_report(state, report_type))
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36)
     styles = getSampleStyleSheet()
@@ -231,7 +276,7 @@ def report_pdf_bytes(state, report_type):
 
 
 def report_html_bytes(state, report_type):
-    payload = build_report(state, report_type)
+    payload = sanitize_export_payload(build_report(state, report_type))
     title = REPORT_TYPES.get(report_type, "WiGuard Report")
     diffs = payload.get("policy_diff", [])
     causes = payload.get("root_causes", [])
@@ -298,16 +343,16 @@ def evidence_zip_bytes(state, artifact_dir):
             if path.is_file():
                 zf.write(path, arcname=f"artifacts/{path.name}")
         for key in REPORT_TYPES:
-            zf.writestr(f"reports/{key}_report.json", json.dumps(build_report(state, key), indent=2, ensure_ascii=False))
+            zf.writestr(f"reports/{key}_report.json", json.dumps(sanitize_export_payload(build_report(state, key)), indent=2, ensure_ascii=False))
             zf.writestr(f"reports/{key}_report.html", report_html_bytes(state, key).getvalue())
-        zf.writestr("state_snapshot.json", json.dumps(state, indent=2, ensure_ascii=False))
+        zf.writestr("state_snapshot.redacted.json", json.dumps(sanitize_export_payload(state), indent=2, ensure_ascii=False))
     buffer.seek(0)
     return buffer
 
 
 def custom_report_html_bytes(state, sections):
     """Small report-builder export used by the UI. Sections are intentionally simple and safe."""
-    payload = build_report(state, "full")
+    payload = sanitize_export_payload(build_report(state, "full"))
     sections = set(sections or [])
     wireless = payload.get("wireless", {})
     parts = ["<!doctype html><html><head><meta charset='utf-8'><title>Custom WiGuard Report</title><style>body{font-family:Arial,sans-serif;background:#0f172a;color:#e5eefc;margin:0;padding:28px}section{background:#111c31;border:1px solid #29405f;border-radius:16px;padding:18px;margin:16px 0}table{width:100%;border-collapse:collapse}td,th{border-bottom:1px solid #29405f;padding:8px;text-align:left}.badge{display:inline-block;border:1px solid #38bdf8;border-radius:999px;padding:3px 8px}</style></head><body><h1>Custom WiGuard Report</h1>"]
